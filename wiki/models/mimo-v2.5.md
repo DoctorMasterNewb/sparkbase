@@ -3,7 +3,7 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-mimo-results, S-mimo-doc, S-dflash-nvfp4
+> **sources:** S-mimo-results, S-mimo-doc, S-dflash-nvfp4, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-mimo-tp2-1m
 > **updated:** 2026-07-08
 
 MiMo-V2.5 — 310B Omni MoE, **MIXED_PRECISION = MXFP8 dense + NVFP4 experts**, DiffKV
@@ -132,3 +132,26 @@ checkpoint-specific quant loaders (qkv/merger/packed) + triton kernel arg drift.
 
 ## See also
 `[[wiki/quantization-on-gb10.md]]` · `[[wiki/attention-and-kv-cache.md]]` · `[[wiki/multinode-tp-and-networking.md]]`
+
+## Forum ingest: community recipes & TP=3 virtual-head padding (2026-07-08)
+
+- **[reported]** **TP=3 across 3× DGX Spark** (S-forum-mimo-3x, tonyd615): MiMo has 64 attention
+  heads / 4 KV heads — neither divides by 3, so stock vLLM can't TP-shard across 3 nodes. Fix:
+  **virtual-head padding** — pad to 96 query / 6 KV heads (32 q / 2 KV per rank), zero-mask the pad
+  heads so they contribute nothing. Same approach used for MiniMax-M3 TP=3. Two additional fixes:
+  FusedMoE zero-fill (uninitialized padded MoE tail corrupted NVFP4 output) and attention_sink_bias
+  padding fix for the MTP draft (loader did 64//3=21 while virtual sink pads to 32).
+  - Results (thinking OFF, 3-run avg): quality 97.3, decode **38.8 tok/s** (effective 35.1), KV
+    cache 3,127,938 tokens at 1M context, all 4 modalities verified live.
+  - **[reported]** Thinking ON vs OFF: OFF wins (97.3 vs 88.9 quality, 2× lower answer latency).
+    Thinking ON only posts higher raw tok/s because it generates internal reasoning tokens.
+  - Infra: Ray executor with `object-store-memory capped to 1GB + memory-monitor disabled` (GB10
+    unified memory sits near full when loaded, which is normal), worker-first launch, MTU 9000.
+- **[reported]** **TP=2 with NVFP4 KV + 1M context** (S-forum-mimo-tp2-1m, tonyd2wild): ~30 tok/s,
+  NVFP4 4-bit KV (~1.01M-token pool). 69-eval: thinking-OFF 97.8 beats thinking-ON 90.6 for
+  tool/agent work. Quality did not degrade with NVFP4 quant.
+- **[reported]** **TP=2 community recipe** (S-forum-mimo-2x, a3refaat): vLLM 0.21.1rc1.dev39,
+  `--distributed-executor-backend ray`, `--load-format instanttensor`,
+  `--attention-backend triton_attn_diffkv`, `--kv-cache-dtype fp8_e4m3`, 131072 ctx, MTP
+  `num_speculative_tokens=2`. Reported benchmarks: Q&A 36.9, code 39.9, JSON 41.9, math 33.5 tok/s
+  (run 2). Image input validated. Uses eugr/spark-vllm-docker PR #251.

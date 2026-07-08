@@ -33,3 +33,14 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [roadmap](wiki/roadmap.md) — open problems & areas of further development.
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
+
+## Forum ingest 2026-07-08
+- 184 total NVIDIA DGX Spark forum threads processed (20 high-priority + 164 remaining from main + projects forums).
+- See `sources/README.md` → Forum sources (Batch 1 + Batch 2) for all registered sources.
+- Pages touched: platform-gb10 (power wedge, TMA, thermal, GSP timeout, drivers, display/USB/WiFi issues),
+  quantization-on-gb10 (AWQ vs NVFP4, MXFP4, CUTLASS failure, distributed quant),
+  multinode-tp-and-networking (CX-7 PCIe, MikroTik switches, 2D parallelism, DDP, SKU mixing),
+  engines (Atlas, ds4/DwarfStar, DFlash block-spec), containers-and-tooling (community tools),
+  models/mimo-v2.5 (TP=3 virtual-head padding, community recipes), models/minimax (4× recipes,
+  llama.cpp RPC, MSA, AWQ/MXFP4/NVFP4-KV variants), benchmarks (21 forum-reported rows),
+  llama-cpp-rpc (M3 RPC), roadmap (4 new open problems).

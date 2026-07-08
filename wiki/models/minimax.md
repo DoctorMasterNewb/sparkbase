@@ -3,7 +3,7 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-m3-vision, S-m3-20tps, S-sess-jun11, S-minimax-sweeps
+> **sources:** S-m3-vision, S-m3-20tps, S-sess-jun11, S-minimax-sweeps, S-forum-m3-nvfp4-4x, S-forum-m3-awq-4x, S-forum-m3-llamacpp-2x, S-forum-m3-quad
 > **updated:** 2026-07-08
 
 Two very different MiniMax stories on GB10: **M2.7 AWQ** = the fast, durable daily-driver default;
@@ -172,3 +172,31 @@ tradeoff is context (b12x-vision ~113k vs our 262k). Both are viable; b12x-visio
 
 ## See also
 `[[wiki/cudagraphs-and-compile.md]]` · `[[wiki/attention-and-kv-cache.md]]` · `[[wiki/benchmarks.md]]` · `[[wiki/platform-gb10.md]]`
+
+## Forum ingest: 4× Spark recipes, llama.cpp RPC, AWQ-INT4 (2026-07-08)
+
+- **[conjecture]** **MiniMax-M3-NVFP4 on 4× DGX Spark** (S-forum-m3-nvfp4-4x, OllieJW): uses the
+  chthonic vLLM base (`vllm-m3-chthonic`), which bundles ModelOpt NVFP4 runtime + b12x sparse
+  attention + b12x NVFP4 MoE path. Requires NCCL 2.30.7 forced via
+  `VLLM_NCCL_SO_PATH=/opt/nccl230/build/lib/libnccl.so.2` + `LD_PRELOAD` (default NCCL in chthonic
+  doesn't work for multi-node TP). Launch: `--no-ray` (PyTorch distributed, not Ray — chthonic build
+  doesn't init M3 parsers cleanly with Ray). Key flags: `--quantization modelopt_fp4
+  --attention-backend B12X_ATTN --moe-backend b12x -cc.mode=VLLM_COMPILE
+  -cc.cudagraph_mode=FULL` (slightly better per-req throughput than PIECEWISE, longer warmup),
+  `--max-model-len 524288`. **[conjecture]** Forum reports ~9-10 tok/s TG without a drafter on TP=4;
+  community consensus is M3 is too large even on TP=4 for good throughput without spec decode.
+- **[conjecture]** **MiniMax-M3-AWQ on 4× GB10** (S-forum-m3-awq-4x, Sebesky): fp8 KV, 262k context,
+  adaptive reasoning, ~30 tok/s. This is the AWQ counterpart to the NVFP4 4× recipe — AWQ Marlin
+  may be more decode-efficient (consistent with the M2.7 AWQ-vs-NVFP4 finding).
+- **[conjecture]** **MiniMax-M3 426B via llama.cpp RPC on 2 nodes** (S-forum-m3-llamacpp-2x,
+  karol.spark): UD-IQ4_XS GGUF (~194 GiB, ~97 GiB/node), `--split-mode layer`, **~10.7 tok/s**
+  decode, ~590 tok/s prefill, 65k context (configurable; KV q8_0 ≈ 45 KB/token). Tool-calling works
+  via a **hybrid chat template** — M3 native body + M2 tool-call format (llama.cpp PR #24523's
+  tool-call parser can't read M3's native format; M2's template parses but corrupts M3's generation).
+  First load ~13–25 min (RPC streams worker's layers; cached after). This is the llama.cpp
+  alternative for users who can't run vLLM on 2 nodes. See `[[wiki/llama-cpp-rpc.md]]`.
+- **[conjecture]** **MSA architecture overview** (S-forum-m3-quad, eh17): MiniMax Sparse Attention
+  preserves raw uncompressed KV (not lossy compression like DeepSeek MLA), partitions KV-cache into
+  fixed blocks, uses lightweight Top-K router — cuts compute to 1/20th. Smart KV-Block-Major memory
+  layout optimizes SRAM locality. Claims 9.7× prefill speedup, 15.6× decode speedup vs dense
+  attention. (Marketing/spec claims, not independently verified.)

@@ -3,7 +3,7 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122
 > **updated:** 2026-07-08
 
 Three engines run on the Spark pair; pick by arch support and quant.
@@ -57,3 +57,23 @@ Three engines run on the Spark pair; pick by arch support and quant.
 
 ## See also
 `[[wiki/containers-and-tooling.md]]` · `[[wiki/multinode-tp-and-networking.md]]` · `[[wiki/quantization-on-gb10.md]]`
+
+## Forum ingest: Atlas, ds4, DFlash engines (2026-07-08)
+
+- **[reported]** **Atlas engine** (S-forum-atlas, tbraun96/AzeezIsh): pure Rust LLM inference engine
+  with 20+ custom kernels compiled directly for SM121. **82 tok/s** Qwen3-Next-80B on a single Spark,
+  **2.8× faster than NVIDIA's stock vLLM image**, no speculative decoding. Source-to-first-token in
+  under 2 min (vLLM takes 40+). 32/32 benchmarks beat PyTorch baselines (18× faster RoPE, 8× Gated
+  Delta Rule, 3.9× MoE W4A16). No Python/PyTorch dependencies. Now an NVIDIA partner (eugr joined
+  NVIDIA). See `[[wiki/containers-and-tooling.md]]` for the Atlas image.
+- **[conjecture]** **antirez/ds4 (DwarfStar 4)** (S-forum-ds4-cuda, entrpi): fully custom CUDA-native
+  inference engine for DeepSeek-V4-Flash, optimized for 128 GB systems (originally Mac M-series).
+  Builds in ~8 s on Spark (`CUDA_ARCH=sm_121`), cold load ~20 s, ~28 tok/s Q2 decode single-stream
+  (pp2048 ~365 tok/s). Q2 GGUF ~81 GiB. OpenAI v1-compatible API on :8000. A fourth engine option
+  alongside vLLM/Atlas/llama.cpp — model-specific, not general-purpose.
+- **[conjecture]** **DFlash block-speculative decoding** for Qwen3.5-122B-A10B on 1x Spark
+  (S-forum-dflash-qwen122, entrpi): ~81 tok/s on agent/tool-call traffic (accept len ~8.3), ~59 tok/s
+  on albond's e2e harness. DFlash block-drafts ~12 tokens in one parallel forward (MTP-N needs N
+  sequential head passes). Built on albond's INT4+MTP recipe, stacks community patches for vLLM 0.23.
+  Baseline INT4 no-spec = 28.2 tok/s; MTP-2 = 51.6; DFlash n=12 = 53.7 (unpatched) → 59.0 (dense
+  levers) → ~81 (real agent turns).

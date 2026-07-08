@@ -3,7 +3,7 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122
 > **updated:** 2026-07-08
 
 Single-stream decode unless noted. All on the 2× GB10 pair. Numbers anchor the rules on
@@ -144,3 +144,32 @@ cudagraph capture inflates first-run TTFT — re-run warm.
   headroom vs a fused/cudagraph path.
 - **[reported]** cf forum HeNryous fp8: 100K@12 tok/s (fp8 decodes a bit faster than nvfp4) — external
   forum number, origin HeNryous.
+
+## Forum-reported benchmarks (2026-07-08 ingest)
+
+All rows below are **[reported]** — community-reported numbers from the NVIDIA DGX Spark forums, not
+first-party. Tagged `[forum]` to distinguish from the proven rows above.
+
+|| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+||---|---|---|---|---|---|---|---||
+|| DeepSeek-V4-Flash (official) | FP8 (E4M3 128×128 block) | vLLM (mp, no-ray) | 2 (TP=2) | ~44 | 200K | MTP nst=2, block-size 256, cudagraph FULL_AND_PIECEWISE | S-forum-dsv4-flash ||
+|| DeepSeek-V4-Flash-DSpark | NVFP4 (`nvfp4_ds_mla` KV) | vLLM+DSpark self-spec | 2 (TP=2) | ~60-67 (code) / ~40 (mixed) | 1M | c=6 ~182 tok/s agg; c=16@200K ~315 agg | S-forum-dsv4-dspark ||
+|| GLM-5.2 (744B/40B MoE) | AWQ-INT4 + 15% expert prune | vLLM | 4 (TP=4) | ~22 | 256K | MTP gave biggest uplift; cudagraph only ~3% | S-forum-glm52-4x ||
+|| MiMo-V2.5-NVFP4 | NVFP4 + fp8 KV | vLLM (Ray) | 2 (TP=2) | 36-42 | 131K | Q&A 37, code 40, JSON 42, math 35 (run 2) | S-forum-mimo-2x ||
+|| MiMo-V2.5-Omni | NVFP4 | vLLM (Ray) | 3 (TP=3) | 38.8 (eff 35.1) | 1M | Virtual-head padding; thinking-OFF > ON | S-forum-mimo-3x ||
+|| MiniMax-M3 426B | UD-IQ4_XS GGUF | llama.cpp RPC | 2 (layer-split) | ~10.7 | 65K | ~590 prefill; tool-calling via hybrid template | S-forum-m3-llamacpp-2x ||
+|| MiniMax-M3-AWQ | AWQ 4-bit + fp8 KV | vLLM | 4 (TP=4) | ~30 | 262K | Adaptive reasoning | S-forum-m3-awq-4x ||
+|| Qwen3.5-35B-A3B | MXFP4 (patched) | vLLM 0.17.0 (patched) | 2 (TP=2) | 70.68 | — | +65% over vanilla 42.85 | S-forum-mxfp4-patches ||
+|| gpt-oss-120b | MXFP4 (patched) | vLLM 0.17.0 (patched) | 2 (TP=2) | 80.88 | — | +56% over vanilla 51.82 | S-forum-mxfp4-patches ||
+|| Qwen3.5-122B-A10B | int4 | vLLM | 1 | up to 51 | — | eugr patches + quick-start | S-forum-qwen122 ||
+|| Qwen3.5-122B-A10B | int4 + DFlash n=12 | vLLM 0.23 (patched) | 1 | ~81 (agent) / 59 (e2e) | — | block-spec decode, accept len ~8.3 | S-forum-dflash-qwen122 ||
+|| Qwen3-Next-80B | native (Atlas) | Atlas | 1 | 82 | — | 2.8× vLLM, no spec decode, Rust+CUDA | S-forum-atlas ||
+|| DeepSeek-V4-Flash Q2 | Q2 GGUF | ds4 (DwarfStar 4) | 1 | ~28 | — | custom CUDA engine, 81 GiB | S-forum-ds4-cuda ||
+|| Hy3 (295B/21B MoE) | NVFP4-W4A16 | vLLM 0.23.1 (Ray) | 2 (TP=2) | 21.8 / 59.7 agg@c6 | 128K | MTP nst=1 (pos-2 only 20%), enforce-eager wins | S-forum-hy3 ||
+|| GLM-5.2 NVFP4 | NVFP4 | vLLM | 4 (TP=4) | 24 | 128K | MTP4 fix: config plumbing bug, accept ~0.84 pos-4 | S-forum-glm52-mtp-fix ||
+|| GLM-5.2 AWQ-INT4 (pruned) | AWQ-INT4 + 15% prune | vLLM | 4 (TP=4) | 22 | 256K | MTP biggest uplift, cudagraph ~3% | S-forum-glm52-4x ||
+|| GLM-5.2 1-bit | UD-IQ1_S GGUF | llama.cpp RPC | 2 (layer) | 8 | 256K | toy experiment, 1-bit quant | S-forum-glm52-1bit ||
+|| MiniMax-M3-AWQ | AWQ-INT4 + fp8 KV | vLLM (Ray) | 4 (TP=4) | 33 | 262K | EAGLE3, 5 GB10 build fixes (CUDA 13.0 mismatch) | S-forum-m3-awq-tp4 ||
+|| MiniMax-M3-AWQ | AWQ-INT4 + nvfp4 KV | vLLM | 4 (TP=4) | 25 | 1M | nvfp4 KV inline-dequant fused, 1M pool | S-forum-m3-awq-1m ||
+|| MiniMax-M3-MXFP4 | MXFP4 + bf16 KV | vLLM nightly | 4 (TP=4) | 35 | 262K | EAGLE3 k=2, no fp8 KV (crashes), ~70 tok/s@c5 | S-forum-m3-mxfp4-4x ||
+|| MiniMax-M3-W4A16-GPTQ | W4A16 + nvfp4 KV | vLLM b12x | 2 (TP=2) | 33 (+vision) | 113K | OCR-grade multimodal, vision reproduced | S-forum-m3-vision-b12x ||

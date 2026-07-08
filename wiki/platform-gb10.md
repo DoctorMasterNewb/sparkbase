@@ -3,7 +3,7 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report
+> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot
 > **updated:** 2026-07-08
 
 The hardware facts every model bring-up assumes. Read this first.
@@ -117,6 +117,64 @@ single-stream tok/s should jump.
 
 **Status:** `open` (firmware-level; recurs). Diagnostic when stuck: `sudo nvidia-bug-report.sh`. Check
 this **first** when cluster tok/s is mysteriously low across every model.
+
+### Forum corroboration (2026-07-08 ingest)
+
+The power-controller wedge is now **[reported]** (multiple independent forum sources agree, all
+symptoms match the first-party finding above):
+
+- **[reported]** GPU clock pinned at **721 MHz** / ~10 W / 96% util / 55°C / no throttle flag —
+  `nvidia-smi -lgc 3003` has no effect, `Supported Clocks: N/A` (S-forum-clock721). Fix: unplug
+  USB-C + AC power, wait, re-plug. Same fingerprint: pinned-exact clock, zero throttle reason.
+- **[reported]** After an OOM/crash, GPU draws **5–9 W** and is restored **only** by unplugging the
+  power brick (reboot does NOT fix) (S-forum-power-crash). The Asus Ascent variant shows the same
+  behavior; healthy state draws ~70 W at ~2400 MHz under load.
+- **[reported]** GPU trapped at **650 MHz / 15 W** with an artificial **50°C T.Limit** (chip at 44°C)
+  and SW Power Capping counter accumulating µs (S-forum-15w-loop). Fix: unplug from wall ~1–2 min.
+  Community diagnostic: `spark-doctor` CLI (joeynyc/spark-doctor) and `spark-gpu-throttle-check`
+  (hoesing/spark-gpu-throttle-check) — both detect the wedge by sampling clocks under load.
+- **[reported]** On the Asus GX10, GPU draws max ~60 W even with CPU idle, SW Power Capping counter
+  active (S-forum-60w-cap). Forum consensus: the 140 W TDP is the **combined CPU+GPU** envelope; GPU
+  typically sees 35–45 W during vLLM, 85–90 W peak in burn tests — the 60 W cap is normal platform
+  behavior, not the wedge (distinct from the pinned-clock fingerprint).
+**[conjecture]** A `spark-doctor` / `spark-gpu-throttle-check` script should be run on every new
+bring-up to rule out the wedge before benchmarking (multiple forum users discovered the wedge
+only after unexplained slow tok/s).
+
+### Batch 2 forum ingest (2026-07-08)
+
+- **[reported]** **NVIDIA official power spec** (S-forum-power-spec, MackenzieNVIDIA): peak total
+  system power = **240 W**; GB10 SoC TDP (GPU+CPU) = **140 W**; remaining 100 W = ConnectX-7 + SSD +
+  USB-C provisions. `nvidia-smi` wattage measures **GPU power only** (not total SoC).
+- **[reported]** **TMA (Tensor Memory Accelerator) is NOT exposed on GB10** (S-forum-tma, s0ne):
+  consumer-grade Blackwell (GB10, RTX 5090, RTX 6000 Pro) lacks TMEM — TMA is datacenter-only
+  (B100/B200/GB200). Kernel developers targeting TMA on GB10 will find no `cp.async.bulk.tensor`
+  instructions in SASS.
+- **[reported]** **Overheating shutdowns during sustained GPU loads** (ComfyUI video gen ~10 min)
+  affect specific units — NVIDIA could not reproduce across FE/OEM SKUs, recommends RMA for
+  affected units (S-forum-thermal). Community cooling solutions: 3D-printed ducted cooling cage
+  with Noctua 120mm fan brings idle GPU to ~40°C (S-forum-cooling-cage).
+- **[conjecture]** **GSP_INIT_DONE timeout (Xid 119)** + SEC2 secure-boot timeout
+  (`RmInitAdapter failed (0x62:0x65:2028)`) after OTA firmware update — GPU fails to initialize,
+  `nvidia-smi` returns "No devices were found" (S-forum-gsp-timeout). PCIe enumerates, driver
+  loads, but GSP firmware hangs at init. May require RMA.
+- **[conjecture]** **Driver 610.43.02 + CUDA 13.3** works on Spark (82 W under vLLM, 66°C, 95%
+  util) — requires disabling SecureBoot or enrolling MOK for signed driver (S-forum-driver610).
+  Ubuntu 26.04 clean install with drivers 610 + CUDA 13.3 + ZFS also confirmed working
+  (S-forum-ubuntu2604); CX7 power fix (15 W consumption) needed post-install.
+- **[conjecture]** **Auto-power-on for headless** (S-forum-headless-boot): BIOS setting exists for
+  "start on power" — set by default on DGX Spark FE; OEM variants may need manual BIOS config.
+- **[conjecture]** **Kernel panic after dashboard update** (S-forum-kernel-panic): initramfs
+  missing after kernel update DKMS failure; `GRUB_TIMEOUT=0` in headless mode blocks recovery.
+  Fix: boot recovery media, `dpkg --configure -a`, rebuild initramfs, or set `GRUB_TIMEOUT=5`.
+- **[conjecture]** **Dual DP-MST scanout fails** on driver 580.159.03 — single stream works, two
+  simultaneous DP-MST streams fail (S-forum-dp-mst).
+- **[conjecture]** **XHCI "HC Died"** with RealSense D435i 30fps depth+RGB streaming (S-forum-xhci)
+  — USB subsystem stability issue.
+- **[conjecture]** **MT7925e WiFi** cannot connect to any network after OOBE on some DGX OS builds
+  — "Failed to set PTK to the driver" / "key addition failed" (S-forum-wifi-mt7925).
+- **[conjecture]** **Soft lockup** in `nvidia_modeset` DisplayPort path during Xorg logout on
+  kernel 6.17.0-1018-nvidia (S-forum-soft-lockup-dp).
 
 ## Reference cluster
 

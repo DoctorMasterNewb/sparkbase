@@ -3,7 +3,7 @@
 > **area:** llama.cpp
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-nemotron-rpc
+> **sources:** S-nemotron-rpc, S-forum-m3-llamacpp-2x
 > **updated:** 2026-07-08
 
 llama.cpp is the path for **GGUF** checkpoints and for archs vLLM/Atlas don't support (e.g.
@@ -61,6 +61,11 @@ cmake --build build-rpc --target llama-server rpc-server -j
 - **[proven]** Nemotron-3-Super-120B-A12B Q8_0 (128 GB, hybrid SSM+MoE), 2-node RPC, ~61 GB/node, `-c`
   1M ctx × 4 slots: **~10.5 tok/s** single-stream decode, coherent, no NaN. Modest — 12B active over a
   cross-node RPC hop — but it runs a 128 GB model that fits on neither node alone.
+- **[conjecture]** MiniMax-M3 426B MoE UD-IQ4_XS GGUF (~194 GiB, ~97 GiB/node), 2-node RPC,
+  `--split-mode layer`: **~10.7 tok/s** decode, ~590 tok/s prefill @ `--ubatch-size 2048`, 65K ctx
+  (KV q8_0 ≈ 45 KB/token). Tool-calling via a **hybrid chat template** (M3 native body + M2 tool-call
+  format; llama.cpp PR #24523's parser can't read M3's native format). First load ~13–25 min (cached
+  after). Build: `CUDA_ARCH=121` from source, `aarch64`/GCC 13 (S-forum-m3-llamacpp-2x, karol.spark).
 
 ## See also
 `[[wiki/multinode-tp-and-networking.md]]` · `[[wiki/engines.md]]` · `[[wiki/models/nemotron-3.md]]`

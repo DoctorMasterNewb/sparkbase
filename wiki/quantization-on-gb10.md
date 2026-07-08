@@ -3,7 +3,7 @@
 > **area:** quantization
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b
 > **updated:** 2026-07-08
 
 GB10 has **no native FP4 compute and no native FP8 block-scale**. That one fact decides which quant
@@ -71,3 +71,44 @@ decompress, because at low batch you're memory-bound, not compute-bound.
 
 ## See also
 `[[wiki/platform-gb10.md]]` · `[[wiki/attention-and-kv-cache.md]]` · `[[wiki/containers-and-tooling.md]]` · per-model pages under `wiki/models/`
+
+## Forum ingest: AWQ vs NVFP4 decode (2026-07-08)
+
+- **[reported]** **AWQ 4-bit outperforms NVFP4 on decode by ~32%** on GB10 — confirmed across multiple
+  models on both single-node and 2-node clusters. Qwen3-VL-235B-A22B AWQ 4-bit vs NVFP4: AWQ ~32%
+  faster single-concurrency, ~18% faster at c=10, snappier TTFT (S-forum-fp4psa, eugr). This
+  corroborates the first-party MiniMax-M2.7 finding (AWQ ~24 vs NVFP4 ~16.5 tok/s) and generalizes it
+  beyond MiniMax. FP8 and AWQ 8-bit perform roughly equally (FP8 slightly faster on prompt processing,
+  AWQ 8-bit slightly faster on token gen).
+
+## Forum ingest: MXFP4 online quantization patches (2026-07-08)
+
+- **[conjecture]** **MXFP4 online quantization patches for SM121** (S-forum-mxfp4-patches,
+  amasawa_seiji): a set of vLLM 0.17.0 patches enable BF16→MXFP4 online quant for MoE experts,
+  attention (qkv_proj, o_proj), and lm_head via Marlin backend, plus SM121 CUTLASS MoE fixes and
+  GDN Triton kernel fix for Qwen3.5. Reported results (2-node TP=2, 1024 in / 128 out):
+  - Qwen3.5-35B-A3B: vanilla 42.85 → patched **70.68 tok/s** (+65%)
+  - gpt-oss-120b: vanilla 51.82 → patched **80.88 tok/s** (+56%)
+  - Enables TP=1 single-GPU inference for MXFP4 (vanilla vLLM cannot do this on GB10).
+  - GitHub: `github.com/namake-taro/vllm-custom`
+  - **[conjecture]** The SFA/SFB bug in CUTLASS for SM121 is still unmerged upstream.
+
+## Forum ingest: NVFP4 CUTLASS failure on sm_121 (2026-07-08)
+
+- **[conjecture]** FlashInfer detects GB10 is not SM100 (B200), falls back to CUTLASS FP4 — but CUTLASS
+  FP4 **also fails** on sm_121 with `RuntimeError: [FP4 gemm Runner] Failed to run cutlass FP4 gemm on
+  sm120. Error: Error Internal` (S-forum-nvfp4-ray). This was on vLLM 0.12.0 with a ptxas symlink fix.
+  **[reported]** Triton's bundled ptxas 12.8 does NOT support sm_121a; symlink to CUDA's ptxas
+  (`ln -sf /usr/local/cuda/bin/ptxas …/triton/backends/nvidia/bin/ptxas`) to fix Triton compilation.
+  This is a known toolchain gap on GB10.
+
+## Forum ingest: Distributed NVFP4 quantization on 2x Spark (2026-07-08)
+
+- **[conjecture]** Single-node `modelopt hf_ptq.py` **silently OOM-kills** on Spark for 100B+ models
+  (S-forum-nvfp4-100b). `accelerate.infer_auto_device_map` misdetects GB10 unified memory as a ~5.2 TB
+  GPU → silent OOM in single-node flows. Fix: distributed Ray pipeline, layer-sharded across both
+  Sparks, BF16 calibration → NVFP4 export via modelopt 0.43.
+- **[conjecture]** modelopt 0.43 NVFP4 export writes `input_activations.dynamic=false` but does NOT
+  emit `input_scale` keys → vLLM registers uninitialized Parameters → garbage output until
+  `input_scale=1.0` sidecar keys are injected for every quantized Linear (840 for a 105B model).
+  Six-fix list documented in the model card (Kaleto/Anubis-Pro-105B-NVFP4).

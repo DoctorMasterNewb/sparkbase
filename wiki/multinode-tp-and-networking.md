@@ -3,7 +3,7 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel
 > **updated:** 2026-07-08
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
@@ -159,3 +159,37 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
 
 ## See also
 `[[wiki/platform-gb10.md]]` · `[[wiki/cudagraphs-and-compile.md]]` · `[[wiki/llama-cpp-rpc.md]]` · `[[wiki/engines.md]]`
+
+## Forum ingest: ConnectX-7 PCIe power throttling (2026-07-08)
+
+- **[conjecture]** **CX-7 link capped at ~13 Gbps** (expected ~92+ Gbps per interface, ~190 Gbps
+  combined) — caused by `mlx5_core: Detected insufficient power on the PCIe slot (27W)` in dmesg
+  (S-forum-cx7-13gbps). Root cause: `lspci` reports `SlotPowerLimit 0W` → the driver throttles,
+  thinking there's insufficient power. Link negotiates at 200 Gbps / 32 GT/s correctly, but throughput
+  is capped regardless of MTU, ring buffers, or qdisc settings. **[reported]** Multiple forum users
+  hit this; the fix is not yet confirmed — one user reported resolving it after a firmware/driver
+  update, but the `SlotPowerLimit 0W` reading suggests a BIOS/firmware PCIe slot-power advertisement
+  bug. This is distinct from the kernel-6.17 RoCE regression (also 13–16 Gbps, but that's a kernel
+  throughput cap, not a PCIe power event).
+- **[conjecture]** **4-node topology** (S-forum-cx7-13gbps context): a 100G MikroTik CRS504 switch
+  works for 4× GB10 clusters; daisy-chaining sustains 100G/pair (vs 200G direct). Powers-of-2 node
+  counts recommended for vLLM; 3-node TP=3 requires virtual-head padding (see
+  `[[wiki/models/mimo-v2.5.md]]`).
+
+### Batch 2 forum ingest (2026-07-08)
+
+- **[reported]** **MikroTik switch options for 4× Spark** (S-forum-mikrotik): CRS804-4DDQ (4×
+  QSFP56-DD, 400G) is the ideal switch but frequently sold out. CRS812 (2×200G + 1×400G port) works
+  with a breakout cable on the 400G port for the other 2 Sparks. CRS504 (100G only) also works but
+  at reduced bandwidth. Community confirmed all three functional for TP=4.
+- **[conjecture]** **2D parallelism (TP×PP) on 4× Spark** (S-forum-2d-parallel, eugr_nv): PP over
+  RJ-45 ethernet (vs TP over CX-7) is "too latency-sensitive" — potential performance gains undone
+  by ethernet latency. PP requires much less bandwidth but is latency-sensitive; stick to TP over
+  the CX-7 fabric.
+- **[conjecture]** **NCCL ALLREDUCE timeout during DDP training** (S-forum-ddp-timeout): rank desync
+  during distributed training on 2× Spark (Ray cluster). `ProcessGroupNCCL` watchdog timeout after
+  1800s — rank 1 finished collective #1155873 but didn't join #1155874. Training (not inference) is
+  less battle-tested on this fabric than serving.
+- **[reported]** **Mixing FE and Asus Ascent in a 2-node cluster** (S-forum-mix-skus): no issues
+  reported — CX-7 firmware compatible across OEM variants. The atypical dual PCIe5 x4 link setup is
+  identical across all GB10 SKUs.

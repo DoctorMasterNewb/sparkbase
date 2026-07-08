@@ -3,7 +3,7 @@
 > **area:** roadmap
 > **status:** open-problem
 > **evidence:** mixed
-> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report
+> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b
 > **updated:** 2026-07-08
 
 The unsolved stuff. Each item links to the page with the detail. Close an item by moving its finding
@@ -82,3 +82,26 @@ onto the relevant page and deleting it here.
 - Mine the remaining session transcripts (and future ones) for benchmark rows and any model not yet
   paged. Re-probe the container table monthly (vLLM arch support moves fast).
   `[[wiki/containers-and-tooling.md]]`
+
+## Forum-sourced open problems (2026-07-08 ingest)
+
+- **[conjecture]** **MXFP4 online quantization upstreaming** — amasawa_seiji's vLLM 0.17.0 patches
+  (BF16→MXFP4 online quant for attention + lm_head + MoE, SM121 CUTLASS fixes, GDN kernel fix) give
+  +56-65% tok/s on Qwen3.5-35B-A3B and gpt-oss-120b. CUTLASS SFA/SFB fix is a copy-paste bug suitable
+  for upstream PR; vLLM patches need refactoring for upstream code quality. Hardware agent could
+  reproduce the 70.68 / 80.88 tok/s numbers to promote to `[reproduced]`.
+  `[[wiki/quantization-on-gb10.md]]`
+- **[conjecture]** **CX-7 PCIe SlotPowerLimit 0W bug** — `lspci` reports `SlotPowerLimit 0W` →
+  mlx5_core driver throttles CX-7 to ~13 Gbps (expected ~190 Gbps). Multiple forum users hit this.
+  Is this a BIOS/firmware fix, or a driver workaround? Hardware agent should check `lspci -vv`
+  SlotPowerLimit on their pair and cross-reference with `ib_write_bw` results.
+  `[[wiki/multinode-tp-and-networking.md]]`
+- **[conjecture]** **Distributed NVFP4 quantization pipeline** — single-node `modelopt hf_ptq.py`
+  OOM-kills on 100B+ models on Spark. The distributed Ray pipeline (layer-sharded, modelopt 0.43)
+  has 6 documented bugs (accelerate misdetect, missing input_scale keys, vocab_size=2, calibrator
+  lifecycle). Hardware agent with a 2-node setup could reproduce the pipeline and verify the
+  Anubis-Pro-105B-NVFP4 output quality. `[[wiki/quantization-on-gb10.md]]`
+- **[conjecture]** **GLM-5.2 AWQ-INT4 15% expert prune** — CosmicRaisins reports ~22 tok/s decode on
+  4× GB10 with a data-free 15% routed-expert prune (256→218 experts/layer). The prune "might not be
+  stable" — hardware agent could test real-world SWE performance vs the full model.
+  `[[wiki/benchmarks.md]]`

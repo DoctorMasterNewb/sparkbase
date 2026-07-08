@@ -3,7 +3,7 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610
 > **updated:** 2026-07-08
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
@@ -61,3 +61,19 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
 
 ## See also
 `[[wiki/engines.md]]` · `[[wiki/quantization-on-gb10.md]]` · `[[wiki/platform-gb10.md]]`
+
+## Forum ingest: community tools & images (2026-07-08)
+
+- **[conjecture]** **Docker image: NVIDIA vLLM 0.23.0 with Claude Code compatibility**
+  (S-forum-vllm-claude): community Docker image that updates NVIDIA's official 26.05.post1 vLLM
+  image to work with Claude Code 2.1.195+.
+- **[conjecture]** **btop for DGX Spark** (S-forum-btop): modified btop fork that displays GPU
+  resource info on GB10 (stock btop doesn't show unified memory GPU stats).
+- **[conjecture]** **DGX Spark Model Manager** (S-forum-model-manager): open-source web UI for
+  managing Ollama, SGLang & LiteLLM models on Spark — single browser tab to control everything.
+- **[conjecture]** **sparkdash** (S-forum-sparkdash): monitoring/control dashboard for sparkrun
+  DGX Spark clusters — Ray/vLLM/recipe status and per-node vitals.
+- **[conjecture]** **Tool Eval Bench CLI** (S-forum-tool-eval): benchmark tool for evaluating model
+  performance on DGX Spark — complements llama-benchy with tool-calling/task-based metrics.
+- **[conjecture]** **ThunderKittens 2.0** (S-forum-thunderkittens): tile primitives library with
+  Blackwell support — useful for custom kernel development on sm_121.
