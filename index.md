@@ -44,3 +44,16 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   models/mimo-v2.5 (TP=3 virtual-head padding, community recipes), models/minimax (4× recipes,
   llama.cpp RPC, MSA, AWQ/MXFP4/NVFP4-KV variants), benchmarks (21 forum-reported rows),
   llama-cpp-rpc (M3 RPC), roadmap (4 new open problems).
+
+## Forum ingest 2026-07-09
+- 160 new NVIDIA DGX Spark forum threads processed (~48 new sources, Batch 3).
+- See `sources/README.md` → Batch 3 forum sources for all registered sources.
+- Pages touched: platform-gb10 (CX-7 bricking, SDPA corruption, SageAttention, vLLM 26.06 broken,
+  OOM hang fix, fwupd mismatch, UMA bandwidth, torchaudio), multinode-tp-and-networking (NCCL 2.30.4,
+  SGLang RDMA passthrough, SGLang traps, CUTLASS MoE OOM, 4-node mesh, MTP NEXTN),
+  quantization-on-gb10 (KVarN, Spark Auto Round, KV benchmarks, TurboQuant, STREAM LOADING,
+  ModelOpt CPU-bound, vLLM regression, MTP math, heterogeneous quant), engines (DDTree, STREAM LOADING,
+  SM121 kernel guide, vLLM regression), containers-and-tooling (Nunchaku, ComfyUI, llama.cpp container,
+  QAT models, Mistral OOM, torchaudio), models/mimo-v2.5 (DFlash 22→67, v0.24.0 DFlash+NVFP4 KV),
+  models/minimax (W4A16-GPTQ corroborated, M2.5 4× SGLang), models/nemotron-3 (Super MTP, Ultra 550B,
+  ABI fix), benchmarks (17 new forum-reported rows), roadmap (4 new open problems).

@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122
-> **updated:** 2026-07-08
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8
+> **updated:** 2026-07-09
 
 Single-stream decode unless noted. All on the 2× GB10 pair. Numbers anchor the rules on
 `[[wiki/platform-gb10.md]]` (bandwidth-bound) and `[[wiki/quantization-on-gb10.md]]` (MoE-NVFP4 wins).
@@ -173,3 +173,19 @@ first-party. Tagged `[forum]` to distinguish from the proven rows above.
 || MiniMax-M3-AWQ | AWQ-INT4 + nvfp4 KV | vLLM | 4 (TP=4) | 25 | 1M | nvfp4 KV inline-dequant fused, 1M pool | S-forum-m3-awq-1m ||
 || MiniMax-M3-MXFP4 | MXFP4 + bf16 KV | vLLM nightly | 4 (TP=4) | 35 | 262K | EAGLE3 k=2, no fp8 KV (crashes), ~70 tok/s@c5 | S-forum-m3-mxfp4-4x ||
 || MiniMax-M3-W4A16-GPTQ | W4A16 + nvfp4 KV | vLLM b12x | 2 (TP=2) | 33 (+vision) | 113K | OCR-grade multimodal, vision reproduced | S-forum-m3-vision-b12x ||
+| Qwen3.6-27B (dense) | FP8 + MTP nst=3 | vLLM (spark-vllm-docker) | 1 | 15.2 | 32K | 7.8 baseline → 1.94× with MTP; bandwidth-bound ~10 tok/s ceiling | S-forum-qwen36-27b-fp8 ||
+| Gemma-4-31B-IT | NVFP4 + MTP=7 (assistant drafter) | vLLM (eugr fork) | 2 (TP=2) | 24.78 (peak) / 14.1 (tg1024) | auto | fp8 KV, MTP=7 optimal for 31B, MTP=4 for 26B-A4B | S-forum-gemma4-assistant ||
+| GLM-4.7 (355B full) | NVFP4 | vLLM (spark-vllm-docker) | 2 (TP=2) | 17.5 | 64K | NCCL_NET_GDR_LEVEL=0 mandatory; --no-ray; 4 documented walls | S-forum-glm47-full-2x ||
+| DeepSeek-V4-Flash | FP8 + MTP | vLLM (jasl fork) | 4 (TP=4) | 49.4–54.4 (single) / 180 (n8 agg) | 384K | NCCL 2.30.4 critical (2.28.9 wedges); sm12x_deep_gemm_fallbacks.py | S-forum-ds4f-4x-vllm ||
+| Nemotron-3-Super-120B | NVFP4 + MTP | SGLang 0.5.13-dev | 4 (TP=4) | 1.70× single-stream (over no-spec) | 524K | accept_len ≈2.7; 3/4 depth beats NVIDIA cookbook 5/5; Mamba state pool limits single-node | S-forum-nemotron-super-mtp ||
+| Nemotron-3-Ultra-550B | NVFP4 (modelopt_mixed) | SGLang 0.5.12 | 4 (TP=4, EP=4) | 42–43 (n8 peak) / 5.3 (per-req n8) | 512K | 83.7 GB/GPU weights; LatentMoE 512+1 experts, Mamba2+MoE+attn hybrid | S-forum-nemotron-ultra-4x ||
+| MiniMax-M2.5 | NVFP4 | SGLang | 4 (TP=4, EP=4) | 25.5 (single) / 124 (n8 agg) | — | MAX_JOBS=1 fixes CUTLASS MoE compile OOM; RDMA enabled | S-forum-m25-sglang-4x ||
+| GLM-4.7-FP8 | FP8 | SGLang | 4 (TP=4) | 25.1 (RDMA) / 8.2 (socket) | — | 2.5× speedup just from RDMA enable; SGLang container needs --device=/dev/infiniband | S-forum-glm47-rdma ||
+| GLM-5.2 (744B) | IQ4_XS GGUF | llama.cpp RPC | 4 | 6.28 (C=1) / 9.07 (C=4 agg) | 1M | DSA active; ngram self-spec →24 tok/s structured; Q4_K_S has more headroom | S-forum-glm52-iq4xs-4x ||
+| Qwen3.5-397B-A17B | NVFP4 + MTP | SGLang 0.5.10 | 4 (TP=4) | 40.0 (n1, MTP) / 110.9 (n8) | 524K | MTP +86% single-stream; cutlass MoE + triton attn + fi_cutlass FP4 + CG on wins | S-forum-roce-397b-mtp ||
+| Gemma-4-31B (dense) | BF16 + MTP (assistant) | SGLang 0.5.11 | 4 (TP=4) | 26.68 (n1, MTP=6) / 153.24 (n8) | 262K | FROZEN_KV_MTP drafter; +154% @ n1, +80% @ n8 over baseline | S-forum-gemma4-mtp-4x ||
+| Qwen3.5-122B-A10B | NVFP4 (RedHatAI) | vLLM | 1 | 16.15 | 262K | Quality close to FP16; moe-backend flashinfer_cutlass | S-forum-qwen122-nvfp4-redhat ||
+| Qwen3.5-122B-A10B | NVFP4 (community) | vLLM | 1 | — | — | 234GB→75.6GB, fits 128GB; DeltaNet+vision, routers/lm_head kept BF16 | S-forum-qwen122-nvfp4-quant ||
+| Nemotron-3-Super-120B | NVFP4 | vLLM TP=2 | 2 | 24 | — | ABI fix for cu130/cu132 mismatch in Dockerfile (cu132 wheel + cu130 PyTorch) | S-forum-nemotron-super-abi ||
+| DeepSeek-V4-Flash | hybrid 2-bit (IQ2_XXS+Q2_K+FP8) | vLLM (custom) | 1 | — | — | antirez MLX recipe ported; ~85 GiB, coherent output on single Spark | S-forum-ds4f-hybrid-1x ||
+| Step-3.7-Flash | IQ4_XS GGUF | llama.cpp (stepfun fork) | 1 | 31 (short ctx) / 11 (max ctx) | 262K | Only path for Step-3.7 on Spark; prefill poor vs vLLM | S-forum-step37-llamacpp ||

@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-m3-vision, S-m3-20tps, S-sess-jun11, S-minimax-sweeps, S-forum-m3-nvfp4-4x, S-forum-m3-awq-4x, S-forum-m3-llamacpp-2x, S-forum-m3-quad
-> **updated:** 2026-07-08
+> **sources:** S-m3-vision, S-m3-20tps, S-sess-jun11, S-minimax-sweeps, S-forum-m3-nvfp4-4x, S-forum-m3-awq-4x, S-forum-m3-llamacpp-2x, S-forum-m3-quad, S-forum-m3-w4a16-gptq, S-forum-m25-sglang-4x
+> **updated:** 2026-07-09
 
 Two very different MiniMax stories on GB10: **M2.7 AWQ** = the fast, durable daily-driver default;
 **M3** = a 428B research/long-context/vision endpoint that's structurally slow here.
@@ -200,3 +200,22 @@ tradeoff is context (b12x-vision ~113k vs our 262k). Both are viable; b12x-visio
   fixed blocks, uses lightweight Top-K router — cuts compute to 1/20th. Smart KV-Block-Major memory
   layout optimizes SRAM locality. Claims 9.7× prefill speedup, 15.6× decode speedup vs dense
   attention. (Marketing/spec claims, not independently verified.)
+
+### Batch 3 forum ingest (2026-07-09)
+
+- **[reported]** **MiniMax-M3-W4A16-GPTQ 2×GB10 deployment** (S-forum-m3-w4a16-gptq, a3refaat):
+  community GPTQ checkpoint (`Sebesky/MiniMax-M3-W4A16-GPTQ`) + EAGLE3 draft
+  (`Sebesky/MiniMax-M3-EAGLE3-RTN-INT4`) + b12x + vllm. **36 tok/s** on 2× GB10. KVarN KV-cache
+  quantization integrated for extended context (262K+ with KVarN, up to 370K observed). fp8 and nvfp4
+  KV variants also tested. **4× Spark variant**: dropping KVarN and using NVFP4 quant gives flat 40
+  tok/s decode throughout ctx depth, ~1200 tok/s prefill (S-forum-m3-w4a16-gptq, CosmicRaisins
+  reply). Calibration dataset included simulated agentic trajectories. Vision not tested but should
+  work in theory. Note: all recipes push the absolute limit of system memory — run headless and clear
+  page caches before launch. This **corroborates** the first-party b12x reproduction (36.25 tok/s,
+  S-forum-m3-vision-b12x) — now [reported] with two independent sources.
+- **[conjecture]** **MiniMax-M2.5-NVFP4 on 4× Spark SGLang** (S-forum-m25-sglang-4x, Verel-lab):
+  25.5 tok/s single-stream, 124 tok/s aggregate @ n8 (vs 70.7 in the published forum number). TP=4,
+  EP=4, RDMA enabled, `lukealonso/MiniMax-M2.5-NVFP4` (~126 GB, ~32 GB/Spark for weights). For
+  agentic workloads with many parallel agent threads, M2.5 outperforms GLM-4.7-FP8 and
+  Qwen3.5-397B-A17B-NVFP4 on the same cluster at concurrency. CUTLASS MoE compile OOM fix:
+  `MAX_JOBS=1 NVCC_THREADS=1` (see `[[wiki/multinode-tp-and-networking.md]]`).

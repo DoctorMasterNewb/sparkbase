@@ -62,3 +62,44 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
 - **Benchmarks:** 11 new forum-reported rows added.
 - **Pages touched:** platform-gb10, engines, containers-and-tooling, multinode-tp-and-networking,
   benchmarks, sources/README.
+
+## 2026-07-09 — Batch 3 forum ingest: 160 new NVIDIA DGX Spark forum threads
+
+- **Sources:** 160 new forum topics found (not in processed_topics.txt). ~48 new sources registered
+  as `S-forum-*` in `sources/README.md` (Batch 3 section). Processed the most technically dense topics
+  first (model recipes, benchmarks, quant findings, platform bugs); non-technical threads (social,
+  buying advice, HDMI/AV receiver, ChatGPT restriction, power standby) triaged but not ingested.
+  152 topic IDs added to `sources/processed_topics.txt` (total now 336).
+- **Platform:** CX-7 bricked by unsolicited mlnx-fw-updater auto-firmware flash (novel failure mode).
+  Silent SDPA EFFICIENT_ATTENTION corruption in community PyTorch sm_121 builds (NGC wheels unaffected).
+  ComfyUI SageAttention silently inactive without python3.12-dev (20× slowdown). nvcr.io/nvidia/vllm:26.06-py3
+  image broken (prometheus-fastapi-instrumentator + fastapi 0.136+ incompat). OOM hang fixed by driver
+  580.159.03+. DGX Dashboard fwupd/libfwupd version mismatch after OTA 7.5.0. GB10 UMA community bandwidth
+  measurements (161 GB/s idle, 90 GB/s under load). torchaudio unavailable on ARM64/CUDA 13.
+- **Multinode:** NCCL 2.30.4 critical for 4× Spark (2.28.9 wedges long generation). SGLang container
+  RDMA passthrough needs --device=/dev/infiniband (2.5× speedup, 8.2→25 tok/s). SGLang multi-node 3 traps
+  (false-positive collective mismatch, EAGLE flags on every node, RDMA). CUTLASS MoE compile OOM fix
+  (MAX_JOBS=1). 4-node full mesh without switch (200GBASE-SR4 transceivers). MTP on SGLang NEXTN (+86%
+  single-stream Qwen3.5-397B, +154% Gemma-4-31B).
+- **Quantization:** KVarN native vLLM KV-cache quantization (3-5× capacity, Qwen 3.6 compat issue).
+  Spark Auto Round sensitivity-aware Int4 quant. KV cache benchmarks (q4_0 92% slower @ 64K, uses MORE
+  memory than f16; q8_0 only worthwhile). TurboQuant KV cache (155K→413K tokens). STREAM LOADING
+  (on-the-fly 4-bit quant). ModelOpt NVFP4 CPU-bound on Spark. vLLM 0.19→0.23 regression (12% slower,
+  15% more memory). Dense model MTP bandwidth math. Heterogeneous NVFP4 quant (Spark + RTX 3090).
+- **Engines:** DDTree + DFlash (draft-tree, higher acceptance). STREAM LOADING engine mod. Native SM121
+  kernel build guide (.so injection, 13→49 tok/s). vLLM version regression documented.
+- **Models:** MiMo DFlash 22→67 tok/s (acceptance scales with output structure). MiMo DFlash + NVFP4 KV
+  on v0.24.0. Full GLM-4.7 355B NVFP4 on 2× Spark (17.5 tok/s, 4 walls). DeepSeek-V4-Flash 4× Spark
+  (49-54 tok/s). Nemotron-3-Super MTP works (1.70×, accept_len 2.7). Nemotron-3-Ultra 550B on 4× Spark
+  (42-43 tok/s n8). MiniMax-M3-W4A16-GPTQ corroborated at 36 tok/s (now [reported]). MiniMax-M2.5 4×
+  SGLang (124 tok/s n8 agg). Gemma-4-31B + MTP 4× SGLang (153 tok/s n8). Qwen3.5-397B + MTP 4× SGLang
+  (40 tok/s n1). Step-3.7-Flash on single Spark via llama.cpp (31 tok/s). GLM-5.2 IQ4_XS 4× (6.28 tok/s).
+- **Containers:** Vitoom Nunchaku (Flux.2 2.5× faster, 59% lower VRAM). ComfyUI container for Spark.
+  llama.cpp container build guide (LD_LIBRARY_PATH fix). Gemma4 QAT W4A16 models. Mistral-Small-4 NVFP4
+  OOM fix (util 0.9 + swap).
+- **Benchmarks:** 17 new forum-reported rows added.
+- **Roadmap:** 4 new open problems (CX-7 firmware bricking, SDPA corruption, NVMe-oF expert streaming,
+  vLLM version regression).
+- **Pages touched:** platform-gb10, quantization-on-gb10, multinode-tp-and-networking, engines,
+  containers-and-tooling, models/mimo-v2.5, models/minimax, models/nemotron-3, benchmarks, roadmap,
+  sources/README, log, index.

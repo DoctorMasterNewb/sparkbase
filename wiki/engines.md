@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122
-> **updated:** 2026-07-08
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide
+> **updated:** 2026-07-09
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -77,3 +77,33 @@ Three engines run on the Spark pair; pick by arch support and quant.
   sequential head passes). Built on albond's INT4+MTP recipe, stacks community patches for vLLM 0.23.
   Baseline INT4 no-spec = 28.2 tok/s; MTP-2 = 51.6; DFlash n=12 = 53.7 (unpatched) → 59.0 (dense
   levers) → ~81 (real agent turns).
+
+## Forum ingest: DDTree, STREAM LOADING, SM121 kernel guide, vLLM regression (2026-07-09)
+
+- **[conjecture]** **DDTree + DFlash** (S-forum-ddtree-dflash, joshua.dale.warner): DDTree (Diffusion
+  Draft Tree) builds a tree with probabilities at every position rather than one fixed DFlash sequence,
+  enabling far higher acceptance rates and resilience for unusual vocabularies. Verification budget
+  remains the constraint. Proof of concept in `liranringel/ddtree`. **[conjecture]** Community claims
+  80+ tok/s with Qwen3.5-27B AWQ on GB10 (Mitko Vasilev, vllm-turboquant repo). Qwen3.6-35B-A3B NVFP4
+  + DFlash claimed 91–97 tok/s single-stream. Costs a small amount of extra VRAM for the drafted tree.
+  Lucebox-hub is a lightweight harness that supports consumer Blackwell with DFlash+DDTree but has
+  low context cap due to shared DFlash attention.
+- **[conjecture]** **STREAM LOADING engine mod** (S-forum-stream-loading, amasawa_seiji): custom
+  vLLM 0.17.1 that reads only needed expert/layer chunks from storage and on-the-fly quantizes to 4-bit,
+  eliminating the simultaneous BF16+quant memory requirement. Enables running BF16/FP8 models that
+  would otherwise need pre-quantized checkpoints. Confirmed: Qwen3.5-397B-A17B-FP8 (TP=2),
+  Nemotron3-120B-BF16, Qwen3.5-122B-A10B. NF4 sub-mode for better quality than pure MXFP4. GitHub:
+  `namake-taro/vllm-custom`. See `[[wiki/quantization-on-gb10.md]]`.
+- **[conjecture]** **Native SM121 kernel build guide** (S-forum-sm121-kernel-guide, troy.e.davis):
+  stock vLLM Docker images have **zero Blackwell cubins** — the `cuda_archs_loose_intersection` "12.0f"
+  family pattern doesn't actually compile for SM121. A multi-stage Docker build that compiles SM121
+  kernels from source and injects only the `.so` files (`_C.abi3.so` + `_moe_C.abi3.so`) into the
+  stock image takes Qwen3.5-35B-A3B FP8 from **13.3 → 48.6 tok/s** (3.65×) — no model/driver/hardware
+  changes. Full `pip install .` rebuild risks dependency drift (transformers version mismatch loads
+  wrong model class). The `.so` injection approach preserves the curated dependency tree.
+  **[conjecture]** `ptxas error: Instruction 'cvt with .e2m1x2' not supported on .target 'sm_121'` —
+  SM121 lacks the microscaling instructions that SM120 (datacenter Blackwell) has; the CMake guard
+  incorrectly includes SM121 in NVFP4 compilation.
+- **[conjecture]** **vLLM 0.19 → 0.23 regression** (S-forum-vllm-019-vs-023): Qwen3.5-122B AutoRound
+  on same Spark: 37→32.5 tok/s (~12% speed regression), 104→120 GB unified RAM (~15% memory regression).
+  Tag working images before upgrading. See `[[wiki/quantization-on-gb10.md]]`.

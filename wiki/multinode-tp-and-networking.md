@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel
-> **updated:** 2026-07-08
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x
+> **updated:** 2026-07-09
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -193,3 +193,44 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
 - **[reported]** **Mixing FE and Asus Ascent in a 2-node cluster** (S-forum-mix-skus): no issues
   reported — CX-7 firmware compatible across OEM variants. The atypical dual PCIe5 x4 link setup is
   identical across all GB10 SKUs.
+
+### Batch 3 forum ingest (2026-07-09)
+
+- **[reported]** **NCCL 2.30.4 is critical for 4× Spark vLLM** (S-forum-ds4f-4x-vllm): the CUDA 13.0
+  base image ships NCCL 2.28.9, which **hard-wedges every long generation** on 4× Spark TP=4. Upgrading
+  to `libnccl2=2.30.4-1+cuda13.2` fixes it. This was the single fix that unlocked 49–54 tok/s
+  DeepSeek-V4-Flash on 4× Spark. **Corroborated** by S-forum-nemotron-super-mtp (also uses NCCL 2.30.4).
+- **[reported]** **SGLang container RDMA passthrough** (S-forum-glm47-rdma): SGLang in Docker does NOT
+  inherit `/dev/infiniband` automatically (unlike vLLM venv). Without `--device=/dev/infiniband
+  --cap-add=IPC_LOCK --ulimit memlock=-1` + `NCCL_IB_HCA=rocep1s0f0 NCCL_IB_DISABLE=0`, SGLang silently
+  falls back to socket transport — **2.5× slower** (GLM-4.7-FP8: 8.2 → 25.1 tok/s after RDMA enable).
+  Verify: `grep -c "via NET/IB" <logs>` > 0 and `grep -c "via NET/Socket" <logs>` == 0.
+  **[reported]** Same finding in S-forum-roce-397b-mtp: RoCE vs TCP socket on 4× Spark SGLang =
+  NCCL bus bandwidth 2.12 → 9.78 GB/s (4.6×), tok/s 34.6 → 65.4 (1.88×). Three things required for
+  RoCE with SR-IOV VFs in Kubernetes pods: (1) VF interfaces must have host-side IPv4 addresses
+  configured (else RoCE GID table only has link-local entries → `ibv_modify_qp` fails), (2) pods must
+  run privileged (host-device CNI moves the iface but NOT `/dev/infiniband/*`), (3) NetworkAttachmentDefinitions
+  must exist for all VF indices in use.
+- **[conjecture]** **SGLang multi-node traps** (S-forum-sglang-traps): three debugging traps on 4× Spark:
+  (1) `TORCH_DISTRIBUTED_DEBUG=DETAIL` produces **false-positive** collective mismatch errors — SGLang's
+  head process spawns sidecars that do local broadcasts, inflating PyTorch's global SequenceNumber
+  tracker; use `NCCL_DEBUG=TRACE` instead for real cross-rank tracing. (2) EAGLE speculative decoding
+  flags must be on **every node**, not just rank 0 — workers hang silently if flags are missing. (3) See
+  the RDMA passthrough issue above.
+- **[conjecture]** **CUTLASS MoE compile OOM on 4× Spark** (S-forum-m25-sglang-4x): `flashinfer_cutlass`
+  MoE kernel JIT compilation exhausts host RAM — `nvcc` compiling CUTLASS grouped-GEMM templates in
+  parallel eats ~5–8 GB per kernel, and default ninja parallelism on Spark's 20-core SoC fans out enough
+  concurrent jobs to OOM the unified memory pool. Fix: `-e MAX_JOBS=1 -e NVCC_THREADS=1
+  -e OMP_NUM_THREADS=4` — adds ~10–15 min to first launch (kernel cache empty), subsequent launches reuse
+  cached kernels. Also drop `--mem-fraction-static` from 0.9 to 0.8 for compilation headroom.
+- **[conjecture]** **4-node full mesh without a switch** (S-forum-4node-mesh): 200GBASE-SR4 transceivers
+  + MPO-12 to LC-LC breakout cables + LC-LC duplex couplers can create a 4-node full mesh using only one
+  QSFP port per node (ring of 100G links) + two regular QSFP56 DAC cables for the diagonals. ~5W/node
+  added heat (less than CX-7 idle power savings). Untested in practice but theoretically sound for
+  latency-sensitive TP workloads without a switch.
+- **[reported]** **MTP on SGLang: `--speculative-algorithm NEXTN`** (S-forum-roce-397b-mtp,
+  S-forum-gemma4-mtp-4x): SGLang's built-in NEXTN speculative decoding uses the model's own MTP head
+  (no separate draft model needed). Qwen3.5-397B + MTP on 4× Spark: **40 tok/s @ n1** (+86% over
+  baseline 21.5), 110.9 tok/s @ n8. Gemma-4-31B + MTP on 4× Spark: 26.68 tok/s @ n1 (+154%), 153 tok/s
+  @ n8 (+80%). For Qwen3.5 with hybrid attention, also needs `--mamba-scheduler-strategy` settings.
+  `--speculative-num-steps 3 --speculative-num-draft-tokens 4` is the winning config.

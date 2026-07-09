@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610
-> **updated:** 2026-07-08
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-nvfp4, S-forum-qwen-tts-arm64
+> **updated:** 2026-07-09
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -77,3 +77,34 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   performance on DGX Spark — complements llama-benchy with tool-calling/task-based metrics.
 - **[conjecture]** **ThunderKittens 2.0** (S-forum-thunderkittens): tile primitives library with
   Blackwell support — useful for custom kernel development on sm_121.
+
+### Batch 3 forum ingest (2026-07-09)
+
+- **[conjecture]** **Vitoom Nunchaku for DGX Spark** (S-forum-flux2-nunchaku, tonera): optimized
+  image inference library for DGX Spark. Flux.2 Klein 9B: 2.5× faster inference (10s→4s for 8 steps),
+  59% lower peak VRAM (37.14→15.21 GB) with quantized transformer + text encoder. `pretouch` improves
+  model load time 15.6× (249s→16s). Wheel: `tonera/vitoom-nunchaku` on HuggingFace. Also supports
+  Qwen-Image, Chroma1-HD, SVDQ.
+- **[conjecture]** **ComfyUI container for DGX Spark** (S-forum-comfyui-container, martial):
+  `ComfyUI-Nvidia-Docker` with SageAttention2+3, ONNX Runtime, uid/gid config, Comfy Kitchen (fp16→
+  NVFP4 conversion). Prebuilt images on Docker Hub with `compose-dgx_spark.yaml`. Requires
+  userscript_dir setup before first start.
+- **[conjecture]** **llama.cpp container build for Spark/GB10** (S-forum-llamacpp-container, cosinus):
+  `nvidia/cuda:13.0.2-devel-ubuntu24.04` base needs `LD_LIBRARY_PATH=/usr/local/cuda-13/compat` (not
+  the default `/usr/local/cuda/lib64` — linker can't find `libcuda.so.1`). CMAKE_CUDA_ARCHITECTURES
+  must be set explicitly (`121a-real`) since Docker build has no GPU access. Community Dockerfile:
+  stelterlab gist.
+- **[conjecture]** **nvcr.io/nvidia/vllm:26.06-py3 broken** (S-forum-vllm-2606-broken): every API
+  request returns HTTP 500 (`'_IncludedRouter' has no attribute 'path'`). `prometheus-fastapi-instrumentator`
+  incompatible with `fastapi >= 0.137`. Use 26.02-py3 instead. See `[[wiki/platform-gb10.md]]`.
+- **[conjecture]** **Gemma4 official QAT models** (S-forum-gemma4-qat, jwarner): Google released
+  official Quantization Aware Training (QAT) versions including W4A16:
+  `google/gemma-4-31B-it-qat-w4a16-ct` (23.3 GB, 4 GB larger than Intel AutoRound but potentially
+  better fidelity). The 26B-A4B has no official W4A16 but has an unquantized version for custom
+  quantization. QAT models work with Gemma4 MTP assistants.
+- **[conjecture]** **Mistral-Small-4-119B-2603-NVFP4 OOM** (S-forum-mistral-s4-nvfp4): OOM during
+  safetensors parse on 2× GB10 with `gpu_memory_utilization: 0.8`. Fix: bump to 0.9 + enable swap.
+  Single-node NVFP4 variant reportedly works fine.
+- **[conjecture]** **torchaudio unavailable on ARM64/CUDA 13** (S-forum-qwen-tts-arm64): no
+  ABI-compatible wheel for DGX Spark — blocks Qwen3-TTS and audio models. `torchaudio` deprecated,
+  not in NGC containers. Workaround: use PyTorch from pytorch.org. See `[[wiki/platform-gb10.md]]`.

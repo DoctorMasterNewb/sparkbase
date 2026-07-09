@@ -122,6 +122,59 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-wifi-mt7925 | forum | MT7925e WiFi cannot connect after OOBE: PTK key addition failed | https://forums.developer.nvidia.com/t/374231 | 2026-06-23 |
 | S-forum-soft-lockup-dp | forum | Soft lockup in nvidia_modeset DisplayPort path during Xorg logout | https://forums.developer.nvidia.com/t/371009 | 2026-05-20 |
 
+## Batch 3 forum sources (2026-07-09 ingest)
+
+| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-mimo-dflash-v024 | forum | MiMo-V2.5 + DFlash + 4-bit NVFP4 KV cache in one vLLM v0.24.0 instance — custom_class drafter decoupled from global allocator (danielgbates) | https://forums.developer.nvidia.com/t/375923 | 2026-07-07 |
+| S-forum-mimo-dflash-22-67 | forum | MiMo-V2.5 + DFlash spec-decode on 2× Spark: 22→67 tok/s depending on workload (acceptance scales with output structure) (danielgbates) | https://forums.developer.nvidia.com/t/375607 | 2026-07-05 |
+| S-forum-m3-w4a16-gptq | forum | MiniMax-M3-W4A16-GPTQ 2×GB10 deployment: 36 tok/s, fp8/nvfp4/KVarN/EAGLE3, b12x + vllm (a3refaat) | https://forums.developer.nvidia.com/t/375595 | 2026-07-04 |
+| S-forum-glm47-full-2x | forum | Full GLM-4.7 (355B) NVFP4 at 64K context on 2× Spark GB10 — 17.5 tok/s, TP=2, 4 walls documented (LeatheryTendons) | https://forums.developer.nvidia.com/t/375690 | 2026-07-06 |
+| S-forum-vllm-2606-broken | forum | nvcr.io/nvidia/vllm:26.06-py3 HTTP 500 on every API request — prometheus-fastapi-instrumentator + fastapi 0.136+ incompat (bartlomiej.niton) | https://forums.developer.nvidia.com/t/375743 | 2026-07-06 |
+| S-forum-qwen36-27b-recipe | forum | Best 2× Spark Qwen 3.6 27B recipe — NVFP4 Marlin, TP=2, 262K ctx, MTP (ivr718, jrsphd) | https://forums.developer.nvidia.com/t/375360 | 2026-07-02 |
+| S-forum-qwen36-27b-fp8 | forum | Qwen 3.6 27B FP8 without quantizing: MTP nst=3 → 1.94× speedup (7.8→15.2 tok/s); bandwidth-bound ~10 tok/s ceiling (starkrun) | https://forums.developer.nvidia.com/t/367561 | 2026-04-23 |
+| S-forum-gemma4-assistant | forum | Gemma4-31B-IT-NVFP4 + assistant MTP drafter via EUGR vLLM fork — 14.1 tok/s decode, MTP=7 optimal (eugr_nv, jwarner) | https://forums.developer.nvidia.com/t/370194 | 2026-05-14 |
+| S-forum-device-hang | forum | DGX Spark hangs under load — OOM on unified memory, driver 580.159.03+ kills process instead (aniculescu) | https://forums.developer.nvidia.com/t/375016 | 2026-06-30 |
+| S-forum-cx7-bricked | forum | ConnectX-7 bricked by unsolicited mlnx-fw-updater firmware flash — stuck in pre-init/static_config_not_done, error -110 (abrooksdavis) | https://forums.developer.nvidia.com/t/373900 | 2026-06-19 |
+| S-forum-4node-mesh | forum | 4-node DGX Spark cluster without a switch — 200GBASE-SR4 transceivers + MPO breakout for full mesh, ~5W/node (mashie) | https://forums.developer.nvidia.com/t/368726 | 2026-05-01 |
+| S-forum-spark-auto-round | forum | Spark Auto Round: Int4 AutoRound quant tool for GB10, OpenCode Instruct dataset, sensitivity-aware layer selection (whpthomas) | https://forums.developer.nvidia.com/t/373475 | 2026-06-16 |
+| S-forum-ds4f-4x-vllm | forum | DeepSeek-V4-Flash on 4× Spark via vLLM jasl fork TP=4 RDMA MTP — 49–54 tok/s single-stream, NCCL 2.30.4 is the critical fix (Verel-lab) | https://forums.developer.nvidia.com/t/373808 | 2026-06-18 |
+| S-forum-nemotron-super-mtp | forum | Nemotron-3-Super-120B MTP on 4× Spark via SGLang — 1.70× single-stream, accept_len ≈2.7, 3/4 depth beats NVIDIA cookbook 5/5 (ht12) | https://forums.developer.nvidia.com/t/373625 | 2026-06-17 |
+| S-forum-sglang-traps | forum | SGLang multi-node on DGX Spark: 3 traps (false-positive collective mismatch, EAGLE flags on every node, RDMA passthrough) (Verel-lab) | https://forums.developer.nvidia.com/t/373677 | 2026-06-18 |
+| S-forum-m25-sglang-4x | forum | MiniMax-M2.5-NVFP4 on 4× Spark via SGLang TP=4 EP=4: 124 tok/s agg@n8, CUTLASS MoE compile OOM fix MAX_JOBS=1 (Verel-lab) | https://forums.developer.nvidia.com/t/373676 | 2026-06-18 |
+| S-forum-glm47-rdma | forum | GLM-4.7-FP8 on 4× Spark SGLang: 2.5× speedup (8.2→25 tok/s) just by enabling RDMA — SGLang container needs --device=/dev/infiniband (Verel-lab) | https://forums.developer.nvidia.com/t/373675 | 2026-06-18 |
+| S-forum-kvarn | forum | KVarN: native vLLM KV-cache quantization backend by Huawei — 3-5× more KV capacity, calibration-free, one flag; Qwen 3.6 compatibility issue (adg1) | https://forums.developer.nvidia.com/t/372333 | 2026-06-04 |
+| S-forum-nvmeof-expert | forum | NVMe-oF over ConnectX-7 for MoE expert streaming — unexplored path to >128GB models on single Spark, no GPUDirect needed (lvmnky) | https://forums.developer.nvidia.com/t/368358 | 2026-04-29 |
+| S-forum-sdpa-corruption | forum | sm_121 silent SDPA EFFICIENT_ATTENTION corruption in custom PyTorch build — output norms 1.5×–27× off, MATH/FLASH correct (ht12) | https://forums.developer.nvidia.com/t/368005 | 2026-04-27 |
+| S-forum-gb10-baseline | forum | GB10 Hardware Baseline: community probes for UMA latency/atomic/bandwidth — 161 GB/s idle, 90 GB/s under load (parallelArchitect) | https://forums.developer.nvidia.com/t/367851 | 2026-04-25 |
+| S-forum-ddtree-dflash | forum | DDTree + DFlash: draft-tree method on block-diffusion, higher acceptance rates; 80+ tok/s Qwen3.5-27B AWQ claimed (joshua.dale.warner) | https://forums.developer.nvidia.com/t/366643 | 2026-04-15 |
+| S-forum-roce-397b-mtp | forum | Two multi-node wins: RoCE 2× throughput + Qwen3.5-397B NVFP4 serving with SM121 CUTLASS patch; MTP +86% single-stream, 40 tok/s@n1 (ht12) | https://forums.developer.nvidia.com/t/366325 | 2026-04-12 |
+| S-forum-sm121-kernel-guide | forum | DGX Spark 13→49 tok/s Qwen3.5-35B native SM121 kernel build guide — .so injection, CMake arch guard bug (troy.e.davis) | https://forums.developer.nvidia.com/t/365083 | 2026-03-30 |
+| S-forum-glm52-iq4xs-4x | forum | GLM-5.2 IQ4_XS on 4× GB10 — 6.28 tok/s decode, DSA active, ngram self-spec →24 tok/s structured, full recipe (Mike_MK) | https://forums.developer.nvidia.com/t/373933 | 2026-06-20 |
+| S-forum-nemotron-ultra-4x | forum | Nemotron-3-Ultra-550B-A55B-NVFP4 on 4× Spark SGLang TP=4 EP=4 RoCE — ~42-43 tok/s n8 peak, 512K ctx (ht12) | https://forums.developer.nvidia.com/t/372680 | 2026-06-09 |
+| S-forum-gemma4-qat | forum | Gemma4 official QAT models incl W4A16 — google/gemma-4-31B-it-qat-w4a16-ct, MTP assistants work with QAT (jwarner) | https://forums.developer.nvidia.com/t/372444 | 2026-06-05 |
+| S-forum-mistral-s4-nvfp4 | forum | Mistral-Small-4-119B-2603-NVFP4 — OOM during safetensors parse on 2× GB10, needs util 0.9 + swap (bugsareyummy) | https://forums.developer.nvidia.com/t/372427 | 2026-06-05 |
+| S-forum-gemma4-mtp-4x | forum | Gemma-4-31B + MTP on 4× Spark SGLang — +154% @ n1 (26.68 tok/s), +80% @ n8 (153 tok/s), FROZEN_KV_MTP drafter (ht12) | https://forums.developer.nvidia.com/t/370354 | 2026-05-16 |
+| S-forum-vllm-019-vs-023 | forum | vLLM 0.19 vs 0.23 regression: Qwen3.5-122B AutoRound 37→32 tok/s, memory 104→120 GB — performance + footprint regression (xkm121) | https://forums.developer.nvidia.com/t/375786 | 2026-07-06 |
+| S-forum-nvfp4-quant-gp10 | forum | NVFP4 quantization on DGX Spark via TensorRT Model Optimizer — zero GPU load, CPU-bound, fails silently (nate.gelbard) | https://forums.developer.nvidia.com/t/348668 | 2025-10-22 |
+| S-forum-ds4f-hybrid-1x | forum | DeepSeek-V4-Flash hybrid 2-bit quant on 1× Spark vLLM — antirez MLX recipe ported, ~85 GiB, coherent output (entrpi) | https://forums.developer.nvidia.com/t/369584 | 2026-05-10 |
+| S-forum-kv-bench-llamacpp | forum | KV cache quantization benchmarks on Spark llama.cpp — q4_0 92% slower @ 64K, uses MORE memory than f16; q8_0 only worthwhile quant (nmaine) | https://forums.developer.nvidia.com/t/365138 | 2026-03-31 |
+| S-forum-nemotron-super-abi | forum | Nemotron-3-Super NVFP4 vLLM TP=2 — 24 tok/s, ABI fix for cu130/cu132 mismatch in Dockerfile (leon-gibat) | https://forums.developer.nvidia.com/t/364862 | 2026-03-26 |
+| S-forum-qwen122-nvfp4-redhat | forum | RedHatAI/Qwen3.5-122B-A10B-NVFP4 best option for single Spark — 16 tok/s, quality close to FP16 (gpieceoffice) | https://forums.developer.nvidia.com/t/363815 | 2026-03-17 |
+| S-forum-qwen122-nvfp4-quant | forum | Qwen3.5-122B-A10B NVFP4 quantized 234GB→75GB, runs on 128GB — DeltaNet+vision, llm_head/routers kept BF16 (alper.tor) | https://forums.developer.nvidia.com/t/361819 | 2026-02-26 |
+| S-forum-turboquant | forum | TurboQuant KV cache integration on vLLM 0.19.1: 155K→413K token capacity, gather-free Triton decode, CUDA WPH (bjk110) | https://forums.developer.nvidia.com/t/365627 | 2026-04-05 |
+| S-forum-stream-loading | forum | vLLM custom for DGX Spark — STREAM LOADING (on-the-fly 4-bit quant), NF4 sub-mode, automatic KV cache allocation (amasawa_seiji) | https://forums.developer.nvidia.com/t/365798 | 2026-04-07 |
+| S-forum-qwen35-35b-opt | forum | Qwen3.5-35B-A3B optimizations on single Spark — hybrid INT4+FP8 + MTP, 100+ tok/s, DFlash drafter (joshua.dale.warner) | https://forums.developer.nvidia.com/t/366326 | 2026-04-12 |
+| S-forum-nvfp4-mistral-3node | forum | NVFP4 quant of 123B Mistral-Large finetune on 3-node heterogeneous cluster (2× Spark + 1× RTX 3090) via Ray (kai.koehler) | https://forums.developer.nvidia.com/t/370266 | 2026-05-15 |
+| S-forum-flux2-nunchaku | forum | Flux.2 Klein 9B on DGX Spark: 2.5× faster inference, 59% lower VRAM with Vitoom Nunchaku quantized transformer+text encoder (tonera) | https://forums.developer.nvidia.com/t/374419 | 2026-06-25 |
+| S-forum-sage-attn | forum | ComfyUI --use-sage-attention silently falls back to PyTorch attention (missing python3.12-dev → 20× slowdown); fix: apt install python3.12-dev (wentbackward) | https://forums.developer.nvidia.com/t/375830 | 2026-07-06 |
+| S-forum-fwupd-mismatch | forum | DGX Dashboard Updates page hangs indefinitely — fwupd/libfwupd version mismatch after OTA 7.5.0, fwupd.service fails (thrashvtx) | https://forums.developer.nvidia.com/t/375537 | 2026-07-04 |
+| S-forum-nvfp4-error-gp10 | forum | NVFP4 quantization on GP10 error — ModelOpt container CPU-bound, zero GPU load, multiple users report failure (nate.gelbard) | https://forums.developer.nvidia.com/t/348668 | 2025-10-22 |
+| S-forum-qwen-tts-arm64 | forum | torchaudio installation failure on ARM64 — no ABI-compatible wheel for CUDA 13/SM 12.1, blocks Qwen3-TTS (ferdinando.tammaro) | https://forums.developer.nvidia.com/t/359663 | 2026-02-04 |
+| S-forum-comfyui-container | forum | ComfyUI container for DGX Spark — ComfyUI-Nvidia-Docker with SageAttention, ONNX Runtime, uid/gid config (martial) | https://forums.developer.nvidia.com/t/363342 | 2026-03-13 |
+| S-forum-llamacpp-container | forum | Building llama.cpp container images for Spark/GB10 — LD_LIBRARY_PATH fix for cuda-13/compat, CMAKE_CUDA_ARCHITECTURES=121a-real (cosinus) | https://forums.developer.nvidia.com/t/353664 | 2025-12-05 |
+| S-forum-step37-llamacpp | forum | Step-3.7-Flash on single Spark via llama.cpp — IQ4_XS, 262K ctx, 31 tok/s decode, 11 tok/s @ max ctx (joshua.dale.warner) | https://forums.developer.nvidia.com/t/371804 | 2026-05-30 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

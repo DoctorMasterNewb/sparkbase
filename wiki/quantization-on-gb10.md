@@ -3,8 +3,8 @@
 > **area:** quantization
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b
-> **updated:** 2026-07-08
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node
+> **updated:** 2026-07-09
 
 GB10 has **no native FP4 compute and no native FP8 block-scale**. That one fact decides which quant
 to pick. Decode is **bandwidth-bound** (`[[wiki/platform-gb10.md]]`), so the winning quant is usually
@@ -112,3 +112,57 @@ decompress, because at low batch you're memory-bound, not compute-bound.
   emit `input_scale` keys → vLLM registers uninitialized Parameters → garbage output until
   `input_scale=1.0` sidecar keys are injected for every quantized Linear (840 for a 105B model).
   Six-fix list documented in the model card (Kaleto/Anubis-Pro-105B-NVFP4).
+
+## Forum ingest: KVarN, Spark Auto Round, KV benchmarks, TurboQuant (2026-07-09)
+
+- **[conjecture]** **KVarN: native vLLM KV-cache quantization backend** (S-forum-kvarn, Huawei):
+  calibration-free, one-flag KV-cache quantization delivering 3-5× more KV capacity and up to ~1.3×
+  throughput of FP16, with FP16-level accuracy. Up to ~2.4× TurboQuant throughput. **[conjecture]**
+  Does NOT work with Qwen 3.6 currently — the "no model changes" claim is not fully accurate. GitHub:
+  `huawei-csl/KVarN`. Used in the MiniMax-M3-W4A16-GPTQ recipe (S-forum-m3-w4a16-gptq) to reach 262K+
+  context on 2× GB10.
+- **[conjecture]** **Spark Auto Round** (S-forum-spark-auto-round, whpthomas): Int4 AutoRound
+  quantization tool focused on GB10, using an OpenCode Instruct calibration dataset. Sensitivity-aware:
+  detects problematic layers via cosine similarity (perplexity) < 0.99 and PSNR < 45 dB, keeps sensitive
+  layers in FP16 while quantizing insensitive ones. Hypothesis: replacing sensitive layers with FP16
+  improves quality. Qwen3.6-35B-A3B needs an attribute pattern match fix. Shared expert gate layers
+  (not divisible by 32) are kept in full precision (bf16) — expected, negligible impact.
+- **[conjecture]** **KV cache quantization on llama.cpp** (S-forum-kv-bench-llamacpp, nmaine): on
+  DGX Spark with Nemotron-3-Nano-30B (Q4_K_XL), 128K context:
+  - `q4_0` KV is **92% slower at 64K context** — dequantization overhead destroys prompt processing.
+  - `q4_0` KV uses **MORE memory than f16** — scale/zero-point metadata overhead exceeds compression
+    savings on Spark's unified memory architecture.
+  - `q8_0` is the only worthwhile KV quantization — 2× compression, <5% speed hit at all context lengths.
+  - f16 is fine for most workloads: at 64K tokens, KV cache is under 2 GB out of 128 GB available.
+  - Recommendations: <16K ctx → f16; 16–64K → `q8_0`; 64K+ → wait for TurboQuant or NVFP4.
+- **[conjecture]** **TurboQuant KV cache** (S-forum-turboquant, bjk110): vLLM 0.19.1 patched with
+  PR #38280 on 2× GB10. Increased KV cache capacity from 155K to 413K tokens. Gather-free Triton
+  decode reads paged cache directly (no full memcpy). CUDA WPH (warp-per-head) decode for SM121/aarch64,
+  BLOCK_D=128/256. WPH path slightly faster than Triton on Qwen3.5 at c=2 and c=4. Issues: page-size
+  mismatch with Mamba/GDN layers (fix: `_next_pow2()` padding), CUDA graph capture crash (fix:
+  capture-aware branching for `.tolist()`/`.unique()` CPU ops).
+- **[conjecture]** **STREAM LOADING** (S-forum-stream-loading, amasawa_seiji): custom vLLM 0.17.1 build
+  that reads only necessary expert/layer chunks from storage, quantizes to 4-bit on-the-fly, and places
+  result on GPU — eliminates the need to hold both BF16 and 4-bit data simultaneously. Confirmed running
+  BF16/FP8 models on single Spark: Qwen3.5-397B-A17B-FP8 (~96.7 GiB/GPU TP=2), Nemotron3-120B-BF16,
+  Qwen3.5-122B-A10B. Also includes NF4 sub-mode (normal-distribution-based 16-level partition, better
+  quality than pure MXFP4 E2M1) and automatic KV cache allocation (no manual `--gpu-memory-utilization`).
+- **[conjecture]** **ModelOpt NVFP4 quantization on Spark is CPU-bound** (S-forum-nvfp4-quant-gp10):
+  the `nvcr.io/nvidia/tensorrt-llm/release:spark-single-gpu-dev` container running ModelOpt's
+  `huggingface_example.sh --quant nvfp4` shows **zero GPU load, all CPU**. Multiple users confirm
+  the same behavior — the quantization calibration phase doesn't use the GPU on GB10. The process
+  may fail silently for some models.
+- **[conjecture]** **vLLM 0.19 → 0.23 performance regression** (S-forum-vllm-019-vs-023): Qwen3.5-122B
+  AutoRound on same Spark: vLLM 0.19 = 37 tok/s (Q&A), 41.2 tok/s (code); vLLM 0.23 = 32.5 tok/s (Q&A),
+  36.9 tok/s (code). Memory footprint also regressed: 104 GB → 120 GB unified RAM after load. ~12%
+  speed regression + 15% memory regression across versions. Tag existing images before upgrading.
+- **[conjecture]** **Dense model MTP math** (S-forum-qwen36-27b-fp8): Qwen3.6-27B FP8 at 270 GB/s
+  bandwidth: 27B × 1 byte = ~27 GB/pass → ~10 tok/s theoretical ceiling (measured 7.8 baseline). MTP
+  nst=3 → 15.2 tok/s (1.94×). NVFP4 would move ~7 GB/pass → ~38 tok/s theoretical. MTP is a "free"
+  speedup for bandwidth-bound dense models — the decode ceiling is pure bandwidth math.
+- **[conjecture]** **Heterogeneous NVFP4 quantization** (S-forum-nvfp4-mistral-3node): NVFP4
+  quantization of a 123B Mistral-Large finetune on a 3-node heterogeneous cluster (2× Spark + 1× RTX
+  3090) via Ray. NVFP4 calibration math runs in BF16 (not FP4), so Ampere GPUs participate as normal
+  Ray actors — exported model is byte-identical to an all-Blackwell cluster output. Cross-node Ray RPC
+  over 2.5 GbE adds ~50 sec total to a 256-sample calibration (compute-side dominates, network never
+  the bottleneck). Three extra fixes on top of the 6 already documented for 100B+ models.

@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-mimo-results, S-mimo-doc, S-dflash-nvfp4, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-mimo-tp2-1m
-> **updated:** 2026-07-08
+> **sources:** S-mimo-results, S-mimo-doc, S-dflash-nvfp4, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-mimo-tp2-1m, S-forum-mimo-dflash-22-67, S-forum-mimo-dflash-v024
+> **updated:** 2026-07-09
 
 MiMo-V2.5 — 310B Omni MoE, **MIXED_PRECISION = MXFP8 dense + NVFP4 experts**, DiffKV
 (`v_head_dim=128 ≠ head_dim=192`), text+vision. The production cluster MoE. Base
@@ -155,3 +155,24 @@ checkpoint-specific quant loaders (qkv/merger/packed) + triton kernel arg drift.
   `--attention-backend triton_attn_diffkv`, `--kv-cache-dtype fp8_e4m3`, 131072 ctx, MTP
   `num_speculative_tokens=2`. Reported benchmarks: Q&A 36.9, code 39.9, JSON 41.9, math 33.5 tok/s
   (run 2). Image input validated. Uses eugr/spark-vllm-docker PR #251.
+
+## Forum ingest: DFlash 22→67 tok/s, v0.24.0 DFlash+NVFP4 KV (2026-07-09)
+
+- **[reported]** **DFlash spec-decode acceptance scales with output structure** (S-forum-mimo-dflash-22-67,
+  danielgbates): on 2× Spark TP=2 eager, DFlash gives **22.3 tok/s no-spec → 27.6 prose / 45.4 code /
+  55.1 math / 66.9 JSON** with DFlash. Acceptance scales with output structure (JSON > math > code >
+  prose), explaining the "low acceptance anomaly" reported elsewhere. The drafter is worth it on Spark
+  specifically because cross-node TP=2 pays ~48 cross-node all-reduces per eager decode step — a
+  drafter getting 3-6 accepted tokens/step amortizes the fixed per-step latency. DFlash drafts a block
+  of 8 masked tokens in one forward (vs EAGLE's sequential token-by-token). Drafter: 5-layer qwen3-arch,
+  hidden 4096, SWA-1024, block size 8, cross-attends to backbone layers [0,11,23,35,47], 2.9 GB.
+  Target: `lukealonso/MiMo-V2.5-NVFP4` (~170 GB). Requires vLLM ≥ 0.23.1 nightly with PRs #45200,
+  #45181 (mixed KV page sizes), #46104 (SWA + DFlash for MiMo). GitHub: `DoctorMasterNewb/vLLM-Mimo-V2.5-Dflash-2x-DGX-Spark`.
+- **[reported]** **DFlash + NVFP4 KV in one vLLM v0.24.0 instance** (S-forum-mimo-dflash-v024,
+  danielgbates): the `custom_class` proposer approach (already first-party proven in S-dflash-nvfp4)
+  is confirmed working on v0.24.0 upstream — the drafter's KV never enters the global paged allocator,
+  so NVFP4 target KV + DFlash drafter coexist. v0.24.0 upstreams most old MiMo mods (MiMoV2Omni,
+  DiffKV #41797, MXFP8 kernels, native DFlash/custom_class). Still needs startup mods for the
+  lukealonso NVFP4 export: `fix-mimo-config`, `fix-mimo-qkv-mxfp8`, `fix-mimo-v0240-merger`,
+  `fix-mimo-v0240-packed`, `nvfp4-kv-diffkv` (1-line triton kernel fix for `seq_len` arg),
+  `dflash-custom-proposer`. GitHub: `DoctorMasterNewb/vLLM-MiMo-V2.5-DFlash-NVFP4Kv`.

@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot
-> **updated:** 2026-07-08
+> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64
+> **updated:** 2026-07-09
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -175,6 +175,46 @@ only after unexplained slow tok/s).
   — "Failed to set PTK to the driver" / "key addition failed" (S-forum-wifi-mt7925).
 - **[conjecture]** **Soft lockup** in `nvidia_modeset` DisplayPort path during Xorg logout on
   kernel 6.17.0-1018-nvidia (S-forum-soft-lockup-dp).
+
+### Batch 3 forum ingest (2026-07-09)
+
+- **[conjecture]** **ConnectX-7 bricked by unsolicited mlnx-fw-updater firmware flash** (S-forum-cx7-bricked):
+  During a routine `apt install`, `mlx-fw-updater` auto-triggered a CX-7 firmware update (28.45.4028 →
+  28.47.1088) without user consent, despite raising its own BME/DMA prerequisite warning. Both CX-7
+  interfaces bricked — stuck in `pre-init / static_config_not_done`, error -110. System boots but CX-7
+  non-functional. **Recommendation:** pin/disable the mlnx-fw-updater autoupdater to prevent unsolicited
+  firmware flashes. Recovery may require warranty/RMA. (ASUS GX10, PSID NVD0000000087.)
+- **[conjecture]** **Silent SDPA EFFICIENT_ATTENTION corruption on custom PyTorch sm_121 builds**
+  (S-forum-sdpa-corruption): a popular community-built PyTorch base image (built from source for sm_121)
+  ships with a numerically broken `EFFICIENT_ATTENTION` backend — output norms 1.5×–27× off from CPU
+  reference, no NaN/Inf, silently corrupted. `MATH` and `FLASH` backends are correct on the same hardware.
+  **Root cause is in the image build's gencode handling** (`NVCC_GENCODE=-gencode=arch=compute_121,code=sm_121`
+  with no family fallback), NOT in PyTorch source (byte-identical source tree across versions).
+  **NVIDIA's NGC PyTorch wheels are NOT affected** (`nvcr.io/nvidia/pytorch:25.12-py3` and `:26.03-py3`
+  both produce correct EFFICIENT output). Lesson: prefer NGC wheels over community builds for sm_121.
+- **[conjecture]** **ComfyUI SageAttention silently inactive** (S-forum-sage-attn): `--use-sage-attention`
+  on DGX Spark may silently fall back to PyTorch attention if `python3.12-dev` is not installed —
+  SageAttention's Triton JIT shim compile fails, and the failure is *graceful* (everything renders, just
+  20× slower). SDXL 1024²: ~140s (broken) → 6–8s (fixed). Fix: `sudo apt install python3.12-dev`.
+  DGX OS doesn't ship the Python dev headers by default.
+- **[conjecture]** **nvcr.io/nvidia/vllm:26.06-py3 image broken** (S-forum-vllm-2606-broken): every
+  OpenAI API request (including `/health`) returns HTTP 500 — `'_IncludedRouter' object has no
+  attribute 'path'`. Root cause: `prometheus-fastapi-instrumentator` incompatible with `fastapi >= 0.137`.
+  The 26.02-py3 image works. Regression in the 26.06 image's middleware.
+- **[reported]** **OOM hang fixed by driver 580.159.03+** (S-forum-device-hang): earlier drivers let
+  unified-memory OOM hang the entire device; driver 580.159.03+ kills the offending process instead.
+  Update Spark to latest DGX OS + driver ≥580.159.03 to avoid hard hangs under memory pressure.
+- **[conjecture]** **DGX Dashboard Updates page hangs after OTA 7.5.0** (S-forum-fwupd-mismatch):
+  `fwupd` daemon and `libfwupd` library left at mismatched versions after OTA → `fwupd.service` fails
+  → `fwupdmgr` hangs indefinitely → Dashboard API calls hang. Fix: align fwupd/libfwupd package versions.
+- **[conjecture]** **GB10 UMA bandwidth community measurements** (S-forum-gb10-baseline):
+  community probes (`uma_bw`) report **161 GB/s idle, 90 GB/s under load** (driver 580.142, CUDA 13.0)
+  — lower than the ~270 GB/s theoretical. The probes also report **CPU read 7.6 GB/s, CPU write 63 GB/s**
+  for the shared LPDDR5X pool. Peak BW not reported by the platform (memory clock N/A on HW_COHERENT_UMA).
+- **[conjecture]** **torchaudio unavailable on ARM64 / CUDA 13** (S-forum-qwen-tts-arm64): no
+  ABI-compatible `torchaudio` wheel exists for DGX Spark's CUDA 13 / SM 12.1 / aarch64 — blocks
+  Qwen3-TTS and other audio models. `torchaudio` is deprecated and not included in NVIDIA PyTorch
+  containers. Workaround: use PyTorch from pytorch.org instead of NGC containers.
 
 ## Reference cluster
 
