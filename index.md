@@ -57,3 +57,12 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   QAT models, Mistral OOM, torchaudio), models/mimo-v2.5 (DFlash 22→67, v0.24.0 DFlash+NVFP4 KV),
   models/minimax (W4A16-GPTQ corroborated, M2.5 4× SGLang), models/nemotron-3 (Super MTP, Ultra 550B,
   ABI fix), benchmarks (17 new forum-reported rows), roadmap (4 new open problems).
+
+## Forum ingest 2026-07-10
+- 10 new forum topics found (8 technically relevant, 2 skipped as social/buying advice).
+- 7 new sources registered (Batch 4). 8 topic IDs added to processed_topics.txt (total now 344).
+- Pages touched: quantization-on-gb10 (FLUX.2 NVFP4 W4A4 compute, weight-only vs activation-quantized),
+  platform-gb10 (UMA mmap double-allocation OOM workaround, TCG OPAL/UEFI corruption, display controller
+  pixel clock, ONNX GPU discovery), containers-and-tooling (llama-benchy, cluster dashboard, Sunshine
+  RDP, FLUX.2 Images-API server), benchmarks (3 new forum-reported rows: MiniMax-M2.1, GLM-4.7-Flash,
+  FLUX.2-dev image gen), models/mimo-v2.5 (topic 375923 already ingested in Batch 3).

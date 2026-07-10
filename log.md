@@ -103,3 +103,31 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
 - **Pages touched:** platform-gb10, quantization-on-gb10, multinode-tp-and-networking, engines,
   containers-and-tooling, models/mimo-v2.5, models/minimax, models/nemotron-3, benchmarks, roadmap,
   sources/README, log, index.
+
+## 2026-07-10 — Batch 4 forum ingest: 10 new NVIDIA DGX Spark forum topics
+
+- **Sources:** 10 new forum topics found by fetch_new_topics.py. 8 were technically relevant; 2 skipped
+  (374615 = policy/social re ChatGPT restriction, 362764 = buying advice "Value of 2nd Spark?").
+  7 new sources registered as `S-forum-*` in `sources/README.md` (Batch 4 section). Topic 375923
+  (MiMo DFlash + NVFP4 KV on v0.24.0) was already ingested in Batch 3 as S-forum-mimo-dflash-v024 —
+  its topic ID is newly added to processed_topics.txt but no new source was created. 8 topic IDs
+  added to `sources/processed_topics.txt` (total now 344).
+- **Quantization:** FLUX.2-dev on Spark with torchao NVFP4 W4A4 (activation-quantized) gives ~3×
+  speedup — real FP4 compute via Triton kernels, not weight-only. Critical distinction: most
+  "NVFP4" FLUX checkpoints floating around are weight-only (matmul upcasts to BF16). modelopt_fp4
+  hits diffusers unpack/shape bug on sm_121a. `mslk` missing dependency. CUDA 13 + Blackwell required.
+- **Platform:** UMA mmap double-allocation OOM when loading models via HuggingFace transformers —
+  mmap pages + CUDA tensors compete for same UMA pool (~134 GB needed for 67 GB model → OOM at 66%).
+  Workaround: _EagerSafeOpen monkey-patch (direct-to-CUDA + posix_fadvise page cache eviction) →
+  ~72 GB peak. FSDP from_pretrained loads full model on every rank (75 GB/rank). CUDA 13.2 breaks
+  adamw_8bit. Unsloth MoE LoRA incompatible with vLLM fused MoE LoRA weight loading. TCG OPAL + UEFI
+  admin password corruption after unexpected shutdown — firmware update lockout (no workaround).
+  GB10 display controller 165 MHz max pixel clock (4K@60 impossible, 1440p@120Hz max). ONNX Runtime
+  GPU device discovery fails on GB10 (safely ignorable sysfs difference).
+- **Containers/Tooling:** llama-benchy (context-depth sweep benchmarking for any OpenAI-compatible
+  endpoint, by eugr). DGX Spark Cluster Dashboard (web-based multi-node monitoring). Headless Sunshine
+  remote desktop setups. FLUX.2-dev as headless OpenAI Images-API server in spark-vllm-docker.
+- **Benchmarks:** 3 new forum-reported rows (MiniMax-M2.1-AWQ-4bit ~36 tok/s, GLM-4.7-Flash-AWQ-4bit
+  ~41.75 tok/s, FLUX.2-dev image gen ~3× with NVFP4 W4A4).
+- **Pages touched:** quantization-on-gb10, platform-gb10, containers-and-tooling, benchmarks,
+  sources/README, log, index.

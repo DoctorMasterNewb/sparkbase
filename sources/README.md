@@ -175,6 +175,18 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-llamacpp-container | forum | Building llama.cpp container images for Spark/GB10 — LD_LIBRARY_PATH fix for cuda-13/compat, CMAKE_CUDA_ARCHITECTURES=121a-real (cosinus) | https://forums.developer.nvidia.com/t/353664 | 2025-12-05 |
 | S-forum-step37-llamacpp | forum | Step-3.7-Flash on single Spark via llama.cpp — IQ4_XS, 262K ctx, 31 tok/s decode, 11 tok/s @ max ctx (joshua.dale.warner) | https://forums.developer.nvidia.com/t/371804 | 2026-05-30 |
 
+## Batch 4 forum sources (2026-07-10 ingest)
+
+| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-flux2-nvfp4-compute | forum | FLUX.2-dev on Spark: ~3× faster with torchao NVFP4 W4A4 (activation-quantized) real FP4 compute via Triton, not weight-only; modelopt_fp4 hits diffusers unpack bug on sm_121a (vr8vr8) | https://forums.developer.nvidia.com/t/376106 | 2026-07-08 |
+| S-forum-qwen35-lora-uma | forum | Bf16 LoRA fine-tuning of Qwen3.5-35B-A3B on DGX Spark — UMA mmap double-allocation OOM workaround (_EagerSafeOpen + posix_fadvise); FSDP from_pretrained full-model-per-rank (danielkreuzhofer, jesse75) | https://forums.developer.nvidia.com/t/363268 | 2026-03-12 |
+| S-forum-llama-benchy | forum | llama-benchy: llama-bench-style benchmarking for ANY OpenAI-compatible endpoint — context-depth sweep, concurrency; demo numbers on dual + single Spark (eugr) | https://forums.developer.nvidia.com/t/356698 | 2026-01-06 |
+| S-forum-opal-uefi | forum | TCG OPAL password + UEFI admin password corrupted after unexpected shutdown — firmware capsule updates locked out even post-reimage (cvella) | https://forums.developer.nvidia.com/t/368949 | 2026-05-04 |
+| S-forum-wan2gp-onnx | forum | Wan2GP on DGX Spark: ONNX Runtime GPU device discovery fails on GB10 (/sys/class/drm/card0/device/vendor missing) — safely ignorable (kdb8756) | https://forums.developer.nvidia.com/t/353793 | 2025-12-07 |
+| S-forum-sunshine-rdp | forum | Headless Sunshine remote desktop for DGX Spark — GB10 internal display controller 165 MHz max pixel clock, 4K@60 impossible, 1440p@120Hz best (mail.eelbaz, LsDmTandAI) | https://forums.developer.nvidia.com/t/348220 | 2025-10-19 |
+| S-forum-cluster-dashboard | forum | DGX Spark Cluster Dashboard: web-based btop-inspired dashboard for multi-node Spark monitoring (paul.aviles) | https://forums.developer.nvidia.com/t/359975 | 2026-02-07 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

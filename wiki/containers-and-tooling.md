@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-nvfp4, S-forum-qwen-tts-arm64
-> **updated:** 2026-07-09
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-nvfp4, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute
+> **updated:** 2026-07-10
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -108,3 +108,33 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
 - **[conjecture]** **torchaudio unavailable on ARM64/CUDA 13** (S-forum-qwen-tts-arm64): no
   ABI-compatible wheel for DGX Spark — blocks Qwen3-TTS and audio models. `torchaudio` deprecated,
   not in NGC containers. Workaround: use PyTorch from pytorch.org. See `[[wiki/platform-gb10.md]]`.
+
+### Batch 4 forum ingest (2026-07-10)
+
+- **[conjecture]** **llama-benchy** (S-forum-llama-benchy, eugr): CLI benchmarking tool that brings
+  llama-bench-style context-depth sweep measurements to ANY OpenAI-compatible endpoint (vLLM,
+  SGLang, llama.cpp, etc.). Measures prompt processing (pp) and token generation (tg) speeds at
+  different context depths (`--depth`), concurrency (`--concurrency`), configurable prompt/gen
+  lengths, multiple iterations with mean ± std. Uses HuggingFace tokenizers for accurate token
+  counts. Downloads a Project Gutenberg book as source text (important for spec-decode/MTP
+  benchmarking — random tokens don't exercise draft acceptance properly). JSON/CSV output.
+  Available via `uvx llama-benchy`. Demo numbers on dual Spark cluster:
+  - MiniMax-M2.1-AWQ-4bit (2× Spark, 100K ctx): pp2048 ~3544 t/s, tg32 ~36 t/s; degrades with depth
+    (tg32 @ 100K not shown but pp drops from ~3544 to ~2832 @ 8K).
+  - GLM-4.7-Flash-AWQ-4bit (1× Spark, util 0.7, max_model_len 202752): pp2048 ~5326 t/s c1,
+    tg32 ~41.75 t/s c1; c2 tg32 aggregate 73.74 (37.38/req); c10 tg32 aggregate 87.65 (15.33/req).
+    KV cache 1,239,088 tokens, max concurrency 6.11× for 202K tokens/req.
+- **[conjecture]** **DGX Spark Cluster Dashboard** (S-forum-cluster-dashboard, paul.aviles):
+  web-based btop-inspired dashboard for multi-node Spark monitoring — replaces running separate
+  SSH/btop sessions on each node. GitHub: paul-aviles/NVIDIA-DGX-Spark-Dashboard. Runs on a
+  separate management system (not on the Sparks themselves). Note: enP7s7 utilization bar may
+  show full when interface not at 100% (known display bug).
+- **[conjecture]** **Headless Sunshine remote desktop for DGX Spark** (S-forum-sunshine-rdp):
+  community setups for extending Spark beyond SSH/CLI to native desktop via Sunshine+Moonlight
+  streaming. Repos: eelbaz/dgx-spark-headless-sunshine (automated setup),
+  seanGSISG/dgx-spark-sunshine-setup (4K variant). GB10 display controller 165 MHz pixel clock
+  limits resolution (see `[[wiki/platform-gb10.md]]`).
+- **[conjecture]** **FLUX.2-dev as headless OpenAI Images-API server** (S-forum-flux2-nvfp4-compute,
+  vr8vr8): first image-generation model added to eugr/spark-vllm-docker (PR #313). Uses torchao
+  NVFP4 W4A4 on-the-fly quantization for real FP4 compute (~3× speedup over BF16, ~66 GB VRAM).
+  See `[[wiki/quantization-on-gb10.md]]` for the quant details.

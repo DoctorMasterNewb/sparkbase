@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8
-> **updated:** 2026-07-09
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute
+> **updated:** 2026-07-10
 
 Single-stream decode unless noted. All on the 2× GB10 pair. Numbers anchor the rules on
 `[[wiki/platform-gb10.md]]` (bandwidth-bound) and `[[wiki/quantization-on-gb10.md]]` (MoE-NVFP4 wins).
@@ -188,4 +188,16 @@ first-party. Tagged `[forum]` to distinguish from the proven rows above.
 | Qwen3.5-122B-A10B | NVFP4 (community) | vLLM | 1 | — | — | 234GB→75.6GB, fits 128GB; DeltaNet+vision, routers/lm_head kept BF16 | S-forum-qwen122-nvfp4-quant ||
 | Nemotron-3-Super-120B | NVFP4 | vLLM TP=2 | 2 | 24 | — | ABI fix for cu130/cu132 mismatch in Dockerfile (cu132 wheel + cu130 PyTorch) | S-forum-nemotron-super-abi ||
 | DeepSeek-V4-Flash | hybrid 2-bit (IQ2_XXS+Q2_K+FP8) | vLLM (custom) | 1 | — | — | antirez MLX recipe ported; ~85 GiB, coherent output on single Spark | S-forum-ds4f-hybrid-1x ||
-| Step-3.7-Flash | IQ4_XS GGUF | llama.cpp (stepfun fork) | 1 | 31 (short ctx) / 11 (max ctx) | 262K | Only path for Step-3.7 on Spark; prefill poor vs vLLM | S-forum-step37-llamacpp ||
+|| Step-3.7-Flash | IQ4_XS GGUF | llama.cpp (stepfun fork) | 1 | 31 (short ctx) / 11 (max ctx) | 262K | Only path for Step-3.7 on Spark; prefill poor vs vLLM | S-forum-step37-llamacpp ||
+
+## Forum-reported benchmarks (2026-07-10 ingest)
+
+All rows below are **[reported]** — community-reported numbers from the NVIDIA DGX Spark forums, not
+first-party. Measured with `llama-benchy` (context-depth sweep tool, see
+`[[wiki/containers-and-tooling.md]]`).
+
+|| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+||---|---|---|---|---|---|---|---||
+|| MiniMax-M2.1-AWQ-4bit | AWQ 4-bit | vLLM | 2 | ~36 (tg32, c1) | 100K | pp2048 ~3544 t/s; degrades with depth (pp @ 8K ~2832); measured via llama-benchy | S-forum-llama-benchy ||
+|| GLM-4.7-Flash-AWQ-4bit | AWQ 4-bit | vLLM | 1 | ~41.75 (tg32, c1) | 202K | pp2048 ~5326 t/s c1; c2 tg32 agg 73.74 (37.38/req); c10 tg32 agg 87.65 (15.33/req); KV cache 1.24M tokens, util 0.7 | S-forum-llama-benchy ||
+|| FLUX.2-dev (image gen) | NVFP4 W4A4 (torchao) | torchao/diffusers | 1 | — | — | 28 steps @ 1024²: ~45s NVFP4 vs ~2.3 min BF16 (~3×); ~66 GB vs ~112 GB VRAM; edit ~1m51s vs ~4m20s (~2.3×) | S-forum-flux2-nvfp4-compute ||

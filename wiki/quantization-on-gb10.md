@@ -3,8 +3,8 @@
 > **area:** quantization
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node
-> **updated:** 2026-07-09
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute
+> **updated:** 2026-07-10
 
 GB10 has **no native FP4 compute and no native FP8 block-scale**. That one fact decides which quant
 to pick. Decode is **bandwidth-bound** (`[[wiki/platform-gb10.md]]`), so the winning quant is usually
@@ -166,3 +166,22 @@ decompress, because at low batch you're memory-bound, not compute-bound.
   Ray actors — exported model is byte-identical to an all-Blackwell cluster output. Cross-node Ray RPC
   over 2.5 GbE adds ~50 sec total to a 256-sample calibration (compute-side dominates, network never
   the bottleneck). Three extra fixes on top of the 6 already documented for 100B+ models.
+
+## Forum ingest: FLUX.2 NVFP4 W4A4 compute (2026-07-10)
+
+- **[conjecture]** **NVFP4 W4A4 (activation-quantized) gives ~3× speedup on FLUX.2-dev** on DGX Spark
+  (S-forum-flux2-nvfp4-compute, vr8vr8): torchao on-the-fly quantization with W4A4 (weights AND
+  activations quantized to FP4) runs the matmul in actual FP4 on Blackwell tensor cores via Triton
+  kernels. FLUX.2-dev 28 steps @ 1024²: BF16 ~2.3 min → NVFP4 ~45 s (~3× text-to-image, ~2.3× edit).
+  VRAM: ~112 GB BF16 → ~66 GB NVFP4 (~40% less). After one-time quant, subsequent boots load the
+  quantized weights directly at ~66 GB with no BF16 spike.
+  - **Critical distinction:** most quantized FLUX files floating around (fp8-mixed, gguf, naively-loaded
+    "nvfp4" checkpoints) are **weight-only** — weights stored small but matmul upcasts to BF16. Memory
+    saving but little-to-no speedup (sometimes slower). torchao W4A4 is what gets the real FP4 compute.
+  - **[conjecture]** `modelopt_fp4` / prequantized-NVFP4-checkpoint path hits a diffusers
+    unpack/shape bug on sm_121a — on-the-fly torchao is the working route. Same "don't pass
+    modelopt_fp4 on SM121A" reported by others.
+  - `mslk` is a missing dependency — without it torchao errors "mslk is required for NVFP4 triton
+    quantization." CUDA 13 + Blackwell (sm_120a/121a) required for the FP4 Triton kernels.
+  - PR to eugr/spark-vllm-docker (#313) — first image-generation model in the repo (headless
+    OpenAI Images-API server, not GUI/ComfyUI).

@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64
-> **updated:** 2026-07-09
+> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx
+> **updated:** 2026-07-10
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -215,6 +215,51 @@ only after unexplained slow tok/s).
   ABI-compatible `torchaudio` wheel exists for DGX Spark's CUDA 13 / SM 12.1 / aarch64 — blocks
   Qwen3-TTS and other audio models. `torchaudio` is deprecated and not included in NVIDIA PyTorch
   containers. Workaround: use PyTorch from pytorch.org instead of NGC containers.
+
+### Batch 4 forum ingest (2026-07-10)
+
+- **[conjecture]** **UMA mmap double-allocation causes OOM when loading models via HuggingFace
+  transformers** (S-forum-qwen35-lora-uma, danielkreuzhofer): when loading safetensors via `mmap`,
+  the memory-mapped pages (~67 GB) and the materialized CUDA tensors (~67 GB) compete for the same
+  physical UMA pool — on Spark they don't live in separate pools like discrete GPUs. A 67 GB bf16
+  model needs ~134 GB total (mmap + CUDA) → OOM kill at 119/134 ≈ 66%, exactly where the process
+  dies (66% of 1,026 weight tensors = 677). `device_map="sequential"`, `offload_state_dict=True`,
+  `SAFETENSORS_FAST_GPU=1`, and `load_in_4bit=True` (BnB quantization buffers OOM earlier at 4%)
+  do NOT fix the fundamental mmap double-allocation on UMA. Workaround: monkey-patch `safe_open`
+  with an _EagerSafeOpen wrapper that (1) loads tensors direct-to-CUDA, (2) eagerly loads+closes
+  each shard instead of keeping all 14 file handles open, (3) evicts the page cache after each shard
+  via `posix_fadvise(POSIX_FADV_DONTNEED)`. Peak memory drops to ~72 GB (one shard's transient
+  mmap + accumulated CUDA tensors), leaving ~47 GB headroom for LoRA adapters, optimizer states,
+  activations. `load_in_16bit=True` + `device_map={“”: torch.cuda.current_device()}` +
+  `attn_implementation="sdpa"` needed for Unsloth FastModel on some setups.
+  - **[conjecture]** **FSDP `from_pretrained` loads full model on every rank** (jesse75, same
+    thread): full-weight continued pre-training with FSDP across 3 nodes — `from_pretrained` loads
+    the full model on every rank before FSDP gets to it, eating 75 GB of the 128.5 GB UMA pool
+    before training starts. Expert-level sharding works (11.55B params/rank confirmed) but the
+    initial load wall remains. See related thread
+    https://forums.developer.nvidia.com/t/363945.
+  - **[conjecture]** CUDA 13.2 (nvcr.io/nvidia/pytorch:26.03-py3) breaks `adamw_8bit` optimizer
+    → switch to `adamw_torch`. `TORCH_CUDA_ARCH_LIST=12.1` (not 12.0) for GB10 (sm_121).
+  - **[conjecture]** Unsloth LoRA trained on Qwen3.5 MoE may fail to load in vLLM — vLLM's fused
+    MoE LoRA expects per-expert tensors, Unsloth produces fused expert tensors. No simple patch;
+    requires rewriting weight loading logic.
+- **[conjecture]** **TCG OPAL password + UEFI admin password corrupted after unexpected shutdown**
+  (S-forum-opal-uefi, cvella): a DGX Spark that shut down unexpectedly had its TCG OPAL
+  self-encryption password and UEFI administrator password corrupted simultaneously. PSID reset
+  recovered the drive, but UEFI admin password became blank and firmware capsule updates are
+  locked out — cannot disable secure boot or authorize capsule updates post-reimage. Appears to
+  be a UEFI corruption from the unexpected shutdown. Second identical Spark unaffected. **Status:**
+  `open` — no known workaround for the firmware update lockout.
+- **[conjecture]** **GB10 internal display controller has a 165 MHz max pixel clock** (S-forum-sunshine-rdp,
+  LsDmTandAI): this limits headless remote desktop streaming via Sunshine — 4K@60 is impossible,
+  1440p@120Hz is the best achievable. Relevant for users extending Spark beyond SSH/CLI to native
+  desktop via Sunshine+Moonlight. Community repos: eelbaz/dgx-spark-headless-sunshine,
+  seanGSISG/dgx-spark-sunshine-setup.
+- **[conjecture]** **ONNX Runtime GPU device discovery fails on GB10** (S-forum-wan2gp-onnx,
+  kdb8756): `onnxruntime` reports `device_discovery.cc:89 ReadFileContents Failed to open file:
+  "/sys/class/drm/card0/device/vendor"` — GB10's sysfs layout differs from discrete GPUs. This is
+  due to the newness of GB10 and is **safely ignorable** — ONNX functions normally despite the
+  warning. PyTorch 2.9.1+cu129 confirmed working with Wan2GP on GB10.
 
 ## Reference cluster
 
