@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-m3-vision, S-m3-20tps, S-sess-jun11, S-minimax-sweeps, S-forum-m3-nvfp4-4x, S-forum-m3-awq-4x, S-forum-m3-llamacpp-2x, S-forum-m3-quad, S-forum-m3-w4a16-gptq, S-forum-m25-sglang-4x
-> **updated:** 2026-07-09
+> **sources:** S-m3-vision, S-m3-20tps, S-sess-jun11, S-minimax-sweeps, S-forum-m3-nvfp4-4x, S-forum-m3-awq-4x, S-forum-m3-llamacpp-2x, S-forum-m3-quad, S-forum-m3-w4a16-gptq, S-forum-m25-sglang-4x, S-forum-m27-recipe
+> **updated:** 2026-07-10
 
 Two very different MiniMax stories on GB10: **M2.7 AWQ** = the fast, durable daily-driver default;
 **M3** = a 428B research/long-context/vision endpoint that's structurally slow here.
@@ -219,3 +219,33 @@ tradeoff is context (b12x-vision ~113k vs our 262k). Both are viable; b12x-visio
   agentic workloads with many parallel agent threads, M2.5 outperforms GLM-4.7-FP8 and
   Qwen3.5-397B-A17B-NVFP4 on the same cluster at concurrency. CUTLASS MoE compile OOM fix:
   `MAX_JOBS=1 NVCC_THREADS=1` (see `[[wiki/multinode-tp-and-networking.md]]`).
+
+## Forum ingest: M2.7 NVFP4/AWQ/FP8 recipes on 2×/4× Spark (2026-07-10)
+
+- **[reported]** **MiniMax-M2.7-NVFP4 on 2× Spark (FlashInfer-CUTLASS)** (S-forum-m27-recipe,
+  serapis + ekkis): `lukealonso/MiniMax-M2.7-NVFP4`, vLLM via eugr spark-vllm-docker TF5, TP=2, Ray.
+  FlashInfer-CUTLASS backend beats CUTLASS on both latency and throughput: best config
+  `VLLM_NVFP4_GEMM_BACKEND=flashinfer-cutlass`, `VLLM_USE_FLASHINFER_MOE_FP4=1`,
+  `VLLM_FLASHINFER_MOE_BACKEND=throughput`, `VLLM_FLOAT32_MATMUL_PRECISION=high`, no-Ray slightly
+  better overall. Measured (2× Spark, FlashInfer-CUTLASS + throughput, no-Ray): pp2048 3065 t/s,
+  **tg128 24.12 tok/s**, 32k TTFT 14.3 s. CUTLASS-only baseline: tg128 ~22 tok/s. Context up to
+  ~225K (auto-calculated 196K). `--mamba_ssm_cache_dtype float32`, `--kv-cache-dtype fp8`,
+  `--quantization modelopt_fp4`, `--load-format fastsafetensors`. Context degrades gracefully:
+  tg128 at 131K depth ~11.3 tok/s. **This corroborates** the first-party AWQ-beats-NVFP4 finding
+  (AWQ ~24 vs NVFP4 ~16.5 single-stream here — FlashInfer-CUTLASS NVFP4 ~24 is the *optimized* path
+  matching AWQ, while stock CUTLASS NVFP4 is slower at ~22).
+- **[reported]** **MiniMax-M2.7-AWQ-4bit on 2× Spark** (S-forum-m27-recipe, serapis + miken + co-le):
+  `cyankiwi/MiniMax-M2.7-AWQ-4bit`, vLLM via eugr TF5, TP=2. **AWQ is the clear decode winner**:
+  tg128 **39.4 tok/s** (peak 40), tg32 41.6 (co-le), vs NVFP4's 25.7 (peak 26). Context scales well:
+  tg128 at 65K depth 25.15, at 131K 11.3; tg32 at 100K 21.2. AWQ on 2× is ~1.5× faster decode than
+  NVFP4 on 2×. Multiple independent reporters (serapis, miken, co-le) all report ~39–42 tok/s —
+  **strong consensus**. **This raises the AWQ-beats-NVFP4 finding to [reported] from multiple
+  independent forum sources**, corroborating our first-party measurement.
+- **[conjecture]** **MiniMax-M2.7 FP8 (Unsloth) on 4× Spark** (S-forum-m27-recipe, aostang):
+  FP8 (Unsloth) on 4 nodes gives **36–37 tok/s** decode (no degradation vs NVFP4, slight *increase*),
+  with cache hit 53.6 tok/s @ 2 concurrent. Surprising — FP8 (larger weights) matching/exceeding
+  NVFP4 throughput on 4× may be compute-bound at that scale. Single source, unverified.
+- **[reported]** **FlashInfer-CUTLASS is now stable enough for NVFP4 recipes** (S-forum-m27-recipe,
+  eugr reply): autotuner exceptions fixed, minor FlashInfer optimizations merged. Eugr plans to
+  switch all NVFP4 recipes from `VLLM_CUTLASS` to `flashinfer-cutlass`. This is a significant
+  backend-status update — see `[[wiki/quantization-on-gb10.md]]`.

@@ -3,7 +3,7 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds
 > **updated:** 2026-07-10
 
 Single-stream decode unless noted. All on the 2× GB10 pair. Numbers anchor the rules on
@@ -200,4 +200,41 @@ first-party. Measured with `llama-benchy` (context-depth sweep tool, see
 ||---|---|---|---|---|---|---|---||
 || MiniMax-M2.1-AWQ-4bit | AWQ 4-bit | vLLM | 2 | ~36 (tg32, c1) | 100K | pp2048 ~3544 t/s; degrades with depth (pp @ 8K ~2832); measured via llama-benchy | S-forum-llama-benchy ||
 || GLM-4.7-Flash-AWQ-4bit | AWQ 4-bit | vLLM | 1 | ~41.75 (tg32, c1) | 202K | pp2048 ~5326 t/s c1; c2 tg32 agg 73.74 (37.38/req); c10 tg32 agg 87.65 (15.33/req); KV cache 1.24M tokens, util 0.7 | S-forum-llama-benchy ||
-|| FLUX.2-dev (image gen) | NVFP4 W4A4 (torchao) | torchao/diffusers | 1 | — | — | 28 steps @ 1024²: ~45s NVFP4 vs ~2.3 min BF16 (~3×); ~66 GB vs ~112 GB VRAM; edit ~1m51s vs ~4m20s (~2.3×) | S-forum-flux2-nvfp4-compute ||
+||| FLUX.2-dev (image gen) | NVFP4 W4A4 (torchao) | torchao/diffusers | 1 | — | — | 28 steps @ 1024²: ~45s NVFP4 vs ~2.3 min BF16 (~3×); ~66 GB vs ~112 GB VRAM; edit ~1m51s vs ~4m20s (~2.3×) | S-forum-flux2-nvfp4-compute ||
+
+## Forum-reported benchmarks (2026-07-10 ingest, Batch 5)
+
+All rows below are **[reported]** — community-reported numbers from the NVIDIA DGX Spark forums, not
+first-party.
+
+||| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+|||---|---|---|---|---|---|---|---||| 
+||| MiMo-V2.5 (native FP8) | FP8 (310B) | SGLang | 4 (TP=4) | 31.5 | 256K | EAGLE disabled (OOM); TTFT 0.46s; fp8 KV; tool eval 89/100; vision+audio+video | S-forum-mimo-sglang-4x ||
+||| MiniMax-M2.7-NVFP4 | NVFP4 (FlashInfer-CUTLASS) | vLLM | 2 (TP=2) | 24.12 (tg128) | 225K | FlashInfer-CUTLASS + throughput backend; no-Ray slightly better; CUTLASS baseline ~22 | S-forum-m27-recipe ||
+||| MiniMax-M2.7-AWQ-4bit | AWQ 4-bit | vLLM | 2 (TP=2) | 39.4 (tg128) / 41.6 (tg32) | 196K | Clear decode winner — ~1.5× NVFP4; 3 independent reporters agree | S-forum-m27-recipe ||
+||| MiniMax-M2.7 (Unsloth FP8) | FP8 | vLLM | 4 (TP=4) | 36–37 | — | No degradation vs NVFP4, slight increase; cache hit 53.6 @ 2 concurrent | S-forum-m27-recipe ||
+
+## Image generation benchmarks (diffusion models on GB10, 2026-07-10)
+
+**[conjecture]** — single-source forum benchmarks for diffusion models on DGX Spark, all 1024×1024,
+single-node, via `diffusers` library (not ComfyUI). Generation time post-compile (torch compile needs
+~2 warmup runs). See `[[wiki/quantization-on-gb10.md]]` for NVFP4 W4A4 FLUX.2 details.
+
+||| Model | Steps | Time (BF16) | Time (NVFP4) | Notes | Source ||
+|||---|---|---|---|---|---|||
+||| FLUX.2-klein-9B | 4 | 4.4s | 3.3s | distilled; NVFP4 via torchao W4A4 | S-forum-diffusion-speeds ||
+||| Z-Image-Turbo | 9 | 7.2s | 5.6s | BF16 mostly; torch compile 8.1s (default attn) | S-forum-diffusion-speeds ||
+||| ERNIE-Image-Turbo | 8 | 8.8s (BF16) / 11.2s (orig) | 6.4s | `DIFFUSERS_ATTN_BACKEND=_native_cudnn` improved 11.2→8.8 | S-forum-diffusion-speeds ||
+||| SDXL 1.0 | 30 | 11.3s | — | BF16; no NVFP4 tested | S-forum-diffusion-speeds ||
+||| Krea2-Turbo | 8 | 13.9s (BF16+optimized) | 12.4s | Default 39.3s; `torch.set_float32_matmul_precision('high')` → 32s; `DIFFUSERS_ATTN_BACKEND=_native_cudnn` → 13.9s | S-forum-diffusion-speeds ||
+||| Qwen-Image-2512 | 50 | 61.0s | — | ~50% memory used; no NVFP4 tested yet | S-forum-diffusion-speeds ||
+
+- **[conjecture]** **`DIFFUSERS_ATTN_BACKEND=_native_cudnn`** is a significant GB10 diffusion speedup
+  env var (S-forum-diffusion-speeds, ijontichy): improved Krea2-Turbo 39.3→13.9s, ERNIE-Image-Turbo
+  11.2→8.8s, no effect on Z-Image-Turbo. Combined with `torch.set_float32_matmul_precision('high')`.
+  Second source (vasimv) reports 15-17s for Krea2-Turbo FP16 on ComfyUI with 610 drivers + CUDA 13.3.
+- **[conjecture]** **NVFP4 W4A4 quantization gives modest speedups on diffusion models** (S-forum-diffusion-speeds):
+  FLUX.2-klein 4.4→3.3s (~1.3×), Z-Image-Turbo 7.2→5.6s (~1.3×), ERNIE 8.8→6.4s (~1.4×), Krea2 13.9→12.4s
+  (~1.1×, marginal). Smaller gains than the ~3× seen on FLUX.2-dev (which uses activation-quantized
+  real FP4 compute via Triton — see `[[wiki/quantization-on-gb10.md]]`). The difference: these are
+  weight-only NVFP4 vs FLUX.2-dev's activation-quantized path.

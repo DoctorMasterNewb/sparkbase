@@ -131,3 +131,29 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   ~41.75 tok/s, FLUX.2-dev image gen ~3× with NVFP4 W4A4).
 - **Pages touched:** quantization-on-gb10, platform-gb10, containers-and-tooling, benchmarks,
   sources/README, log, index.
+
+## 2026-07-10 — Batch 5 forum ingest: 3 new NVIDIA DGX Spark forum topics
+
+- **Sources:** 3 new forum topics found by fetch_new_topics.py. All 3 were technically relevant
+  (no social/buying/RMA to skip). 3 new sources registered as `S-forum-*` in `sources/README.md`
+  (Batch 5 section). 3 topic IDs added to `sources/processed_topics.txt` (total now 349).
+- **Models/mimo-v2.5:** SGLang 4× FP8 recipe (mclenithan) — 31.5 tok/s, 256K ctx, tool eval 89/100,
+  full multimodal. EAGLE disabled (OOM on unquantized). NCCL_CUMEM_ENABLE=0 critical. NVFP4 MoE
+  backend gap on SM121a (Triton can't dequant FP4, Marlin lacks SM121a, flashinfer_dsl untested).
+  MTP OOM on 4× unquantized. Sampling params: temp=0.6, top_p=0.95, repetition_penalty=1.2
+  (do NOT copy Qwen3 settings — triggers Thought Loop).
+- **Models/minimax:** M2.7 NVFP4/AWQ/FP8 recipes on 2×/4× Spark (serapis, ekkis, aostang, miken,
+  co-le). FlashInfer-CUTLASS beats CUTLASS (24.12 vs 22.04 tok/s). AWQ-4bit is clear decode winner
+  at 39.4 tok/s (peak 40) vs NVFP4 25.7 — 3 independent reporters agree, corroborating first-party
+  AWQ-beats-NVFP4 finding. Unsloth FP8 on 4× gives 36-37 tok/s (single source). eugr confirms
+  FlashInfer-CUTLASS is now stable enough to switch all NVFP4 recipes.
+- **Benchmarks:** 4 new LLM forum-reported rows (MiMo-V2.5 FP8 4× 31.5, M2.7-NVFP4 24.12,
+  M2.7-AWQ 39.4, M2.7-FP8 4× 36-37) + 6 diffusion model image gen rows (FLUX.2-klein, Z-Image-Turbo,
+  ERNIE-Image-Turbo, SDXL, Krea2-Turbo, Qwen-Image-2512). DIFFUSERS_ATTN_BACKEND=_native_cudnn
+  env var speedup documented.
+- **Quantization:** FlashInfer-CUTLASS stability update + diffusion NVFP4 weight-only (1.1-1.4×)
+  vs activation-quantized W4A4 (~3×) distinction. Weight-only NVFP4 on diffusion ≠ LLM NVFP4 MoE
+  path.
+- **Containers/Tooling:** DIFFUSERS_ATTN_BACKEND=_native_cudnn, diffusion model benchmarks.
+- **Pages touched:** models/mimo-v2.5, models/minimax, benchmarks, quantization-on-gb10,
+  containers-and-tooling, sources/README, log, index.

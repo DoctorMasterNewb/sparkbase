@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-mimo-results, S-mimo-doc, S-dflash-nvfp4, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-mimo-tp2-1m, S-forum-mimo-dflash-22-67, S-forum-mimo-dflash-v024
-> **updated:** 2026-07-09
+> **sources:** S-mimo-results, S-mimo-doc, S-dflash-nvfp4, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-mimo-tp2-1m, S-forum-mimo-dflash-22-67, S-forum-mimo-dflash-v024, S-forum-mimo-sglang-4x
+> **updated:** 2026-07-10
 
 MiMo-V2.5 — 310B Omni MoE, **MIXED_PRECISION = MXFP8 dense + NVFP4 experts**, DiffKV
 (`v_head_dim=128 ≠ head_dim=192`), text+vision. The production cluster MoE. Base
@@ -176,3 +176,33 @@ checkpoint-specific quant loaders (qkv/merger/packed) + triton kernel arg drift.
   lukealonso NVFP4 export: `fix-mimo-config`, `fix-mimo-qkv-mxfp8`, `fix-mimo-v0240-merger`,
   `fix-mimo-v0240-packed`, `nvfp4-kv-diffkv` (1-line triton kernel fix for `seq_len` arg),
   `dflash-custom-proposer`. GitHub: `DoctorMasterNewb/vLLM-MiMo-V2.5-DFlash-NVFP4Kv`.
+
+## Forum ingest: SGLang 4× FP8 recipe, MTP OOM, NVFP4 MoE backend gap (2026-07-10)
+
+- **[reported]** **MiMo-V2.5 (native FP8) on 4× DGX Spark via SGLang** (S-forum-mimo-sglang-4x,
+  mclenithan): end-to-end recipe with `lmsysorg/sglang:dev-cu13-mimo-v2.5`, TP=4 over 200 Gbps RoCE
+  RDMA (MikroTik CRS812, MTU 9000). Full 256K context, ~31.5 tok/s decode, TTFT ~0.46 s. Image:
+  `lmsysorg/sglang:dev-cu13-mimo-v2.5`. Attention backend: **triton** (FP8 CUTLASS dispatch broken
+  on sm_121a — same as `[[wiki/attention-and-kv-cache.md]]` note). MM attention: `triton_attn`.
+  MoE runner: `auto`. KV cache: `fp8_e4m3`. EAGLE spec-decode **disabled** (head-node OOM — see below).
+  Tool-eval score: **89/100** (★★★★ Good, 123/138 points), error rate 0.0%, median turn 3.8 s.
+  Multi-modal (vision, audio, video) fully working; best served via SGLang (vLLM behind on support).
+  5 SGLang PRs + 2 doc notes filed upstream. `NCCL_CUMEM_ENABLE=0` is critical — without it the
+  cluster hangs during NCCL init on Grace-Blackwell (same env var pattern as our first-party recipes).
+- **[conjecture]** **NVFP4 MoE backend gap on SM121a** (S-forum-mimo-sglang-4x, renek via Claude
+  analysis): the Triton fused MoE kernel (the only reliable SM121a backend) can load FP8 and BF16
+  but **cannot dequantize FP4**. Marlin W4A16 fallback also lacks SM121a support. `flashinfer_dsl`
+  is the only theoretical candidate for NVFP4 on SM121a but is untested/undocumented. ⟹ cannot
+  copy the 4-node FP8 recipe and swap NVFP4 weights — the MoE kernel path differs. This is
+  consistent with the first-party findings (`[[wiki/quantization-on-gb10.md]]`) where NVFP4 MoE
+  dispatch requires specific CUTLASS/FlashInfer paths on GB10.
+- **[conjecture]** **MTP causes OOM on 4× unquantized MiMo-V2.5** (S-forum-mimo-sglang-4x,
+  mclenithan): MTP attempts on the native FP8 (unquantized) model OOM-lock all nodes even with
+  dramatically reduced memory allocation. NVFP4 quant (lukealonso, ~174 GB) expected to fit 2×
+  Spark with room for context, but no one has attempted AutoRound yet. Model is very sensitive to
+  sampling parameters — **do NOT copy Qwen3 settings**; use Xiaomi-recommended: temp=0.6, top_p=0.95,
+  repetition_penalty=1.2 (mitigates "Thought Loop" failure mode). `repetition_penalty=1.2` is
+  community-validated for the recursive-thinking loop bug.
+- **[conjecture]** MiMo-V2.5 NVFP4 quant (`lukealonso/MiMo-V2.5-NVFP4`, ~174 GB) should fit 2×
+  Spark for context, per size estimate (S-forum-mimo-sglang-4x, voktolom). Not yet benchmarked
+  on 2× at time of posting.

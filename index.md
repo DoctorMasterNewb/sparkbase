@@ -66,3 +66,14 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   pixel clock, ONNX GPU discovery), containers-and-tooling (llama-benchy, cluster dashboard, Sunshine
   RDP, FLUX.2 Images-API server), benchmarks (3 new forum-reported rows: MiniMax-M2.1, GLM-4.7-Flash,
   FLUX.2-dev image gen), models/mimo-v2.5 (topic 375923 already ingested in Batch 3).
+
+## Forum ingest 2026-07-10 (Batch 5)
+- 3 new forum topics found, all technically relevant.
+- 3 new sources registered (Batch 5). 3 topic IDs added to processed_topics.txt (total now 349).
+- Pages touched: models/mimo-v2.5 (SGLang 4× FP8 recipe, MTP OOM, NVFP4 MoE backend gap on SM121a,
+  sampling params/Thought Loop mitigation), models/minimax (M2.7 NVFP4/AWQ/FP8 recipes on 2×/4× Spark,
+  FlashInfer-CUTLASS beats CUTLASS, AWQ beats NVFP4 corroborated by 3 independent sources → [reported],
+  Unsloth FP8 4× 36 tok/s), benchmarks (4 new LLM forum rows + 6 diffusion model image gen rows),
+  quantization-on-gb10 (FlashInfer-CUTLASS stability, diffusion weight-only vs activation-quantized
+  NVFP4 distinction), containers-and-tooling (DIFFUSERS_ATTN_BACKEND=_native_cudnn speedup,
+  diffusion model benchmark table).

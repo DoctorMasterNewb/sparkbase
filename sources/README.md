@@ -187,6 +187,14 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-sunshine-rdp | forum | Headless Sunshine remote desktop for DGX Spark — GB10 internal display controller 165 MHz max pixel clock, 4K@60 impossible, 1440p@120Hz best (mail.eelbaz, LsDmTandAI) | https://forums.developer.nvidia.com/t/348220 | 2025-10-19 |
 | S-forum-cluster-dashboard | forum | DGX Spark Cluster Dashboard: web-based btop-inspired dashboard for multi-node Spark monitoring (paul.aviles) | https://forums.developer.nvidia.com/t/359975 | 2026-02-07 |
 
+## Batch 5 forum sources (2026-07-10 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-mimo-sglang-4x | forum | MiMo-V2.5 (FP8) on 4-node DGX Spark via SGLang — recipe, parser bug, NCCL_CUMEM_ENABLE=0, EAGLE OOM, sampling params, tool eval 89/100 (mclenithan) | https://forums.developer.nvidia.com/t/368097 | 2026-04-27 |
+| S-forum-diffusion-speeds | forum | Image diffusion speeds on GB10: Z-Image-Turbo/SDXL/Qwen-Image/ERNIE/FLUX.2-klein/Krea2 benchmarks, DIFFUSERS_ATTN_BACKEND=_native_cudnn, NVFP4 quant speedups (ijontichy) | https://forums.developer.nvidia.com/t/369095 | 2026-05-05 |
+| S-forum-m27-recipe | forum | MiniMax-M2.7 NVFP4/AWQ/FP8 recipes & benchmarks on 2×/4× Spark — FlashInfer-CUTLASS vs CUTLASS, AWQ beats NVFP4 decode, FP8 4×=36 tok/s, AWQ 4×=41.6 tok/s (serapis, ekkis, aostang, miken, co-le) | https://forums.developer.nvidia.com/t/366324 | 2026-04-12 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

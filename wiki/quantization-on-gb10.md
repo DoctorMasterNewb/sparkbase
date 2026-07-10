@@ -185,3 +185,19 @@ decompress, because at low batch you're memory-bound, not compute-bound.
     quantization." CUDA 13 + Blackwell (sm_120a/121a) required for the FP4 Triton kernels.
   - PR to eugr/spark-vllm-docker (#313) — first image-generation model in the repo (headless
     OpenAI Images-API server, not GUI/ComfyUI).
+
+## Forum ingest: FlashInfer-CUTLASS stable, diffusion NVFP4 weight-only vs activation-quantized (2026-07-10)
+
+- **[reported]** **FlashInfer-CUTLASS is now stable for NVFP4 recipes** (S-forum-m27-recipe, eugr):
+  autotuner exceptions fixed, minor FlashInfer optimizations merged. Eugr plans to switch all NVFP4
+  recipes from `VLLM_CUTLASS` to `flashinfer-cutlass`. On MiniMax-M2.7-NVFP4 2× Spark: FlashInfer-CUTLASS
+  beats CUTLASS on both latency (111 vs 122 ms) and throughput (tg128 24.12 vs 22.04). Best config:
+  `VLLM_NVFP4_GEMM_BACKEND=flashinfer-cutlass`, `VLLM_USE_FLASHINFER_MOE_FP4=1`,
+  `VLLM_FLASHINFER_MOE_BACKEND=throughput`, `VLLM_FLOAT32_MATMUL_PRECISION=high`.
+- **[conjecture]** **NVFP4 weight-only quant gives only modest diffusion speedups** (S-forum-diffusion-speeds,
+  ijontichy): weight-only NVFP4 on diffusion models (via torchao, NOT activation-quantized W4A4) gives
+  ~1.1–1.4× speedup — FLUX.2-klein 4.4→3.3s, Z-Image-Turbo 7.2→5.6s, ERNIE 8.8→6.4s, Krea2 13.9→12.4s.
+  This is a fraction of the ~3× from FLUX.2-dev W4A4 (activation-quantized, real FP4 compute via
+  Triton — see section above). The distinction is critical: weight-only NVFP4 saves memory but the
+  matmul upcasts to BF16; W4A4 runs actual FP4 compute. Diffusion model weight-only NVFP4 ≠ LLM NVFP4
+  (where MoE expert dequant via CUTLASS/FlashInfer is the kernel path).

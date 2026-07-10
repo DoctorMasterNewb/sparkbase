@@ -138,3 +138,13 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   vr8vr8): first image-generation model added to eugr/spark-vllm-docker (PR #313). Uses torchao
   NVFP4 W4A4 on-the-fly quantization for real FP4 compute (~3× speedup over BF16, ~66 GB VRAM).
   See `[[wiki/quantization-on-gb10.md]]` for the quant details.
+- **[conjecture]** **`DIFFUSERS_ATTN_BACKEND=_native_cudnn`** env var is a significant GB10
+  diffusion-model speedup (S-forum-diffusion-speeds, ijontichy): Krea2-Turbo 39.3→13.9s,
+  ERNIE-Image-Turbo 11.2→8.8s, no effect on Z-Image-Turbo. Combined with
+  `torch.set_float32_matmul_precision('high')`. All via `diffusers` library (not ComfyUI).
+  Second source (vasimv): 15-17s for Krea2-Turbo FP16 on ComfyUI + 610 drivers + CUDA 13.3.
+- **[conjecture]** **Image diffusion model benchmarks on GB10** (S-forum-diffusion-speeds): single-node,
+  1024×1024, `diffusers` library, post torch-compile. FLUX.2-klein-9B (4 steps) 4.4s → 3.3s NVFP4;
+  Z-Image-Turbo (9 steps) 7.2s → 5.6s NVFP4; SDXL 1.0 (30 steps) 11.3s; Qwen-Image-2512 (50 steps) 61s;
+  ERNIE-Image-Turbo (8 steps) 11.2→8.8s (cudnn attn) → 6.4s NVFP4; Krea2-Turbo (8 steps) 39.3→13.9s
+  (optimized) → 12.4s NVFP4. See `[[wiki/benchmarks.md]]` for full table.
