@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx
-> **updated:** 2026-07-10
+> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote
+> **updated:** 2026-07-11
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -260,6 +260,36 @@ only after unexplained slow tok/s).
   "/sys/class/drm/card0/device/vendor"` — GB10's sysfs layout differs from discrete GPUs. This is
   due to the newness of GB10 and is **safely ignorable** — ONNX functions normally despite the
   warning. PyTorch 2.9.1+cu129 confirmed working with Wan2GP on GB10.
+
+### Batch 6 forum ingest (2026-07-11)
+
+- **[reported]** **Random shutdowns after long uptime — thermal paste degradation** (S-forum-thermal-shutdown):
+  multiple users report Sparks powering off randomly after weeks/months of continuous operation, with
+  **no OOM or thermal logs** to explain the shutdown. One user (arctic.gus) found thermal paste
+  **dried out** on both units after months of 24/7 use; CPU temp sensor was hitting 95°C regularly.
+  Repasting + removing the outer shell (adding USB fans) brought idle to ~27°C, load to 65–73°C, and
+  **eliminated all shutdowns** for 6+ weeks. The OS thermal sensor likely reports an **average of all
+  cores, not the hot-spot** — one core corner may exceed 105°C while the sensor reads lower, inducing
+  a silent thermal shutdown. Heatsink contact gaps/air bubbles observed on disassembly. **Second
+  user** (Zatz): same symptom traced to a **PDU fault** — one Spark unable to exceed ~35 W before
+  tripping/shutting down with zero logs; fix was unplugging PDU from wall + Spark for ~30 s.
+  **Third user** (robin.s): environmental heat was a factor; stacking Sparks worsened it.
+  - **[conjecture]** Same user (arctic.gus) reports the **GPU power-controller wedge** (see above)
+    also stopped recurring after repaste + case removal — suggesting the wedge may have a **thermal
+    root cause** in some cases, not purely firmware. This is a single-source observation; the
+    proven firmware-level root cause stands, but thermal stress may be a contributing trigger.
+- **[conjecture]** **No Wake-on-LAN support on DGX Spark** (S-forum-thermal-shutdown, peter.h177):
+  the Spark does not support WoL. The only automated recovery for an unresponsive/shut-down unit is
+  the **Auto Boot BIOS setting** (on by default on FE) combined with a **hard power cycle** (e.g.
+  IoT relay on the power brick, driven by a monitoring RPi/ESP32 via GPIO). A watchdog script
+  (pinging mDNS every ~5 min, triggering relay on consecutive failures) recovers both thermal
+  shutdowns and OOM wedges. See also `[[wiki/platform-gb10.md]]` → auto-power-on for headless.
+- **[conjecture]** **Nsight Systems remote profiling requires sudo access** (S-forum-nsight-remote,
+  mt42): Nsight Systems GUI on a remote host (e.g. MacBook) connecting via SSH to a Spark requires
+  the SSH user to have **passwordless sudo** — if `sudo` prompts for a password, Nsight's remote
+  target init fails with "No root access: Superuser (sudo) access is required." Workaround: enable
+  `NOPASSWD` in sudoers for the profiling user, or SSH as root (not recommended). DGX Spark's
+  default sudo config prompts for a password.
 
 ## Reference cluster
 

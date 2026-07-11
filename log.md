@@ -157,3 +157,23 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
 - **Containers/Tooling:** DIFFUSERS_ATTN_BACKEND=_native_cudnn, diffusion model benchmarks.
 - **Pages touched:** models/mimo-v2.5, models/minimax, benchmarks, quantization-on-gb10,
   containers-and-tooling, sources/README, log, index.
+
+## 2026-07-11 — Batch 6 forum ingest: 3 new NVIDIA DGX Spark forum topics
+
+- **Sources:** 3 new forum topics found by fetch_new_topics.py. All 3 were technically relevant
+  (no social/buying/RMA to skip). 3 new sources registered as `S-forum-*` in `sources/README.md`
+  (Batch 6 section). 3 topic IDs added to `sources/processed_topics.txt` (total now 352).
+- **Platform:** Random shutdowns after long uptime (55+ days) — thermal paste degradation on
+  CPU after months of continuous use, OS thermal sensor may report average not hot-spot (one core
+  hitting 105°C while sensor reads 95°C). Repaste + case removal fixes (idle 27°C, load 65–73°C).
+  PDU fault variant (Spark unable to exceed 35W, zero logs, PDU power-cycle fixes). Same user
+  reports GPU power-controller wedge also stopped after repaste — [conjecture] thermal stress
+  may be a contributing trigger for the wedge. No WoL on Spark — Auto Boot + hard power cycle
+  (IoT relay) is the only automated recovery. Nsight Systems remote profiling requires
+  passwordless sudo on the SSH target.
+- **Multinode:** 3-node ring topology fails at NCCL init — sparkrun "auto" detects "3 nodes 2
+  ports" and defaults to Switch topology instead of Ring. NVIDIA has a dedicated 3-node ring
+  guide on build.nvidia.com. Cable mixing (ASUS vs NVIDIA store no-name) causes MTU mismatch
+  (1500 vs 9000). Explicit SSH hostname→IP resolution critical for >2 nodes (mgmt-IP wall
+  scales with node count).
+- **Pages touched:** platform-gb10, multinode-tp-and-networking, sources/README, log, index.

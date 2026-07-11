@@ -195,6 +195,14 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-diffusion-speeds | forum | Image diffusion speeds on GB10: Z-Image-Turbo/SDXL/Qwen-Image/ERNIE/FLUX.2-klein/Krea2 benchmarks, DIFFUSERS_ATTN_BACKEND=_native_cudnn, NVFP4 quant speedups (ijontichy) | https://forums.developer.nvidia.com/t/369095 | 2026-05-05 |
 | S-forum-m27-recipe | forum | MiniMax-M2.7 NVFP4/AWQ/FP8 recipes & benchmarks on 2×/4× Spark — FlashInfer-CUTLASS vs CUTLASS, AWQ beats NVFP4 decode, FP8 4×=36 tok/s, AWQ 4×=41.6 tok/s (serapis, ekkis, aostang, miken, co-le) | https://forums.developer.nvidia.com/t/366324 | 2026-04-12 |
 
+## Batch 6 forum sources (2026-07-11 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-nsight-remote | forum | Nsight Systems remote profiling on DGX Spark — SSH sudo requirement, no passwordless sudo for remote target (mt42) | https://forums.developer.nvidia.com/t/376266 | 2026-07-09 |
+| S-forum-thermal-shutdown | forum | Sparks randomly powering off after long uptime — thermal paste degradation, CPU hot-spot sensor blind spot, repaste+case removal fixes; PDU fault variant (arctic.gus, Zatz, robin.s) | https://forums.developer.nvidia.com/t/376103 | 2026-07-08 |
+| S-forum-3node-nccl | forum | 3-node DGX Spark NCCL failure — sparkrun auto detects switch vs ring, cable mixing (no-name 1500 MTU vs ASUS 9000 MTU), explicit SSH hostname resolution needed (nvidia4468, amurnane123, karol.spark) | https://forums.developer.nvidia.com/t/376215 | 2026-07-09 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

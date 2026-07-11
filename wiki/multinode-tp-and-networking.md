@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x
-> **updated:** 2026-07-09
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl
+> **updated:** 2026-07-11
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -234,3 +234,24 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
   baseline 21.5), 110.9 tok/s @ n8. Gemma-4-31B + MTP on 4× Spark: 26.68 tok/s @ n1 (+154%), 153 tok/s
   @ n8 (+80%). For Qwen3.5 with hybrid attention, also needs `--mamba-scheduler-strategy` settings.
   `--speculative-num-steps 3 --speculative-num-draft-tokens 4` is the winning config.
+
+### Batch 6 forum ingest (2026-07-11)
+
+- **[conjecture]** **3-node ring topology challenges** (S-forum-3node-nccl, nvidia4468): expanding
+  from 2→3 Sparks fails at NCCL init, even with all standard prerequisites (passwordless sudo, SSH
+  keys, firewall disabled, identical firmware/CUDA). sparkrun's "auto" NCCL setup detects **"3 nodes
+  2 ports"** and wants to configure a **Switch topology instead of a Ring** — odd node counts don't
+  cleanly map to the dual-port CX-7 ring model (port0→port1 per node). NVIDIA's build.nvidia.com has
+  a dedicated "Connect Three DGX Spark in a Ring Topology" guide — follow it for 3-node setups
+  rather than extrapolating from the 2-node recipe.
+- **[conjecture]** **Cable mixing causes MTU mismatch** (S-forum-3node-nccl): mixing ASUS QSFP
+  cables with the NVIDIA store's "$99 recommended" no-name cable (type unspecified — QSFP56 or
+  QSFP112 unclear) produces inconsistent MTU negotiation — the no-name cable's port comes up at
+  **1500 MTU** while ASUS cables negotiate at 9000 MTU. Manual netplan MTU 9000 override did not
+  fix the NCCL failure. Use identical cables from the same vendor for all links in a cluster.
+- **[conjecture]** **Explicit SSH hostname→IP resolution needed for >2 nodes** (S-forum-3node-nccl,
+  amurnane123): on a 4-node cluster, SSH must be explicitly configured so that hostnames always
+  resolve to the correct fabric IPs (not mDNS or mgmt LAN IPs). The mgmt-IP wall
+  (see `[[wiki/multinode-tp-and-networking.md]]` → Cross-node bring-up) scales with node count —
+  more nodes = more chances for a component to advertise a mgmt IP. Hardcode `/etc/hosts` entries
+  or use explicit `HostName` in SSH config for every node pair.

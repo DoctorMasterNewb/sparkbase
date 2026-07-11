@@ -77,3 +77,10 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   quantization-on-gb10 (FlashInfer-CUTLASS stability, diffusion weight-only vs activation-quantized
   NVFP4 distinction), containers-and-tooling (DIFFUSERS_ATTN_BACKEND=_native_cudnn speedup,
   diffusion model benchmark table).
+
+## Forum ingest 2026-07-11 (Batch 6)
+- 3 new forum topics found, all technically relevant.
+- 3 new sources registered (Batch 6). 3 topic IDs added to processed_topics.txt (total now 352).
+- Pages touched: platform-gb10 (random shutdowns — thermal paste degradation, CPU hot-spot sensor
+  blind spot, PDU fault variant, no WoL, Nsight Systems sudo requirement), multinode-tp-and-networking
+  (3-node ring topology NCCL failure, cable mixing MTU mismatch, explicit SSH resolution for >2 nodes).
