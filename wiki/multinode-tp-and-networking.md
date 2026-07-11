@@ -3,7 +3,7 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt
 > **updated:** 2026-07-11
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
@@ -255,3 +255,11 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
   (see `[[wiki/multinode-tp-and-networking.md]]` → Cross-node bring-up) scales with node count —
   more nodes = more chances for a component to advertise a mgmt IP. Hardcode `/etc/hosts` entries
   or use explicit `HostName` in SSH config for every node pair.
+
+### Batch 7 forum ingest (2026-07-11)
+
+- **[conjecture]** **NCCL v2.30u1 CGA buffer pushes GB10 startup check over** (S-forum-mimo-2x-opt,
+  renek): newer NCCL (v2.30u1) reserves a ~7.5 GiB CGA buffer that can push the GB10 startup memory
+  check over the limit. Fix: use a GB10-targeted NCCL build + `NCCL_CUMEM_ENABLE=0`. Consistent
+  with the existing `NCCL_CUMEM_ENABLE=0` requirement proven on this pair. Also pin
+  `NCCL_NTHREADS=8`, `NCCL_NSOCKS_PERTHREAD=2`, `NCCL_BUFFSIZE=8388608` for the MiMo TP=2 recipe.

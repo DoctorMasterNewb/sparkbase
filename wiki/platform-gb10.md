@@ -3,7 +3,7 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote
+> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding
 > **updated:** 2026-07-11
 
 The hardware facts every model bring-up assumes. Read this first.
@@ -290,6 +290,20 @@ only after unexplained slow tok/s).
   target init fails with "No root access: Superuser (sudo) access is required." Workaround: enable
   `NOPASSWD` in sudoers for the profiling user, or SSH as root (not recommended). DGX Spark's
   default sudo config prompts for a password.
+
+### Batch 7 forum ingest (2026-07-11)
+
+- **[conjecture]** **First-boot WiFi onboarding SSID never broadcasts on some units**
+  (S-forum-onboarding, griffith.mark): on at least two separate DGX Sparks (one purchased six
+  months apart), the advertised WiFi setup network (SSID + password on the included card) was
+  **never transmitted** — no setup SSID visible from a Mac, regardless of power-cycles. The QR
+  code on the card resolves to the **DGX Spark product page** (not a setup guide), offering no
+  troubleshooting for the failed wireless path. **Workaround:** connect a monitor + keyboard —
+  the first-boot wizard launches immediately and proceeds normally (user creation, networking,
+  updates). A second user (amurnane123) reports WiFi onboarding worked flawlessly on 4 units
+  (headless, power + ethernet only) — so the missing-SSID behavior is **not universal**, may be
+  unit-specific or batch-specific. Status: `open` — no known fix for the missing SSID; NVIDIA
+  has not commented.
 
 ## Reference cluster
 

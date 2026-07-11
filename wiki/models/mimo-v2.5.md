@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-mimo-results, S-mimo-doc, S-dflash-nvfp4, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-mimo-tp2-1m, S-forum-mimo-dflash-22-67, S-forum-mimo-dflash-v024, S-forum-mimo-sglang-4x
-> **updated:** 2026-07-10
+> **sources:** S-mimo-results, S-mimo-doc, S-dflash-nvfp4, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-mimo-tp2-1m, S-forum-mimo-dflash-22-67, S-forum-mimo-dflash-v024, S-forum-mimo-sglang-4x, S-forum-mimo-2x-opt
+> **updated:** 2026-07-11
 
 MiMo-V2.5 — 310B Omni MoE, **MIXED_PRECISION = MXFP8 dense + NVFP4 experts**, DiffKV
 (`v_head_dim=128 ≠ head_dim=192`), text+vision. The production cluster MoE. Base
@@ -206,3 +206,53 @@ checkpoint-specific quant loaders (qkv/merger/packed) + triton kernel arg drift.
 - **[conjecture]** MiMo-V2.5 NVFP4 quant (`lukealonso/MiMo-V2.5-NVFP4`, ~174 GB) should fit 2×
   Spark for context, per size estimate (S-forum-mimo-sglang-4x, voktolom). Not yet benchmarked
   on 2× at time of posting.
+
+## Forum ingest: 2-node optimization thread — renek recipe + tonyd615 repo (2026-07-11)
+
+- **[reported]** **Detailed 2-node vLLM recipe** (S-forum-mimo-2x-opt, renek post #11): full
+  recipe corroborates existing first-party + forum findings, with new specifics:
+  - **[conjecture]** **Driver version affects KV pool size**: driver 595.71.05 gives a smaller KV
+    pool (~233K tokens) than 595.58.03 (~368K tokens), with no throughput difference. Single
+    source — needs verification.
+  - **[conjecture]** **NCCL CGA buffer on newer NCCL**: NCCL v2.30u1 reserves a ~7.5 GiB CGA buffer
+    that pushes the GB10 startup check over. Fix: use a GB10-targeted NCCL build +
+    `NCCL_CUMEM_ENABLE=0`. Consistent with existing `[[wiki/multinode-tp-and-networking.md]]`
+    NCCL findings.
+  - **[conjecture]** **`TRITON_ATTN_DIFFKV` raises `NotImplementedError` on any quantized
+    `kv_cache_dtype`** — but the underlying store kernel already accepts dtype + scales. The
+    guard is defensive; disabling it allows `--kv-cache-dtype fp8_e4m3`, which roughly doubles
+    the KV pool. This is a new finding not previously documented; first-party recipes use fp8
+    KV with TRITON_ATTN_DIFFKV successfully, so the guard may have been relaxed in later vLLM
+    versions.
+  - **[conjecture]** **`gpu_memory_utilization` 0.89 is the hard ceiling — 0.90 fails the GB10
+    startup guard.** Confirms the proven pattern of conservative util on unified memory.
+  - **[conjecture]** **MTP=2 acceptance rates**: pos-0 ≈ 86%, pos-1 ≈ 45%, overall ≈ 65%.
+    MTP=3 is ~6% slower. The model is trained for 2 speculative tokens. This is the lever that
+    gets single-stream to ~30 tok/s (vs ~14 without).
+  - **[conjecture]** **`--enforce-eager` is required at 160K ctx** — CUDA graphs blow the KV
+    budget. Confirms existing `[[wiki/cudagraphs-and-compile.md]]` findings.
+  - **[conjecture]** **`VLLM_USE_RAY_V2_EXECUTOR_BACKEND=0`** — each "1" costs ~12 GiB on node 2;
+    freeze to 0. Also `VLLM_USE_RAY_COMPILED_DAG_OVERLAP_COMM=0`.
+  - Full env: `VLLM_NVFP4_GEMM_BACKEND=flashinfer-cutlass`,
+    `VLLM_USE_FLASHINFER_MOE_FP4=1`, `VLLM_FLASHINFER_MOE_BACKEND=throughput`,
+    `NCCL_CUMEM_ENABLE=0`, `NCCL_NVLS_ENABLE=0`, `NCCL_NTHREADS=8`, `NCCL_NSOCKS_PERTHREAD=2`,
+    `NCCL_BUFFSIZE=8388608`, `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`.
+  - Config: TP=2, util=0.89, `max_model_len=163840` (160K), `max_num_batched_tokens=8192`,
+    `max_num_seqs=6`, `block_size=32`, `kv_cache_dtype=fp8_e4m3`,
+    `attention_backend=triton_attn_diffkv`, MTP `num_speculative_tokens=2`,
+    `--enforce-eager`, `--enable-prefix-caching`, `--enable-chunked-prefill`,
+    `--load-format instanttensor`, `--enable-auto-tool-choice --tool-call-parser mimo`,
+    `--distributed-executor-backend ray`.
+  - Performance: ~30–33 tok/s single-stream decode, ~57–63 tok/s aggregate at 3 concurrent
+    streams. KV pool ~233K tokens (fp8 KV). Theoretical roofline on 2× GB10 ≈ 52 tok/s, so
+    single-stream is ~60% of roofline.
+  - Omni multimodal path: serve the absolute snapshot path (not the HF repo id), or the
+    `audio_tokenizer` loader breaks; don't skip the `audio_tokenizer` weights.
+- **[conjecture]** **tonyd615 GitHub recipe repo** (S-forum-mimo-2x-opt, tonyd615 post #16):
+  `tonyd2wild/MiMo-V2.5-NVFP4-2x-DGX-Sparks-TP-2` — tuned recipe achieving ~38 tok/s
+  (slightly faster than renek's 30-33), Quality 89.9, 160K context, omnimodal + tool-calling,
+  non-eager + MTP=2. The "non-eager" claim conflicts with renek's `--enforce-eager` requirement
+  at 160K — may use a shorter context or different KV config. Single source.
+- **[conjecture]** **renek synthetic vs real-world gap** (S-forum-mimo-2x-opt, renek post #17):
+  39 tok/s in synthetic tests but only ~33 tok/s real-world — suggests ~33 tok/s is the practical
+  single-stream ceiling for MiMo-V2.5-NVFP4 on 2× Spark TP=2 until DFlash integration matures.

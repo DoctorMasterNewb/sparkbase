@@ -203,6 +203,13 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-thermal-shutdown | forum | Sparks randomly powering off after long uptime — thermal paste degradation, CPU hot-spot sensor blind spot, repaste+case removal fixes; PDU fault variant (arctic.gus, Zatz, robin.s) | https://forums.developer.nvidia.com/t/376103 | 2026-07-08 |
 | S-forum-3node-nccl | forum | 3-node DGX Spark NCCL failure — sparkrun auto detects switch vs ring, cable mixing (no-name 1500 MTU vs ASUS 9000 MTU), explicit SSH hostname resolution needed (nvidia4468, amurnane123, karol.spark) | https://forums.developer.nvidia.com/t/376215 | 2026-07-09 |
 
+## Batch 7 forum sources (2026-07-11 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-mimo-2x-opt | forum | MiMo-V2.5 Flash on 2 Nodes optimization thread — detailed renek recipe (FA3 crash, TRITON_ATTN_DIFFKV guard bypass, driver KV pool diff, NCCL CGA buffer, MTP acceptance, 30-33 tok/s) + tonyd615 GitHub repo (38 tok/s, non-eager) | https://forums.developer.nvidia.com/t/373669 | 2026-06-18 |
+| S-forum-onboarding | forum | DGX Spark first-boot onboarding: WiFi setup SSID never broadcasts on some units, QR code → product page not setup guide, monitor+keyboard workaround | https://forums.developer.nvidia.com/t/376293 | 2026-07-10 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

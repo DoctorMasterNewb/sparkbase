@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds
-> **updated:** 2026-07-10
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt
+> **updated:** 2026-07-11
 
 Single-stream decode unless noted. All on the 2× GB10 pair. Numbers anchor the rules on
 `[[wiki/platform-gb10.md]]` (bandwidth-bound) and `[[wiki/quantization-on-gb10.md]]` (MoE-NVFP4 wins).
@@ -210,6 +210,7 @@ first-party.
 ||| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
 |||---|---|---|---|---|---|---|---||| 
 ||| MiMo-V2.5 (native FP8) | FP8 (310B) | SGLang | 4 (TP=4) | 31.5 | 256K | EAGLE disabled (OOM); TTFT 0.46s; fp8 KV; tool eval 89/100; vision+audio+video | S-forum-mimo-sglang-4x ||
+||| MiMo-V2.5-NVFP4 (renek recipe) | NVFP4 + fp8 KV | vLLM (Ray) | 2 (TP=2) | 30-33 (single) / 57-63 agg@c3 | 160K | enforce-eager, MTP=2 (86%/45% accept), util=0.89, triton_attn_diffkv; 38 tok/s claimed by tonyd615 (non-eager) | S-forum-mimo-2x-opt ||
 ||| MiniMax-M2.7-NVFP4 | NVFP4 (FlashInfer-CUTLASS) | vLLM | 2 (TP=2) | 24.12 (tg128) | 225K | FlashInfer-CUTLASS + throughput backend; no-Ray slightly better; CUTLASS baseline ~22 | S-forum-m27-recipe ||
 ||| MiniMax-M2.7-AWQ-4bit | AWQ 4-bit | vLLM | 2 (TP=2) | 39.4 (tg128) / 41.6 (tg32) | 196K | Clear decode winner — ~1.5× NVFP4; 3 independent reporters agree | S-forum-m27-recipe ||
 ||| MiniMax-M2.7 (Unsloth FP8) | FP8 | vLLM | 4 (TP=4) | 36–37 | — | No degradation vs NVFP4, slight increase; cache hit 53.6 @ 2 concurrent | S-forum-m27-recipe ||

@@ -3,8 +3,8 @@
 > **area:** attention
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-m3-vision, S-mimo-results, S-mimo-doc, S-sess-jun5, S-sess-jun4, S-dflash-nvfp4
-> **updated:** 2026-07-08
+> **sources:** S-m3-vision, S-mimo-results, S-mimo-doc, S-sess-jun5, S-sess-jun4, S-dflash-nvfp4, S-forum-mimo-2x-opt
+> **updated:** 2026-07-11
 
 Which `--attention-backend` to pass is decided by the model's attention type, not preference. Get it
 wrong and KV-cache init fails or numerics are subtly off.
@@ -65,3 +65,13 @@ wrong and KV-cache init fails or numerics are subtly off.
 
 ## See also
 `[[wiki/quantization-on-gb10.md]]` · `[[wiki/platform-gb10.md]]` · `[[wiki/models/minimax.md]]` · `[[wiki/models/mimo-v2.5.md]]`
+
+## Forum ingest: TRITON_ATTN_DIFFKV quantized KV guard (2026-07-11)
+
+- **[conjecture]** **`TRITON_ATTN_DIFFKV` raises `NotImplementedError` on quantized
+  `kv_cache_dtype`** (S-forum-mimo-2x-opt, renek): the backend's guard rejects any quantized KV
+  cache dtype, but the underlying store kernel already accepts dtype + scales. The guard is
+  defensive — disabling it allows `--kv-cache-dtype fp8_e4m3`, which roughly doubles the KV pool.
+  This conflicts with first-party findings where fp8 KV works fine with TRITON_ATTN_DIFFKV
+  (proven on dev39+), suggesting the guard was relaxed in later vLLM versions. If you hit this
+  error on an older build, patching the guard is the workaround.

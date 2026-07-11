@@ -84,3 +84,13 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - Pages touched: platform-gb10 (random shutdowns — thermal paste degradation, CPU hot-spot sensor
   blind spot, PDU fault variant, no WoL, Nsight Systems sudo requirement), multinode-tp-and-networking
   (3-node ring topology NCCL failure, cable mixing MTU mismatch, explicit SSH resolution for >2 nodes).
+
+## Forum ingest 2026-07-11 (Batch 7)
+- 2 new forum topics found, both technically relevant.
+- 2 new sources registered (Batch 7). 2 topic IDs added to processed_topics.txt (total now 354).
+- Pages touched: models/mimo-v2.5 (detailed 2-node renek recipe — driver KV pool diff, NCCL CGA buffer,
+  MTP acceptance rates, enforce-eager at 160K, full env/config, 30-33 tok/s; tonyd615 repo 38 tok/s
+  non-eager; synthetic vs real-world gap), platform-gb10 (first-boot WiFi SSID not broadcasting,
+  QR→product page, monitor+keyboard workaround), attention-and-kv-cache (TRITON_ATTN_DIFFKV
+  quantized KV guard), multinode-tp-and-networking (NCCL v2.30u1 CGA buffer), benchmarks (1 new
+  forum-reported row: MiMo-V2.5-NVFP4 renek recipe 30-33 tok/s).

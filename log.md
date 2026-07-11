@@ -177,3 +177,24 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   (1500 vs 9000). Explicit SSH hostname→IP resolution critical for >2 nodes (mgmt-IP wall
   scales with node count).
 - **Pages touched:** platform-gb10, multinode-tp-and-networking, sources/README, log, index.
+
+## 2026-07-11 — Batch 7 forum ingest: 2 new NVIDIA DGX Spark forum topics
+
+- **Sources:** 2 new forum topics found by fetch_new_topics.py. Both technically relevant.
+  2 new sources registered as `S-forum-*` in `sources/README.md` (Batch 7 section). 2 topic IDs
+  added to `sources/processed_topics.txt` (total now 354).
+- **MiMo-V2.5:** Detailed 2-node optimization thread (topic 373669, 166 posts). renek posted a
+  full vLLM recipe with new GB10-specific findings: driver 595.71.05 gives smaller KV pool than
+  595.58.03 (~233K vs ~368K tokens); NCCL v2.30u1 reserves ~7.5 GiB CGA buffer that pushes GB10
+  startup check over; TRITON_ATTN_DIFFKV has a defensive guard rejecting quantized KV (patchable);
+  MTP=2 acceptance pos-0≈86%, pos-1≈45%, overall≈65%; util 0.89 hard ceiling (0.90 fails);
+  enforce-eager required at 160K ctx; VLLM_USE_RAY_V2_EXECUTOR_BACKEND=0 saves ~12 GiB on node 2.
+  Performance: 30-33 tok/s single-stream, 57-63 tok/s aggregate@c3. tonyd615 published GitHub
+  repo claiming 38 tok/s non-eager (conflicts with renek's enforce-eager requirement — may use
+  shorter ctx). renek reports synthetic 39 tok/s but real-world ~33 tok/s ceiling.
+- **Platform:** First-boot WiFi onboarding SSID never broadcasts on some units (topic 376293).
+  Two separate DGX Sparks (6 months apart) never transmitted the setup SSID. QR code → product
+  page, not setup guide. Monitor+keyboard is the workaround. Not universal — second user reports
+  WiFi onboarding worked on 4 units. Status: open, no known fix.
+- **Pages touched:** models/mimo-v2.5, platform-gb10, attention-and-kv-cache,
+  multinode-tp-and-networking, benchmarks, sources/README, log, index.
