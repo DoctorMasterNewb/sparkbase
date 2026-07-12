@@ -198,3 +198,16 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   WiFi onboarding worked on 4 units. Status: open, no known fix.
 - **Pages touched:** models/mimo-v2.5, platform-gb10, attention-and-kv-cache,
   multinode-tp-and-networking, benchmarks, sources/README, log, index.
+
+## 2026-07-12 — Batch 8 forum ingest: 1 new NVIDIA DGX Spark forum topic
+
+- **Sources:** 1 new forum topic found by fetch_new_topics.py. Technically relevant.
+  1 new source registered as `S-forum-*` in `sources/README.md` (Batch 8 section). 1 topic ID
+  added to `sources/processed_topics.txt` (total now 355).
+- **Platform:** GPU clock wedge follow-up (topic 376239, by florin.andrei + 0rand). Confirms 5 min
+  power-off wait is sufficient (down from 30 min previously reported) — [reported] (corroborates
+  existing ≥60 s guidance). New power-drain method: disconnect power brick, hold power button
+  5–10 s to drain capacitors — no wait needed — [conjecture] (single source). Root cause hypothesis:
+  the wedge is in PSU power-control circuits stuck in a safety protocol, not the GPU silicon —
+  [conjecture] (single source, consistent with proven symptom).
+- **Pages touched:** platform-gb10, sources/README, log, index.

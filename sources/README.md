@@ -210,6 +210,12 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-mimo-2x-opt | forum | MiMo-V2.5 Flash on 2 Nodes optimization thread — detailed renek recipe (FA3 crash, TRITON_ATTN_DIFFKV guard bypass, driver KV pool diff, NCCL CGA buffer, MTP acceptance, 30-33 tok/s) + tonyd615 GitHub repo (38 tok/s, non-eager) | https://forums.developer.nvidia.com/t/373669 | 2026-06-18 |
 | S-forum-onboarding | forum | DGX Spark first-boot onboarding: WiFi setup SSID never broadcasts on some units, QR code → product page not setup guide, monitor+keyboard workaround | https://forums.developer.nvidia.com/t/376293 | 2026-07-10 |
 
+## Batch 8 forum sources (2026-07-12 ingest)
+
+| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-clock-5min | forum | GPU clock wedge follow-up: 5 min power-off wait sufficient (was 30 min); power-drain method (hold power button 5-10s, no wait); root cause hypothesized in PSU power-control circuits stuck in safety protocol (florin.andrei, 0rand) | https://forums.developer.nvidia.com/t/376239 | 2026-07-09 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

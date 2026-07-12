@@ -85,6 +85,12 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   blind spot, PDU fault variant, no WoL, Nsight Systems sudo requirement), multinode-tp-and-networking
   (3-node ring topology NCCL failure, cable mixing MTU mismatch, explicit SSH resolution for >2 nodes).
 
+## Forum ingest 2026-07-12 (Batch 8)
+- 1 new forum topic found, technically relevant.
+- 1 new source registered (Batch 8). 1 topic ID added to processed_topics.txt (total now 355).
+- Pages touched: platform-gb10 (GPU clock wedge follow-up — 5 min wait sufficient [reported],
+  power-drain method [conjecture], PSU root-cause hypothesis [conjecture]).
+
 ## Forum ingest 2026-07-11 (Batch 7)
 - 2 new forum topics found, both technically relevant.
 - 2 new sources registered (Batch 7). 2 topic IDs added to processed_topics.txt (total now 354).

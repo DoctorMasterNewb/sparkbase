@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding
-> **updated:** 2026-07-11
+> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min
+> **updated:** 2026-07-12
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -140,6 +140,23 @@ symptoms match the first-party finding above):
 **[conjecture]** A `spark-doctor` / `spark-gpu-throttle-check` script should be run on every new
 bring-up to rule out the wedge before benchmarking (multiple forum users discovered the wedge
 only after unexplained slow tok/s).
+
+### Batch 8 forum ingest (2026-07-12)
+
+- **[reported]** **5 min power-off wait is sufficient** (S-forum-clock-5min, florin.andrei): the
+  original thread's comments mentioned a 30 min wait; a follow-up confirms a **5 min** wait
+  (power off, disconnect power brick both sides, wait 5 min, reconnect, boot) cleared the wedge.
+  This corroborates the existing ≥60 s guidance and suggests the residual drain time needed is
+  shorter than initially reported.
+- **[conjecture]** **Power-drain method — no wait needed** (S-forum-clock-5min, 0rand): an
+  alternative to waiting: disconnect the power brick from the AC socket (not from the unit),
+  then **press and hold the power button 5–10 s** to drain the capacitors, then reconnect. The
+  user attributes the root cause to the **PSU power-control circuits** getting stuck in a safety
+  protocol — not the GPU or the unit itself. Single source; plausible mechanism consistent with
+  the proven symptom, but the capacitor-drain technique is unverified by other sources.
+  - **[conjecture]** Root cause hypothesis: the wedge is in the **PSU's power-control logic**,
+    not the GPU silicon (S-forum-clock-5min, 0rand). This is a single-source forum hypothesis;
+    the proven observation is that a full AC power-cycle clears it and a reboot does not.
 
 ### Batch 2 forum ingest (2026-07-08)
 
