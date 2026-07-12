@@ -216,6 +216,13 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 |---|---|---|---|---|
 | S-forum-clock-5min | forum | GPU clock wedge follow-up: 5 min power-off wait sufficient (was 30 min); power-drain method (hold power button 5-10s, no wait); root cause hypothesized in PSU power-control circuits stuck in safety protocol (florin.andrei, 0rand) | https://forums.developer.nvidia.com/t/376239 | 2026-07-09 |
 
+## Batch 9 forum sources (2026-07-12 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-reboot-powercycle | forum | DGX Spark reboot doesn't complete — shuts down but doesn't power back on; requires USB-C cable removal + reinsert; intermittent (full shutdown + power button also works) (jp176) | https://forums.developer.nvidia.com/t/376431 | 2026-07-10 |
+| S-forum-cx7-dual-setup | forum | Two DGX Sparks over CX-7 direct link field report — 200G QSFP56 DAC works, iperf3 TCP ~16 Gb/s (Grace CPU ceiling), SSH ~600 MB/s, DCGM works on GB10 (Xid + PCIe replay), PSI+swap-out OOM alerting, cluster tax metric, Amphenol NJAAKK-N911 certified cable ID (griffith.mark, mashie) | https://forums.developer.nvidia.com/t/376298 | 2026-07-10 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

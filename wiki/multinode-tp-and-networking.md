@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt
-> **updated:** 2026-07-11
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup
+> **updated:** 2026-07-12
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -263,3 +263,48 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
   check over the limit. Fix: use a GB10-targeted NCCL build + `NCCL_CUMEM_ENABLE=0`. Consistent
   with the existing `NCCL_CUMEM_ENABLE=0` requirement proven on this pair. Also pin
   `NCCL_NTHREADS=8`, `NCCL_NSOCKS_PERTHREAD=2`, `NCCL_BUFFSIZE=8388608` for the MiMo TP=2 recipe.
+
+### Batch 9 forum ingest (2026-07-12)
+
+- **[conjecture]** **Third-party 200G QSFP56 passive DAC works immediately** (S-forum-cx7-dual-setup,
+  griffith.mark): a standard 200G QSFP56 passive DAC (sourced from Memory Express, Canada) linked
+  at 200 Gb/s immediately with no configuration — the NVIDIA-branded "DGX Spark Stacking DAC Cable"
+  is not required. The NVIDIA-certified part appears to be **Amphenol NJAAKK-N911** (QSFP112,
+  400 mm), though NVIDIA's Spark Stacking guide publishes no part number. NVIDIA's guide says to
+  use the same port on both units (both left or both right, viewed from rear).
+- **[conjecture]** **Both CX-7 ports sit in a single L2 domain via NIC eSwitch** (S-forum-cx7-dual-setup,
+  griffith.mark): on both machines, both CX-7 ports sit in a single L2 domain via the NIC's eSwitch,
+  so exact port-to-port choice doesn't matter in practice for a direct-cabled pair. This is a
+  useful clarification — the guide's "same port" advice is not a hard requirement.
+- **[conjecture]** **Plain TCP (iperf3) ceiling ~16 Gb/s — Grace CPU is the bottleneck, not the
+  link** (S-forum-cx7-dual-setup, griffith.mark): iperf3 with 8 streams over the CX-7 link yields
+  ~16 Gb/s — the Grace CPU's TCP stack is the bottleneck, not the 200G link. Jumbo frames (MTU 9000)
+  did **not** change this. The 200G bandwidth is for RDMA/RoCE (NCCL, multi-node engines), not TCP.
+  SSH file transfers: ~600 MB/s (a 51 GB checkpoint ships in ~85 s). This corroborates the proven
+  finding that cross-node collectives are host-staged — the CPU is in the data path for any
+  non-RDMA traffic.
+- **[conjecture]** **NetworkManager config for CX-7 direct link** (S-forum-cx7-dual-setup,
+  griffith.mark): persistent fabric interface config via NetworkManager:
+  `nmcli con add type ethernet ifname enp1s0f0np0 con-name cx7-cluster ipv4.method manual
+  ipv4.addresses 10.77.0.1/24 ipv6.method disabled connection.autoconnect yes`
+  (.2 on the other node), plus `/etc/hosts` aliases. MTU 9000 validated with
+  `ping -M do -s 8972` to rule out silent blackhole. Interface name `enp1s0f0np0` differs from
+  the `rocep1s0f1`/`roceP2p1s0f1` naming in the reference cluster — naming may vary by driver
+  version or OEM.
+- **[conjecture]** **DCGM works on GB10 including Xid error and PCIe replay counters**
+  (S-forum-cx7-dual-setup, griffith.mark): DCGM monitoring works fine on GB10, including
+  Xid error counters and PCIe replay counters. Per-link fabric counters (throughput, retransmits
+  on CX-7 interfaces) are scraped over the fabric itself so monitoring survives LAN/WiFi flaps.
+  This corroborates that DCGM is functional on the GB10 platform.
+- **[conjecture]** **PSI (pressure stall) + swap-out rate is better OOM alerting than static memory
+  thresholds for inference nodes** (S-forum-cx7-dual-setup, griffith.mark): static "low free memory"
+  thresholds are wrong for inference nodes — an engine that reserves 95% of unified memory up front
+  leaves ~9 GB free by design and is healthy. Moving OOM alerting to **PSI (pressure stall
+  information) + swap-out rate** catches real contention instead of alerting on a working
+  reservation. A "cluster tax" metric (multi-node throughput ÷ sum of same nodes run independently)
+  gives one number for what the interconnect costs.
+- **[conjecture]** **200G links are used during model startup but never at 100% load**
+  (S-forum-cx7-dual-setup, mashie): monitoring the 200G links during DeepSeek-V4-Flash startup
+  shows they are used, though never at 100% load. No errors clocked on any interfaces. This
+  corroborates the proven finding that cross-node collectives are host-staged (the link is
+  healthy but the CPU bounce caps effective collective throughput well below link rate).

@@ -3,7 +3,7 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min
+> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup
 > **updated:** 2026-07-12
 
 The hardware facts every model bring-up assumes. Read this first.
@@ -321,6 +321,20 @@ only after unexplained slow tok/s).
   (headless, power + ethernet only) — so the missing-SSID behavior is **not universal**, may be
   unit-specific or batch-specific. Status: `open` — no known fix for the missing SSID; NVIDIA
   has not commented.
+
+### Batch 9 forum ingest (2026-07-12)
+
+- **[conjecture]** **Reboot does not complete — requires USB-C cable removal**
+  (S-forum-reboot-powercycle, jp176): `sudo reboot` shuts the machine down but it
+  never powers back on — no power light, disappears from network. The only recovery
+  is to physically remove the USB-C power cable, wait ~10 s, reinsert, and press the
+  power button. A full `shutdown` followed by a power-button start also works, and a
+  subsequent reboot may succeed normally — the behavior is **intermittent**. The unit
+  is fully up to date including firmware; the latest update mentioned USB-C PD
+  stability fixes. This is distinct from the GPU power-controller wedge (no clock
+  pinning or low-power state observed) — it's a **power-delivery / soft-reboot
+  completion** issue. Single source; may be related to the USB-C PD firmware area
+  that NVIDIA is already patching. Status: `open`.
 
 ## Reference cluster
 

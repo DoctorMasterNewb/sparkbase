@@ -211,3 +211,23 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   the wedge is in PSU power-control circuits stuck in a safety protocol, not the GPU silicon —
   [conjecture] (single source, consistent with proven symptom).
 - **Pages touched:** platform-gb10, sources/README, log, index.
+
+## 2026-07-12 — Batch 9 forum ingest: 3 new NVIDIA DGX Spark forum topics
+
+- **Sources:** 3 new forum topics found by fetch_new_topics.py. 2 technically relevant; 1 skipped
+  (376447 = generic Ubuntu root account security question, not GB10-specific). 2 new sources
+  registered as `S-forum-*` in `sources/README.md` (Batch 9 section). 3 topic IDs added to
+  `sources/processed_topics.txt` (total now 358).
+- **Platform:** Reboot does not complete — `sudo reboot` shuts down but machine never powers back
+  on; requires USB-C cable removal + reinsert (intermittent, full shutdown + power button also
+  works). Distinct from GPU power-controller wedge — a power-delivery / soft-reboot completion
+  issue. USB-C PD firmware area may be relevant. [conjecture] (single source).
+- **Multinode:** Two DGX Sparks over CX-7 direct link field report (griffith.mark). Third-party
+  200G QSFP56 DAC works immediately (Amphenol NJAAKK-N911 is certified part). Both CX-7 ports in
+  single L2 domain via eSwitch — port choice doesn't matter. Plain TCP ceiling ~16 Gb/s (Grace
+  CPU bottleneck, not link; MTU 9000 doesn't help TCP). SSH ~600 MB/s. NetworkManager config
+  documented. DCGM works on GB10 (Xid + PCIe replay counters). PSI + swap-out rate better than
+  static memory thresholds for OOM alerting (engines reserve 95% of UMA by design). "Cluster tax"
+  metric for interconnect cost. mashie corroborates 200G links used but never at 100% load, no
+  interface errors.
+- **Pages touched:** platform-gb10, multinode-tp-and-networking, sources/README, log, index.

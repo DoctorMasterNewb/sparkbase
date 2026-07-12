@@ -91,6 +91,13 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - Pages touched: platform-gb10 (GPU clock wedge follow-up — 5 min wait sufficient [reported],
   power-drain method [conjecture], PSU root-cause hypothesis [conjecture]).
 
+## Forum ingest 2026-07-12 (Batch 9)
+- 3 new forum topics found (2 technically relevant, 1 skipped as non-GB10-specific).
+- 2 new sources registered (Batch 9). 3 topic IDs added to processed_topics.txt (total now 358).
+- Pages touched: platform-gb10 (reboot power-cycle completion failure [conjecture]),
+  multinode-tp-and-networking (CX-7 dual setup field report — third-party DAC, TCP ceiling ~16 Gb/s,
+  DCGM on GB10, PSI OOM alerting, NetworkManager config, cluster tax metric).
+
 ## Forum ingest 2026-07-11 (Batch 7)
 - 2 new forum topics found, both technically relevant.
 - 2 new sources registered (Batch 7). 2 topic IDs added to processed_topics.txt (total now 354).
