@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-m3-vision, S-m3-20tps, S-sess-jun11, S-minimax-sweeps, S-forum-m3-nvfp4-4x, S-forum-m3-awq-4x, S-forum-m3-llamacpp-2x, S-forum-m3-quad, S-forum-m3-w4a16-gptq, S-forum-m25-sglang-4x, S-forum-m27-recipe
-> **updated:** 2026-07-10
+> **sources:** S-m3-vision, S-m3-20tps, S-sess-jun11, S-minimax-sweeps, S-forum-m3-nvfp4-4x, S-forum-m3-awq-4x, S-forum-m3-llamacpp-2x, S-forum-m3-quad, S-forum-m3-w4a16-gptq, S-forum-m25-sglang-4x, S-forum-m27-recipe, S-forum-4node-crs504
+> **updated:** 2026-07-13
 
 Two very different MiniMax stories on GB10: **M2.7 AWQ** = the fast, durable daily-driver default;
 **M3** = a 428B research/long-context/vision endpoint that's structurally slow here.
@@ -249,3 +249,13 @@ tradeoff is context (b12x-vision ~113k vs our 262k). Both are viable; b12x-visio
   eugr reply): autotuner exceptions fixed, minor FlashInfer optimizations merged. Eugr plans to
   switch all NVFP4 recipes from `VLLM_CUTLASS` to `flashinfer-cutlass`. This is a significant
   backend-status update — see `[[wiki/quantization-on-gb10.md]]`.
+
+### Batch 11 forum ingest (2026-07-13)
+
+- **[conjecture]** **MiniMax-M3-AWQ + EAGLE on 4-node CRS504 switch** (S-forum-4node-crs504,
+  CosmicRaisins): M3-AWQ TP=4 with EAGLE drafter, 262K ctx, mns=4, bf16 KV, c=1. Decode 27.7–35.4
+  tok/s across context depths (0–64K), prefill 1684–2211 tok/s. This is consistent with existing
+  [reported] M3-AWQ TP=4 benchmarks (S-forum-m3-awq-tp4 33 tok/s, S-forum-m3-awq-4x ~30 tok/s)
+  — the 100G CRS504 switch doesn't degrade decode vs direct 200G. See
+  `[[wiki/benchmarks.md]]` for full table and `[[wiki/multinode-tp-and-networking.md]]` for
+  CRS504 findings.

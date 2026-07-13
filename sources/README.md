@@ -230,6 +230,13 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-nvfp4-worth | forum | NVFP4 quantization on Spark — NVIDIA refreshed build.nvidia.com recipe; Qwen3/Qwen3.6 27B hit TensorRT-LLM errors; community gist recipe (paul448) | https://forums.developer.nvidia.com/t/376530 | 2026-07-11 |
 | S-forum-nvidia-vfx | forum | No nvidia-vfx (Maxine VFX SDK) aarch64 wheel for DGX Spark — GB10 not in supported GPU list; NVIDIA confirmed no plans; ComfyUI RTX nodes broken (paulsc.liu, aniculescu) | https://forums.developer.nvidia.com/t/363267 | 2026-03-12 |
 
+## Batch 11 forum sources (2026-07-13 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-easy-vllm | forum | easy-vllm code-agent harness for vLLM on DGX Spark — DSV4-Flash on GB10 via jasl/vllm SM12x fork (PR#41834, SHA c766cbc6), --moe-backend humming, NVML clock telemetry patch, MXFP4 MoE→MARLIN-repack→UMA OOM, torch 2.11+ ABI wall, ib_write_bw 208-218 Gb/s, mem_watchdog+earlyoom (sh.ahn) | https://forums.developer.nvidia.com/t/376574 | 2026-07-11 |
+| S-forum-4node-crs504 | forum | 4-node DGX Spark cluster with CRS504 switch: DSV4-Flash TP=4 52-53.6 tok/s, M3-AWQ TP=4+EAGLE 28-35 tok/s, 100G vs 200G link (5-10% PP loss, no decode change), measured traffic ~13 Gb/s, $25 100G cable works (CosmicRaisins, corbett_korbett) | https://forums.developer.nvidia.com/t/373818 | 2026-07-11 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

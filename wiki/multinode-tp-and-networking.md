@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup
-> **updated:** 2026-07-12
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504
+> **updated:** 2026-07-13
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -308,3 +308,18 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
   shows they are used, though never at 100% load. No errors clocked on any interfaces. This
   corroborates the proven finding that cross-node collectives are host-staged (the link is
   healthy but the CPU bounce caps effective collective throughput well below link rate).
+
+### Batch 11 forum ingest (2026-07-13)
+
+- **[conjecture]** **100G link (CRS504 switch) costs only 5–10% PP, zero decode loss vs 200G**
+  (S-forum-4node-crs504, CosmicRaisins): on a 4-node CRS504 cluster, forcing a 2-node direct
+  link down to a single 100G rail showed no change in decode and only 5–10% prefill loss vs
+  the full 200G link. Measured inter-node traffic during TP=4 inference was only ~13 Gb/s —
+  far below even a single 100G rail. A $25 Amazon 100G cable works with zero issues on a
+  2-node direct link. **[reported]** corbett_korbett corroborates: 100G cable gives "pretty
+  much the same speed" as 200G. This strengthens the existing finding that cross-node
+  collectives are CPU-host-bounced (not link-bound) — a CRS504 switch is a viable cheaper
+  alternative to the CRS804 for 4-node clusters. See also S-forum-mikrotik (CRS504 option).
+- **[conjecture]** **CRS504 Noctua fan swap** (S-forum-4node-crs504, CosmicRaisins): swapping
+  stock CRS504 fans for Noctua 40mm significantly reduces noise, though the switch forces
+  ~5000 RPM minimum (slight whine remains). Non-critical ops finding.

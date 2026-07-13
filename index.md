@@ -105,6 +105,16 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   TensorRT-LLM errors [conjecture]), containers-and-tooling (nvidia-vfx no aarch64 wheel,
   NVIDIA confirmed no plans, ComfyUI RTX nodes broken [reported]).
 
+## Forum ingest 2026-07-13 (Batch 11)
+- 4 new forum topics found (2 technically relevant, 2 skipped as non-technical).
+- 2 new sources registered (Batch 11). 4 topic IDs added to processed_topics.txt (total now 364).
+- Pages touched: engines (easy-vllm code-agent harness, DSV4-Flash GB10 via jasl/vllm SM12x fork,
+  torch 2.11+ ABI wall, MXFP4 MoE→MARLIN→UMA OOM, mem_watchdog+earlyoom),
+  multinode-tp-and-networking (4-node CRS504 100G switch — 5-10% PP loss, zero decode loss,
+  ~13 Gb/s measured traffic, $25 100G cable works), benchmarks (3 new forum rows: DSV4-Flash
+  TP=4/TP=2, M3-AWQ+EAGLE TP=4), containers-and-tooling (easy-vllm tool),
+  models/minimax (M3-AWQ+EAGLE on CRS504 corroborates existing benchmarks).
+
 ## Forum ingest 2026-07-11 (Batch 7)
 - 2 new forum topics found, both technically relevant.
 - 2 new sources registered (Batch 7). 2 topic IDs added to processed_topics.txt (total now 354).

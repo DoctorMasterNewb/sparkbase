@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide
-> **updated:** 2026-07-09
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm
+> **updated:** 2026-07-13
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -107,3 +107,27 @@ Three engines run on the Spark pair; pick by arch support and quant.
 - **[conjecture]** **vLLM 0.19 → 0.23 regression** (S-forum-vllm-019-vs-023): Qwen3.5-122B AutoRound
   on same Spark: 37→32.5 tok/s (~12% speed regression), 104→120 GB unified RAM (~15% memory regression).
   Tag working images before upgrading. See `[[wiki/quantization-on-gb10.md]]`.
+
+## Forum ingest: easy-vllm harness, DSV4-Flash GB10 bring-up (2026-07-13)
+
+- **[conjecture]** **easy-vllm code-agent harness** (S-forum-easy-vllm, sh.ahn): an open-source
+  Claude Code-based meta-harness that automates vLLM build → serve → verify → improve loops on
+  DGX Spark. Uses deterministic scripts for VRAM estimation, KV-clamp math, and version resolution.
+  Verifies HW homogeneity before multi-node (cpu_arch/gpu_model/GPU count must match — mixed
+  clusters intentionally unsupported). Includes a `mem_watchdog` + `earlyoom` host safety stack
+  (kills container before UMA OOM = host-down). **[conjecture]** ib_write_bw measured 208–218 Gb/s
+  (~90% of 200G link) on 2× DGX Spark — corroborates proven fabric measurements. (S-forum-easy-vllm)
+- **[conjecture]** **DSV4-Flash on GB10 via jasl/vllm SM12x fork** (S-forum-easy-vllm): stock vLLM
+  hit a double hard-wall on DeepSeek-V4-Flash at sm_121: (1) sparse-MLA attention allows
+  `major ∈ [9,10]` only, (2) MXFP4 MoE auto-quant → MARLIN repack → unified-memory OOM → host down.
+  Fix: `jasl/vllm` fork PR#41834 pinned by SHA `c766cbc6` (force-push-immune) via
+  `VLLM_REPO`/`VLLM_REF` build-args, plus `--moe-backend humming` and an NVML patch for GB10
+  clock telemetry. Succeeded on attempt #8: KV 386,512 tokens, reasoning intact, zero host-downs.
+  Corroborates the MXFP4→MARLIN→UMA-OOM pattern (see `[[wiki/quantization-on-gb10.md]]`).
+- **[conjecture]** **torch 2.11+ ABI wall** (S-forum-easy-vllm): vLLM versions pin a torch
+  version that determines the build track. torch 2.10.x → easy road (prebuilt wheel, e.g. vLLM
+  0.18.0 → torch 2.10.0 → NGC 26.01-py3, `pip install --no-deps`). torch 2.11+ → hard road
+  (source build): NGC's torch alpha C++ ABI clashes with prebuilt `_C` extension — wheel builds
+  but breaks silently at serve time. When a base-image guess fails, grep candidate headers to
+  prove the missing symbol, then override one line (real case: vLLM 0.23.0 failed on NGC 26.03
+  `torch::stable::Tensor has no member "layout"` → override to 26.05 → built).

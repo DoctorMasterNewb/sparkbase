@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt
-> **updated:** 2026-07-11
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504
+> **updated:** 2026-07-13
 
 Single-stream decode unless noted. All on the 2× GB10 pair. Numbers anchor the rules on
 `[[wiki/platform-gb10.md]]` (bandwidth-bound) and `[[wiki/quantization-on-gb10.md]]` (MoE-NVFP4 wins).
@@ -214,6 +214,23 @@ first-party.
 ||| MiniMax-M2.7-NVFP4 | NVFP4 (FlashInfer-CUTLASS) | vLLM | 2 (TP=2) | 24.12 (tg128) | 225K | FlashInfer-CUTLASS + throughput backend; no-Ray slightly better; CUTLASS baseline ~22 | S-forum-m27-recipe ||
 ||| MiniMax-M2.7-AWQ-4bit | AWQ 4-bit | vLLM | 2 (TP=2) | 39.4 (tg128) / 41.6 (tg32) | 196K | Clear decode winner — ~1.5× NVFP4; 3 independent reporters agree | S-forum-m27-recipe ||
 ||| MiniMax-M2.7 (Unsloth FP8) | FP8 | vLLM | 4 (TP=4) | 36–37 | — | No degradation vs NVFP4, slight increase; cache hit 53.6 @ 2 concurrent | S-forum-m27-recipe ||
+
+## Forum-reported benchmarks (2026-07-13 ingest, Batch 11)
+
+All rows below are **[reported]** — community-reported numbers from the NVIDIA DGX Spark forums, not
+first-party. Measured on a 4-node cluster via CRS504 switch (100G). `llama-benchy` c=1, pp2048.
+
+||| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+|||---|---|---|---|---|---|---|---||
+||| DeepSeek-V4-Flash | FP8 KV, MTP k=2 | vLLM (aidendle B12X) | 4 (TP=4) | 52.0–53.6 (TG) | 512K | PP 2236–2452; no decode loss vs 200G; 100G link sufficient | S-forum-4node-crs504 ||
+||| DeepSeek-V4-Flash | FP8 KV, MTP k=2 | vLLM (aidendle B12X) | 2 (TP=2) | 29.9–36.8 (TG) | 256K | PP 1612–2025; measured pre-4-node baseline | S-forum-4node-crs504 ||
+||| MiniMax-M3-AWQ | AWQ-INT4 + bf16 KV + EAGLE | vLLM TP=4 | 4 (TP=4) | 27.7–35.4 (TG c=1) | 262K | PP 1684–2211; mns=4; 4-node CRS504 switch | S-forum-4node-crs504 ||
+
+> **[conjecture]** 4-node CRS504 (100G switch) vs direct 200G: PP loss only 5–10%, decode
+> unchanged. Measured traffic ~13 Gb/s — well below 100G. TP=4 DSV4-Flash decode 52–53.6 tok/s
+> (vs TP=2's 29.9–36.8) shows near-linear scaling from 2→4 nodes. M3-AWQ+EAGLE on 4-node
+> (28–35 tok/s) is consistent with existing [reported] M3-AWQ TP=4 benchmarks (S-forum-m3-awq-tp4
+> 33 tok/s, S-forum-m3-awq-4x ~30 tok/s). (S-forum-4node-crs504)
 
 ## Image generation benchmarks (diffusion models on GB10, 2026-07-10)
 

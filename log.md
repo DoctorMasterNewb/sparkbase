@@ -249,3 +249,31 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   independent users + official NVIDIA confirmation). Broader aarch64 wheel gap pattern (cf.
   torchaudio).
 - **Pages touched:** quantization-on-gb10, containers-and-tooling, sources/README, log, index.
+
+## 2026-07-13 — Batch 11 forum ingest: 4 new NVIDIA DGX Spark forum topics
+
+- **Sources:** 4 new forum topics found by fetch_new_topics.py. 2 technically relevant (376574
+  easy-vllm, 373818 4-node CRS504 cluster results); 2 skipped (376244 = ASUS GX10 OS upgrade
+  logistics, 376536 = buying advice / K8s multi-user question). 2 new sources registered as
+  `S-forum-*` in `sources/README.md` (Batch 11 section). 4 topic IDs added to
+  `sources/processed_topics.txt` (total now 364).
+- **Engines:** easy-vllm code-agent harness (sh.ahn) — Claude Code-based meta-harness for
+  automating vLLM build/serve/verify/improve on DGX Spark. Key technical findings from its
+  DSV4-Flash bring-up: stock vLLM hits a double hard-wall on DSV4-Flash at sm_121 (sparse-MLA
+  `major ∈ [9,10]` constraint + MXFP4 MoE → MARLIN repack → UMA OOM → host down). Fix: jasl/vllm
+  SM12x fork PR#41834 (SHA c766cbc6) + `--moe-backend humming` + NVML clock telemetry patch.
+  torch 2.11+ ABI wall documented (NGC alpha C++ ABI clashes with prebuilt _C — source build
+  required). ib_write_bw 208–218 Gb/s on 2× Spark (corroborates proven fabric measurements).
+  mem_watchdog + earlyoom host safety stack for UMA OOM prevention. [conjecture] (single source).
+- **Multinode:** 4-node CRS504 (100G switch) cluster — 100G link costs only 5–10% prefill,
+  zero decode loss vs 200G. Measured inter-node traffic ~13 Gb/s (far below 100G rail).
+  $25 Amazon 100G cable works on 2-node direct link. [conjecture] → [reported] (corbett_korbett
+  corroborates same-speed observation). CRS504 Noctua fan swap noted (ops). Strengthens existing
+  finding that cross-node collectives are CPU-host-bounced, not link-bound.
+- **Benchmarks:** 3 new forum-reported rows (DSV4-Flash TP=4 52–53.6 tok/s, DSV4-Flash TP=2
+  29.9–36.8 tok/s, M3-AWQ+EAGLE TP=4 27.7–35.4 tok/s). TP=4 DSV4-Flash shows near-linear
+  scaling from 2→4 nodes. M3-AWQ+EAGLE on CRS504 consistent with existing [reported] M3-AWQ
+  TP=4 benchmarks.
+- **Containers/Tooling:** easy-vllm harness registered as a community tool.
+- **Pages touched:** engines, multinode-tp-and-networking, benchmarks, containers-and-tooling,
+  models/minimax, sources/README, log, index.

@@ -3,7 +3,7 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-nvfp4, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-nvfp4, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm
 > **updated:** 2026-07-13
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
@@ -160,3 +160,14 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
  self-compilation — no response on either. **Status:** `open` — ComfyUI RTX upscaler nodes are
  broken on DGX Spark with no fix path. This is a broader pattern of aarch64 wheel gaps on GB10
  (cf. torchaudio, S-forum-qwen-tts-arm64).
+
+ ### Batch 11 forum ingest (2026-07-13)
+
+ - **[conjecture]** **easy-vllm code-agent harness** (S-forum-easy-vllm, sh.ahn): open-source
+   Claude Code-based meta-harness that automates vLLM build → serve → adversarially verify →
+   self-improve loops on DGX Spark. Uses deterministic scripts for version resolution, VRAM
+   estimation, KV-clamp math (not probabilistic LLM guessing). Enforces HW homogeneity before
+   multi-node (mixed clusters intentionally unsupported). Includes optional `mem_watchdog` +
+   `earlyoom` host safety stack (kills container before UMA OOM = whole-host down). GitHub:
+   `tbvjvsladla/easy_vllm_simulator`. See `[[wiki/engines.md]]` for the DSV4-Flash bring-up
+   findings from this tool.
