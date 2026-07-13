@@ -3,8 +3,8 @@
 > **area:** quantization
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute
-> **updated:** 2026-07-10
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth
+> **updated:** 2026-07-13
 
 GB10 has **no native FP4 compute and no native FP8 block-scale**. That one fact decides which quant
 to pick. Decode is **bandwidth-bound** (`[[wiki/platform-gb10.md]]`), so the winning quant is usually
@@ -201,3 +201,13 @@ decompress, because at low batch you're memory-bound, not compute-bound.
   Triton — see section above). The distinction is critical: weight-only NVFP4 saves memory but the
   matmul upcasts to BF16; W4A4 runs actual FP4 compute. Diffusion model weight-only NVFP4 ≠ LLM NVFP4
   (where MoE expert dequant via CUTLASS/FlashInfer is the kernel path).
+
+## Forum ingest: NVFP4 quant recipe, TensorRT-LLM errors (2026-07-13)
+
+- **[conjecture]** **NVIDIA refreshed the official NVFP4 quantization recipe for DGX Spark**
+  (S-forum-nvfp4-worth, paul448): NVIDIA updated the `build.nvidia.com/spark/nvfp4-quantization`
+  recipe page. A community gist accompanies it for manual NVFP4 conversion. The poster attempted
+  to convert Qwen3-27B and Qwen3.6-27B but hit **TensorRT-LLM errors** — not yet reproducible to a
+  clean result. Focusing on distilled / ≤30B models for eval workflow. Single source; no working
+  conversion numbers reported. Corroborates existing finding that NVFP4 quant on Spark is
+  CPU-bound and can fail silently (S-forum-nvfp4-quant-gp10).

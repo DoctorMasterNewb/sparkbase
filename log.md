@@ -223,7 +223,7 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   works). Distinct from GPU power-controller wedge — a power-delivery / soft-reboot completion
   issue. USB-C PD firmware area may be relevant. [conjecture] (single source).
 - **Multinode:** Two DGX Sparks over CX-7 direct link field report (griffith.mark). Third-party
-  200G QSFP56 DAC works immediately (Amphenol NJAAKK-N911 is certified part). Both CX-7 ports in
+  200G QSQP56 DAC works immediately (Amphenol NJAAKK-N911 is certified part). Both CX-7 ports in
   single L2 domain via eSwitch — port choice doesn't matter. Plain TCP ceiling ~16 Gb/s (Grace
   CPU bottleneck, not link; MTU 9000 doesn't help TCP). SSH ~600 MB/s. NetworkManager config
   documented. DCGM works on GB10 (Xid + PCIe replay counters). PSI + swap-out rate better than
@@ -231,3 +231,21 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   metric for interconnect cost. mashie corroborates 200G links used but never at 100% load, no
   interface errors.
 - **Pages touched:** platform-gb10, multinode-tp-and-networking, sources/README, log, index.
+
+## 2026-07-13 — Batch 10 forum ingest: 2 new NVIDIA DGX Spark forum topics
+
+- **Sources:** 2 new forum topics found by fetch_new_topics.py. Both technically relevant
+  (no social/buying/RMA to skip). 2 new sources registered as `S-forum-*` in `sources/README.md`
+  (Batch 10 section). 2 topic IDs added to `sources/processed_topics.txt` (total now 360).
+- **Quantization:** NVIDIA refreshed the official `build.nvidia.com/spark/nvfp4-quantization`
+  recipe (topic 376530). Community user (paul448) posted a companion gist for manual NVFP4
+  conversion. Attempted Qwen3-27B and Qwen3.6-27B conversion but hit TensorRT-LLM errors —
+  no clean reproducible result yet. [conjecture] (single source). Corroborates existing finding
+  that NVFP4 quant on Spark is CPU-bound and can fail silently.
+- **Containers/Tooling:** nvidia-vfx (Maxine VFX SDK) has no aarch64 wheel for DGX Spark
+  (topic 363267). GB10 is not on the supported GPU list. NVIDIA officially confirmed no plans
+  to add VFX support on Spark. ComfyUI RTX upscaler nodes are broken with no fix path. Multiple
+  community users requested aarch64 wheels + source access — no response. [reported] (multiple
+  independent users + official NVIDIA confirmation). Broader aarch64 wheel gap pattern (cf.
+  torchaudio).
+- **Pages touched:** quantization-on-gb10, containers-and-tooling, sources/README, log, index.

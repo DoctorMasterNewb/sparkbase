@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-nvfp4, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute
-> **updated:** 2026-07-10
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-nvfp4, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx
+> **updated:** 2026-07-13
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -148,3 +148,15 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   Z-Image-Turbo (9 steps) 7.2s → 5.6s NVFP4; SDXL 1.0 (30 steps) 11.3s; Qwen-Image-2512 (50 steps) 61s;
   ERNIE-Image-Turbo (8 steps) 11.2→8.8s (cudnn attn) → 6.4s NVFP4; Krea2-Turbo (8 steps) 39.3→13.9s
   (optimized) → 12.4s NVFP4. See `[[wiki/benchmarks.md]]` for full table.
+
+ ### Batch 10 forum ingest (2026-07-13)
+
+ - **[reported]** **No nvidia-vfx (Maxine VFX SDK) aarch64 wheel for DGX Spark** (S-forum-nvidia-vfx):
+ ComfyUI's NVIDIA RTX upscale node depends on `nvidia-vfx`, which only ships x86 wheels — the
+ package cannot be pip-installed on GB10 (aarch64). The NVIDIA VFX / Maxine VFX SDK supported GPU
+ list (A40/L40/L4/A30/B200/A2/H100/A10/T4/B100/A16/A100/B40) **does not include GB10**.
+ NVIDIA (aniculescu, official) confirmed: **"There is currently no plan to add NVIDIA VFX support
+ on Spark."** Multiple community users requested aarch64 wheels and source access for
+ self-compilation — no response on either. **Status:** `open` — ComfyUI RTX upscaler nodes are
+ broken on DGX Spark with no fix path. This is a broader pattern of aarch64 wheel gaps on GB10
+ (cf. torchaudio, S-forum-qwen-tts-arm64).

@@ -98,6 +98,13 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   multinode-tp-and-networking (CX-7 dual setup field report — third-party DAC, TCP ceiling ~16 Gb/s,
   DCGM on GB10, PSI OOM alerting, NetworkManager config, cluster tax metric).
 
+## Forum ingest 2026-07-13 (Batch 10)
+- 2 new forum topics found, both technically relevant.
+- 2 new sources registered (Batch 10). 2 topic IDs added to processed_topics.txt (total now 360).
+- Pages touched: quantization-on-gb10 (NVIDIA refreshed NVFP4 recipe, Qwen3/Qwen3.6 27B
+  TensorRT-LLM errors [conjecture]), containers-and-tooling (nvidia-vfx no aarch64 wheel,
+  NVIDIA confirmed no plans, ComfyUI RTX nodes broken [reported]).
+
 ## Forum ingest 2026-07-11 (Batch 7)
 - 2 new forum topics found, both technically relevant.
 - 2 new sources registered (Batch 7). 2 topic IDs added to processed_topics.txt (total now 354).

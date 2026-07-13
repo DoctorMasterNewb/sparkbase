@@ -223,6 +223,13 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-reboot-powercycle | forum | DGX Spark reboot doesn't complete — shuts down but doesn't power back on; requires USB-C cable removal + reinsert; intermittent (full shutdown + power button also works) (jp176) | https://forums.developer.nvidia.com/t/376431 | 2026-07-10 |
 | S-forum-cx7-dual-setup | forum | Two DGX Sparks over CX-7 direct link field report — 200G QSFP56 DAC works, iperf3 TCP ~16 Gb/s (Grace CPU ceiling), SSH ~600 MB/s, DCGM works on GB10 (Xid + PCIe replay), PSI+swap-out OOM alerting, cluster tax metric, Amphenol NJAAKK-N911 certified cable ID (griffith.mark, mashie) | https://forums.developer.nvidia.com/t/376298 | 2026-07-10 |
 
+## Batch 10 forum sources (2026-07-13 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-nvfp4-worth | forum | NVFP4 quantization on Spark — NVIDIA refreshed build.nvidia.com recipe; Qwen3/Qwen3.6 27B hit TensorRT-LLM errors; community gist recipe (paul448) | https://forums.developer.nvidia.com/t/376530 | 2026-07-11 |
+| S-forum-nvidia-vfx | forum | No nvidia-vfx (Maxine VFX SDK) aarch64 wheel for DGX Spark — GB10 not in supported GPU list; NVIDIA confirmed no plans; ComfyUI RTX nodes broken (paulsc.liu, aniculescu) | https://forums.developer.nvidia.com/t/363267 | 2026-03-12 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and
