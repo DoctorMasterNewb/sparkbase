@@ -310,3 +310,15 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   vLLM jasl fork 41.3-45.3 tok/s — same pair, same config, direct comparison).
 - **Pages touched:** engines, containers-and-tooling, attention-and-kv-cache, benchmarks,
   sources/README, log, index.
+
+## 2026-07-14 — Forum ingest: 1 new topic (Batch 13)
+
+- **Source:** 1 new forum thread (S-forum-acestep-music, topic 376653). Type `forum`.
+- **Finding:** ACE-Step v1.5 XL music-generation model runs on single DGX Spark, fits comfortably
+  in VRAM with companion 5Hz-LM-4B lyrics model. 3 independent users confirm (danielgbates,
+  joey28, aostang) → [reported] tier if it warranted a page.
+- **Not ingested to wiki:** outside core LLM-inference scope (not served via vLLM/llama.cpp/sglang);
+  no GB10-specific flags, env vars, error strings, tok/s numbers, or quant formats; "fits in 121 GB
+  unified memory" is trivially true for a single unquantized model. Source registered for provenance
+  only. No wiki page created or edited.
+- **Pages touched:** sources/README, index, log.

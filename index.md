@@ -114,6 +114,17 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   (DSV4-Flash KV cache ~15 GB/1M tokens/node, CUDA graph memory profiling overhead),
   benchmarks (2 new forum-reported rows: DSV4-Flash TokenSpeed vs vLLM fork).
 
+## Forum ingest 2026-07-14 (Batch 13)
+- 1 new forum topic found (technically marginal — non-LLM model recommendation).
+- 1 new source registered (Batch 13). 1 topic ID added to processed_topics.txt (total now 369).
+- Pages touched: sources/README, log, index. No wiki page edits.
+- Finding: ACE-Step v1.5 XL (music generation) runs on single Spark, fits comfortably in VRAM
+  with companion 5Hz-LM-4B lyrics model. 3 independent users confirm (danielgbates, joey28,
+  aostang) → would be [reported] if it warranted a page. Not ingested to wiki because: outside
+  core LLM-inference scope (not vLLM/llama.cpp/sglang), no GB10-specific flags/env vars/errors/
+  tok-s numbers/quant formats, and "fits in 121 GB" is trivially true for a single-model workload
+  with no quantization. Source registered for provenance; no wiki page created.
+
 ## Forum ingest 2026-07-13 (Batch 11)
 - 4 new forum topics found (2 technically relevant, 2 skipped as non-technical).
 - 2 new sources registered (Batch 11). 4 topic IDs added to processed_topics.txt (total now 364).

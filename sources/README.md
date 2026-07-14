@@ -245,6 +245,12 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-spark-studio | forum | Spark Studio: open-source inference dashboard for DGX Spark — vLLM/SGLang/llama.cpp/sparkrun recipes, live UMA monitor, pre-launch memory guard, agent auto-fix, multi-node view, MIT (TheAwakenOne) | https://forums.developer.nvidia.com/t/376507 | 2026-07-10 |
 | S-forum-dsv4-kvcache | forum | DeepSeek-V4-Flash KV cache ~15 GB/1M tokens/node on 2× Spark, vLLM CUDA graph memory profiling overhead, discrepancy with online KV calculators (paxren2020) | https://forums.developer.nvidia.com/t/376591 | 2026-07-11 |
 
+## Batch 13 forum sources (2026-07-14 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-acestep-music | forum | ACE-Step v1.5 XL music generation on single Spark — fits comfortably in VRAM; 5Hz-LM-4B companion model for lyrics; 3 independent users confirm (danielgbates, joey28, aostang) | https://forums.developer.nvidia.com/t/376653 | 2026-07-12 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and
