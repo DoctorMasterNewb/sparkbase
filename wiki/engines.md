@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm
-> **updated:** 2026-07-13
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed
+> **updated:** 2026-07-14
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -131,3 +131,44 @@ Three engines run on the Spark pair; pick by arch support and quant.
   but breaks silently at serve time. When a base-image guess fails, grep candidate headers to
   prove the missing symbol, then override one line (real case: vLLM 0.23.0 failed on NGC 26.03
   `torch::stable::Tensor has no member "layout"` → override to 26.05 → built).
+
+## Forum ingest: TokenSpeed SM12x engine for DSV4-Flash (2026-07-14)
+
+- **[conjecture]** **TokenSpeed `sm12x-stable`** (S-forum-tokenspeed, jasl): a fifth engine option
+  alongside vLLM/Atlas/llama.cpp/ds4 — purpose-built inference engine with a clean architecture that
+  is "easy to hack and maintain." jasl spent two weeks adding SM12x support. The SM12x path lands
+  in `jasl/tokenspeed` (`sm12x-stable` branch), and the vLLM fork (`jasl/vllm`) remains maintained.
+  Build on 2× GB10: torch 2.13, `TOKENSPEED_CUDA_ARCH=121`, FlashInfer CUTLASS MXFP4 MoE backend,
+  `nvidia-nccl-cu13==2.30.4` (mandatory on multi-node — see below), `flashinfer-jit-cache==0.6.14+cu130`
+  (skips 10–30 min cold CUTLASS-MoE JIT on first boot). Serve with `--moe-backend flashinfer_cutlass`
+  + `--grammar-backend xgrammar` for tool-calling. (S-forum-tokenspeed)
+- **[conjecture]** **Prefill wins, decode behind** (S-forum-tokenspeed): on the same 2× Spark pair,
+  same fabric, same `llama-benchy` (MTP2 + fp8 KV + prefix cache, C=1 × 3 runs), TokenSpeed vs the
+  jasl vLLM fork:
+  | depth | ctx_pp t/s (TS / vLLM) | pp2048 (TS / vLLM) | tg128 peak (TS / vLLM) |
+  |---|---|---|---|
+  | 8192 | **2057 / 1866** | 1404 / 1406 | 30.3 / 41.5 |
+  | 16384 | **2062 / 1825** | 1329 / 1354 | 28.7 / 41.3 |
+  | 32768 | **1979 / 1737** | 1149 / 1224 | 33.3 / 45.3 |
+  Cold-context prefill leads by ~10–14% (the dominant cost in long-context / 1M scenarios).
+  pp2048-at-depth is at parity (94–100%). Decode is behind ~70–74% — the CUTLASS MoE that wins
+  prefill has a weaker small-M decode GEMM; a hybrid path (CUTLASS prefill + Triton decode,
+  single weight residency) is in progress. If decode-heavy at low concurrency, the vLLM fork is
+  faster today. (S-forum-tokenspeed)
+- **[conjecture]** **KV capacity +25%** — TokenSpeed fits 1.90M vs vLLM's 1.52M KV tokens at
+  `--max-model-len 131072` in the same config. (S-forum-tokenspeed)
+- **[conjecture]** **Tool calling & stability** — 45/45 tool-calling requests engine-clean, zero
+  HTTP 500s (the intermittent MTP + thinking + `tool_choice` 500s that affect upstream vLLM's
+  reasoning-boundary bug are absent). Long-gen GSM8K 0.96, zero illegal-memory-access. MTP
+  acceptance rate higher than vLLM. (S-forum-tokenspeed)
+- **[conjecture]** **NCCL 2.30.4 mandatory on multi-node** (S-forum-tokenspeed): 2.28.9 (torch's
+  default), 2.29.7, and 2.30.7 all hit an NCCL graph-replay proxy-progress wedge that presents as
+  serve hangs / late-wave request timeouts. Pin with `--no-deps` **after** the kernel build (torch's
+  dep re-resolves over manual pins on every editable install). A minimal repro is headed to
+  NVIDIA/nccl. This likely explains several "2-node decode hang" reports in the community.
+  Corroborates existing [reported] NCCL 2.30.4 finding (S-forum-ds4f-4x-vllm).
+- **[conjecture]** **Build traps** (S-forum-tokenspeed): `TOKENSPEED_CUDA_ARCH` must be set for
+  the kernel build (no auto-detect → "no kernel image"); `rm -rf tokenspeed-kernel/python/objs`
+  after changing it. `fast_hadamard_transform` must be built from the GitHub repo (PyPI sdist is
+  missing its `csrc/`). Uninstall torchvision/torchaudio (unused; its torch-2.13 ABI trips
+  transformers).

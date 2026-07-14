@@ -237,6 +237,14 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-easy-vllm | forum | easy-vllm code-agent harness for vLLM on DGX Spark — DSV4-Flash on GB10 via jasl/vllm SM12x fork (PR#41834, SHA c766cbc6), --moe-backend humming, NVML clock telemetry patch, MXFP4 MoE→MARLIN-repack→UMA OOM, torch 2.11+ ABI wall, ib_write_bw 208-218 Gb/s, mem_watchdog+earlyoom (sh.ahn) | https://forums.developer.nvidia.com/t/376574 | 2026-07-11 |
 | S-forum-4node-crs504 | forum | 4-node DGX Spark cluster with CRS504 switch: DSV4-Flash TP=4 52-53.6 tok/s, M3-AWQ TP=4+EAGLE 28-35 tok/s, 100G vs 200G link (5-10% PP loss, no decode change), measured traffic ~13 Gb/s, $25 100G cable works (CosmicRaisins, corbett_korbett) | https://forums.developer.nvidia.com/t/373818 | 2026-07-11 |
 
+## Batch 12 forum sources (2026-07-14 ingest)
+
+| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-tokenspeed | forum | TokenSpeed SM12x-stable for DSV4-Flash on 2× Spark: prefill +10-14% vs vLLM fork, KV +25%, decode behind 70-74%; torch 2.13, FlashInfer CUTLASS MXFP4 MoE; NCCL 2.30.4 mandatory (jasl) | https://forums.developer.nvidia.com/t/369218 | 2026-07-12 |
+| S-forum-spark-studio | forum | Spark Studio: open-source inference dashboard for DGX Spark — vLLM/SGLang/llama.cpp/sparkrun recipes, live UMA monitor, pre-launch memory guard, agent auto-fix, multi-node view, MIT (TheAwakenOne) | https://forums.developer.nvidia.com/t/376507 | 2026-07-10 |
+| S-forum-dsv4-kvcache | forum | DeepSeek-V4-Flash KV cache ~15 GB/1M tokens/node on 2× Spark, vLLM CUDA graph memory profiling overhead, discrepancy with online KV calculators (paxren2020) | https://forums.developer.nvidia.com/t/376591 | 2026-07-11 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

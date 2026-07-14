@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504
-> **updated:** 2026-07-13
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed
+> **updated:** 2026-07-14
 
 Single-stream decode unless noted. All on the 2× GB10 pair. Numbers anchor the rules on
 `[[wiki/platform-gb10.md]]` (bandwidth-bound) and `[[wiki/quantization-on-gb10.md]]` (MoE-NVFP4 wins).
@@ -231,6 +231,22 @@ first-party. Measured on a 4-node cluster via CRS504 switch (100G). `llama-bench
 > (vs TP=2's 29.9–36.8) shows near-linear scaling from 2→4 nodes. M3-AWQ+EAGLE on 4-node
 > (28–35 tok/s) is consistent with existing [reported] M3-AWQ TP=4 benchmarks (S-forum-m3-awq-tp4
 > 33 tok/s, S-forum-m3-awq-4x ~30 tok/s). (S-forum-4node-crs504)
+
+## Forum-reported benchmarks (2026-07-14 ingest, Batch 12)
+
+All rows below are **[reported]** — community-reported numbers from the NVIDIA DGX Spark forums, not
+first-party. Measured with `llama-benchy` (MTP2 + fp8 KV + prefix cache, C=1 × 3 runs).
+
+|||| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source |||
+||||---|---|---|---|---|---|---|---|||
+|||| DeepSeek-V4-Flash | MXFP4 MoE, fp8 KV, MTP2 | TokenSpeed `sm12x-stable` | 2 (TP=2) | 30.3–33.3 (tg128 peak) | 131K | PP 1979–2062 @ 8K-32K depth (+10–14% vs vLLM); KV 1.90M tokens (+25%); tool 45/45, GSM8K 0.96 | S-forum-tokenspeed |||
+|||| DeepSeek-V4-Flash | MXFP4 MoE, fp8 KV, MTP2 | vLLM (jasl fork) | 2 (TP=2) | 41.3–45.3 (tg128 peak) | 131K | PP 1737–1866 @ 8K-32K depth; KV 1.52M tokens; decode ~30% faster than TokenSpeed | S-forum-tokenspeed |||
+
+> **[conjecture]** TokenSpeed `sm12x-stable` vs jasl/vllm fork on the same 2× Spark pair: TokenSpeed
+> leads cold-context prefill by ~10–14% but decode is behind ~70–74%. The CUTLASS MoE backend that
+> wins prefill has a weaker small-M decode GEMM; a hybrid CUTLASS-prefill + Triton-decode path is in
+> progress. TokenSpeed also fits +25% more KV cache (1.90M vs 1.52M tokens) and has zero tool-calling
+> HTTP 500s. Both are single-source (jasl). (S-forum-tokenspeed)
 
 ## Image generation benchmarks (diffusion models on GB10, 2026-07-10)
 

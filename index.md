@@ -105,6 +105,15 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   TensorRT-LLM errors [conjecture]), containers-and-tooling (nvidia-vfx no aarch64 wheel,
   NVIDIA confirmed no plans, ComfyUI RTX nodes broken [reported]).
 
+## Forum ingest 2026-07-14 (Batch 12)
+- 4 new forum topics found (3 technically relevant, 1 skipped as buying advice).
+- 3 new sources registered (Batch 12). 4 topic IDs added to processed_topics.txt (total now 368).
+- Pages touched: engines (TokenSpeed SM12x-stable engine — prefill +10-14% vs vLLM, decode behind
+  70-74%, KV +25%, NCCL 2.30.4 mandatory, build recipe), containers-and-tooling (Spark Studio
+  dashboard — live UMA monitor, pre-launch memory guard, agent auto-fix), attention-and-kv-cache
+  (DSV4-Flash KV cache ~15 GB/1M tokens/node, CUDA graph memory profiling overhead),
+  benchmarks (2 new forum-reported rows: DSV4-Flash TokenSpeed vs vLLM fork).
+
 ## Forum ingest 2026-07-13 (Batch 11)
 - 4 new forum topics found (2 technically relevant, 2 skipped as non-technical).
 - 2 new sources registered (Batch 11). 4 topic IDs added to processed_topics.txt (total now 364).

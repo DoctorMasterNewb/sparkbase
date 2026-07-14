@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-nvfp4, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm
-> **updated:** 2026-07-13
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-nvfp4, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio
+> **updated:** 2026-07-14
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -171,3 +171,16 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
    `earlyoom` host safety stack (kills container before UMA OOM = whole-host down). GitHub:
    `tbvjvsladla/easy_vllm_simulator`. See `[[wiki/engines.md]]` for the DSV4-Flash bring-up
    findings from this tool.
+
+### Batch 12 forum ingest (2026-07-14)
+
+- **[conjecture]** **Spark Studio** (S-forum-spark-studio, TheAwakenOne): open-source inference
+  dashboard purpose-built for DGX Spark — MIT licensed. One-command install, launches
+  vLLM/SGLang/llama.cpp/sparkrun recipes from a web UI. Key GB10-specific features: **live
+  unified-memory monitor** (critical for UMA — models, background processes, and KV cache all
+  share the same pool); **pre-launch memory guard** that stops models, waits for reclaim, and
+  refuses launches that won't fit (prevents the OOM-crash cycle on 128 GB setups); **agent
+  auto-fix** loop using local Claude Code / Codex CLIs — logs, patches, retries automatically
+  (uses your own subscription, no extra setup); **Optimize Speed** strictly measurement-based
+  (≥10% or it rolls back); multi-node cluster view with no node limit. Recipes pulled from
+  sparkrun community recipes and spark-arena. GitHub: `TheAwaken1/Spark-Studio`.

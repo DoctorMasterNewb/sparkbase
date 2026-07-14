@@ -3,8 +3,8 @@
 > **area:** attention
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-m3-vision, S-mimo-results, S-mimo-doc, S-sess-jun5, S-sess-jun4, S-dflash-nvfp4, S-forum-mimo-2x-opt
-> **updated:** 2026-07-11
+> **sources:** S-m3-vision, S-mimo-results, S-mimo-doc, S-sess-jun5, S-sess-jun4, S-dflash-nvfp4, S-forum-mimo-2x-opt, S-forum-dsv4-kvcache
+> **updated:** 2026-07-14
 
 Which `--attention-backend` to pass is decided by the model's attention type, not preference. Get it
 wrong and KV-cache init fails or numerics are subtly off.
@@ -75,3 +75,21 @@ wrong and KV-cache init fails or numerics are subtly off.
   This conflicts with first-party findings where fp8 KV works fine with TRITON_ATTN_DIFFKV
   (proven on dev39+), suggesting the guard was relaxed in later vLLM versions. If you hit this
   error on an older build, patching the guard is the workaround.
+
+## Forum ingest: DSV4-Flash KV cache sizing on Spark (2026-07-14)
+
+- **[conjecture]** **DSV4-Flash KV cache ~15 GB/1M tokens/node on 2× Spark** (S-forum-dsv4-kvcache,
+  paxren2020): user running DeepSeek on a dual-node cluster reports ~15 GB VRAM per 1M context
+  tokens per node (~30 GB total across 2 nodes, ~15 GB allocated on each). vLLM logs show
+  `Available KV cache memory: 26.15 GiB`, `GPU KV cache size: 1,687,476 tokens`, `Maximum
+  concurrency for 500,000 tokens per request: 3.37x` at `--gpu-memory-utilization 0.90`. This is
+  significantly larger than online KV cache calculators (kvcache.ai) and Reddit formulas predict
+  (~5× smaller). Possible explanations: vLLM overhead/fragmentation, CUDA graph memory
+  profiling reservation, or the calculators modeling a different attention variant. (S-forum-dsv4-kvcache)
+- **[conjecture]** **CUDA graph memory profiling overhead** (S-forum-dsv4-kvcache): vLLM v0.21.0+
+  enables CUDA graph memory profiling by default. The log message shows that
+  `--gpu-memory-utilization=0.9000` is equivalent to `0.8943` without profiling — the profiling
+  reserves ~0.6% of usable memory. To maintain the same effective KV cache size, increase to
+  `--gpu-memory-utilization 0.9057`. Disable profiling with
+  `VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0`. This overhead is on top of the standard
+  cudagraph capture memory cost. (S-forum-dsv4-kvcache)

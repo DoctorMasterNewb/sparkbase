@@ -277,3 +277,36 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
 - **Containers/Tooling:** easy-vllm harness registered as a community tool.
 - **Pages touched:** engines, multinode-tp-and-networking, benchmarks, containers-and-tooling,
   models/minimax, sources/README, log, index.
+
+## 2026-07-14 — Batch 12 forum ingest: 4 new NVIDIA DGX Spark forum topics
+
+- **Sources:** 4 new forum topics found by fetch_new_topics.py. 3 technically relevant; 1 skipped
+  (361947 = buying advice "Is there a Marketplace? I want to get rid of my Dell GB10 1TB"). 3 new
+  sources registered as `S-forum-*` in `sources/README.md` (Batch 12 section). 4 topic IDs added to
+  `sources/processed_topics.txt` (total now 368).
+- **Engines:** TokenSpeed `sm12x-stable` (S-forum-tokenspeed, jasl) — a fifth inference engine
+  alongside vLLM/Atlas/llama.cpp/ds4. jasl spent two weeks adding SM12x support; the SM12x path
+  lands in `jasl/tokenspeed` (sm12x-stable branch) while the vLLM fork stays maintained. Build:
+  torch 2.13, `TOKENSPEED_CUDA_ARCH=121`, FlashInfer CUTLASS MXFP4 MoE, flashinfer-jit-cache to
+  skip cold JIT. On the same 2× Spark pair with llama-benchy (MTP2 + fp8 KV + prefix cache):
+  cold-context prefill leads vLLM fork by ~10-14% (2057 vs 1866 t/s @ 8K depth), but decode is
+  behind ~70-74% (30-33 vs 41-45 tok/s). KV capacity +25% (1.90M vs 1.52M tokens at 131K ctx).
+  Tool calling 45/45 clean (zero HTTP 500s), GSM8K 0.96, MTP acceptance higher than vLLM. The
+  CUTLASS MoE that wins prefill has weaker small-M decode GEMM; hybrid CUTLASS-prefill + Triton-
+  decode path in progress. NCCL 2.30.4 mandatory on multi-node (2.28.9/2.29.7/2.30.7 all wedge) —
+  corroborates existing [reported] NCCL 2.30.4 finding. All [conjecture] (single source by jasl).
+- **Containers/Tooling:** Spark Studio (S-forum-spark-studio, TheAwakenOne) — MIT-licensed
+  open-source inference dashboard for DGX Spark. Launches vLLM/SGLang/llama.cpp/sparkrun recipes
+  from web UI. GB10-specific: live unified-memory monitor, pre-launch memory guard (stops models,
+  waits for reclaim, refuses launches that won't fit — prevents OOM crash cycle on 128 GB),
+  agent auto-fix loop via local Claude Code/Codex CLIs, Optimize Speed (measurement-based ≥10%
+  or rollback), multi-node cluster view with no node limit. [conjecture] (single source).
+- **Attention/KV cache:** DSV4-Flash KV cache ~15 GB/1M tokens/node on 2× Spark
+  (S-forum-dsv4-kvcache, paxren2020) — significantly larger (~5×) than online calculators predict.
+  vLLM CUDA graph memory profiling (default since v0.21.0) reserves ~0.6% of usable memory;
+  `--gpu-memory-utilization 0.90` ≈ 0.8943 without profiling. Disable with
+  `VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0`. [conjecture] (single source).
+- **Benchmarks:** 2 new forum-reported rows (DSV4-Flash TokenSpeed 30.3-33.3 tok/s, DSV4-Flash
+  vLLM jasl fork 41.3-45.3 tok/s — same pair, same config, direct comparison).
+- **Pages touched:** engines, containers-and-tooling, attention-and-kv-cache, benchmarks,
+  sources/README, log, index.
