@@ -350,3 +350,40 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   3. Multi-model co-hosting (vision + LLM) on 2× Spark is memory-starved; offload vision to a
      separate machine is the recommended pattern (multiple users independently arrived at this).
   4. CPU P/E core topology (Cortex-X925 + A725) matters for HPC slurm job binding on Spark.
+
+## 2026-07-15 — Forum ingest: Batch 15 — 4 new topics (3 processed, 1 skipped)
+
+- **Sources:** 3 new forum sources registered (Batch 15) in `sources/README.md`.
+  4 topic IDs added to `processed_topics.txt` (total now 379).
+- **Topics found:** 4 new topics. 3 technically relevant, 1 skipped:
+  - 376822 (Is DGX Spark worth buying for fine-tuning?) — buying advice. Skipped.
+- **Pages touched:**
+  - platform-gb10 (CX-7 ports are hot-pluggable — not visible in ifconfig/lspci until cable
+    connected; /etc/nvidia/cx7-hotplug-enabled controls behavior; idle power draw nearly
+    doubles when port active [conjecture]),
+  - engines (LLM + ComfyUI co-hosting on 2× Spark — vLLM KV cache starves co-hosted
+    workloads; --gpu-memory-utilization 0.7-0.8 enables co-hosting; llama.cpp better than
+    vLLM for co-hosting; swapoff -a before loading large models [conjecture]),
+  - multinode-tp-and-networking (interconnect is bottleneck for large MoE not memory
+    ~23 GB/s cross-node vs ~600 GB/s in-box; MoE gains flatten past TP=4; FP8 training
+    impossible on sm_121 (TransformerEngine no backend, no roadmap); Megatron-LM works on
+    GB10 with caveats — Megatron Bridge VRAM, FSDP weight-gather, NCCL subnet env vars
+    for 3+ nodes [conjecture]),
+  - models/qwen (Qwen3.5-397B-A17B on 8× GB10: 31-35 tok/s FP8; architecture comparison
+    validated from config.json — 27B dense / 35B-A3B MoE / 397B-A17B MoE parameter math
+    [conjecture]),
+  - benchmarks (1 new forum-reported row: Qwen3.5-397B-A17B FP8 8× GB10 31-35 tok/s),
+  - sources/README, index, log.
+- **Key findings:**
+  1. CX-7 ports on DGX Spark/ASUS GX10 are hot-pluggable — they don't appear in ifconfig/lspci
+     until a cable is connected. Controlled by /etc/nvidia/cx7-hotplug-enabled. Disabling
+     hot-plug (or connecting a cable) nearly doubles idle power draw.
+  2. vLLM's aggressive KV cache pre-allocation on unified memory makes co-hosting with ComfyUI
+     impractical on the same node. Workaround: reduce --gpu-memory-utilization to 0.7-0.8, or
+     use llama.cpp (better UMA co-hosting behavior). Practical pattern: LLM on one Spark,
+     ComfyUI on the other.
+  3. Cross-node interconnect (~23 GB/s) vs in-box (~600 GB/s) is the bottleneck for large MoE
+     models, not memory. MoE all-to-all is very sensitive to this 26× gap. Gains flatten past
+     TP=4 — the largest reported cluster (8× GB10, Qwen3.5-397B FP8) achieves only 31-35 tok/s.
+  4. FP8 training is impossible on sm_121 (TransformerEngine has no backend, no roadmap).
+     Megatron-LM works on GB10 for MoE expert parallelism but with VRAM and networking caveats.

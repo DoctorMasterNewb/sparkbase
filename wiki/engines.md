@@ -3,7 +3,7 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui
 > **updated:** 2026-07-15
 
 Three engines run on the Spark pair; pick by arch support and quant.
@@ -193,3 +193,29 @@ Three engines run on the Spark pair; pick by arch support and quant.
 - **[conjecture]** **Qwen3.5-4B with vision tower fits in worker node spare memory** (0rand): 2–3 GB
   more room available on a worker node for a small vision model. Lower quality but sufficient for
   debugging / screenshot analysis.
+
+## Forum ingest: LLM + ComfyUI co-hosting on 2× Spark (2026-07-15)
+
+- **[conjecture]** **vLLM's KV cache reservation starves co-hosted workloads on unified memory**
+  (S-forum-llm-comfyui, Alexander-F): vLLM pre-allocates unified memory for KV cache
+  aggressively, leaving insufficient headroom for ComfyUI image generation on the same node.
+  This is a known UMA constraint, not a configuration bug — the 121 GB pool is shared by
+  weights, KV cache, and any co-hosted process. The practical solution on a 2× Spark setup is
+  to dedicate one Spark to the LLM and the other to ComfyUI.
+- **[conjecture]** **`--gpu-memory-utilization` 0.7–0.8 enables co-hosting** (S-forum-llm-comfyui,
+  clawdiusmaximus, C_G): reducing vLLM's memory utilization from 0.9 to 0.8 (or 0.72–0.75)
+  frees enough UMA headroom to run ComfyUI on the head node alongside a clustered LLM.
+  C_G runs Qwen3.6-27B clustered on both nodes at low util with ComfyUI on node 2 (configured
+  for low memory, models loaded on-demand), peaking at 114 GB RAM during 1024×1024 SDXL
+  generation. clawdiusmaximus got ComfyUI running on the head node of a DSV4 cluster at
+  0.8 util — "performance is slow, but output was fine."
+- **[conjecture]** **llama.cpp is better than vLLM for co-hosting with ComfyUI**
+  (S-forum-llm-comfyui, vasimv): vLLM's memory management is "really bad with unified memory"
+  — it often OOMs because buffers/cache memory fill up. llama.cpp handles co-hosting better:
+  Qwen3.6-35B in llama.cpp runs alongside ComfyUI without problem, though image generation
+  is 5–6× slower under LLM load. This corroborates the existing finding that vLLM's
+  pre-allocation behavior is aggressive on UMA (see `[[wiki/platform-gb10.md]]`).
+- **[conjecture]** **Disable swap before loading large models** (S-forum-llm-comfyui,
+  AakankshaS): `sudo swapoff -a` before loading large models — when swap is active, massive
+  allocations force the OS to thrash data onto storage, creating kernel lockups. Documented
+  in DGX Spark troubleshooting.

@@ -3,7 +3,7 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup, S-forum-hpc-slurm, S-forum-llama32-finetune
+> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup, S-forum-hpc-slurm, S-forum-llama32-finetune, S-forum-cx7-hotplug
 > **updated:** 2026-07-15
 
 The hardware facts every model bring-up assumes. Read this first.
@@ -358,6 +358,21 @@ only after unexplained slow tok/s).
   known issue with a documented FAQ answer, not a new finding. Training throughput on GB10 is limited
   by the same bandwidth/compute constraints that bound inference; benchmark numbers assume specific
   configurations (batch size, sequence length, data pipeline) that may not match user setups.
+
+### Batch 15 forum ingest (2026-07-15)
+
+- **[conjecture]** **CX-7 ports are hot-pluggable — not visible until a cable is connected**
+  (S-forum-cx7-hotplug, elsaco): on the ASUS GX10 (and DGX Spark), the ConnectX-7 interfaces
+  may not appear in `ifconfig` or `lspci` when no cable is plugged in. This is by design: the
+  CX-7 ports are hot-pluggable, controlled by the file `/etc/nvidia/cx7-hotplug-enabled`.
+  The relevant dmesg marker is `mlx5_core 0000:01:00.1: Port module event: module 1, Cable
+  unplugged`. To disable hot-plug behavior (force interfaces always-on): `sudo rm -f
+  /etc/nvidia/cx7-hotplug-enabled` and reboot; restore the file to re-enable. This explains
+  why users see "missing" CX-7 interfaces — the port is powered down waiting for a cable.
+  **[conjecture]** mashie reports that disabling hot-plug (or plugging in a cable) causes
+  idle power draw to nearly double — the CX-7 port draws significant power when active
+  even with no traffic. Relevant to the 100W "rest" budget (CX-7 + SSD + USB, see power
+  spec above).
 
 ## Reference cluster
 

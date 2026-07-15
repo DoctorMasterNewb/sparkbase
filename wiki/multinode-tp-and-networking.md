@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504
-> **updated:** 2026-07-13
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch
+> **updated:** 2026-07-15
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -156,6 +156,34 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
   password login (e.g. NVIDIA Sync) need a LAN-scoped `Match Address … PasswordAuthentication yes` block.
 - **[proven]** **Don't advertise AAAA/IPv6** if UFW only allows the IPv4 LAN — IPv6 SYNs to :22 get dropped
   and SSH dead-ends.
+
+### Batch 15 forum ingest (2026-07-15)
+
+- **[conjecture]** **Interconnect is the bottleneck for large MoE, not memory**
+  (S-forum-qwen397-arch, raphael.amorim): cross-node bandwidth is ~23 GB/s vs ~600 GB/s
+  in-box — a ~26× gap. MoE all-to-all communication is very sensitive to this asymmetry,
+  making large MoE models (e.g. Qwen3.5-397B-A17B) communication-bound on multi-Spark
+  clusters. This corroborates the proven finding that cross-node collectives are
+  host-staged and decode-bandwidth-limited (see "The cost" section above). The ~23 GB/s
+  figure is consistent with the proven ~2.8 GB/s effective collective throughput
+  (different measurement contexts — raw link vs collective pattern).
+- **[conjecture]** **MoE gains flatten past TP=4 on GB10 clusters** (S-forum-qwen397-arch,
+  raphael.amorim): the largest cluster reported in the forums (8× GB10) runs
+  Qwen3.5-397B-FP8 inference at 31–35 tok/s, and MoE scaling gains flatten past TP=4.
+  Expert parallelism helps up to 4 nodes, but beyond that the all-to-all overhead
+  dominates. Relevant for planning >4-node clusters.
+- **[conjecture]** **FP8 training does not exist on sm_121** (S-forum-qwen397-arch,
+  raphael.amorim): TransformerEngine has no FP8 backend for sm_121, and NVIDIA has
+  confirmed no roadmap for it. This is consistent with the existing `[proven]` finding
+  that GB10 has no native FP4/block-scale-FP8 compute. Training on GB10 is limited to
+  BF16/FP16. See also `[[wiki/quantization-on-gb10.md]]`.
+- **[conjecture]** **Megatron-LM works on GB10 with caveats** (S-forum-qwen397-arch,
+  raphael.amorim): Megatron/NeMo does work on GB10 for MoE at scale (expert parallelism),
+  but: (1) Megatron Bridge consumes excessive VRAM on GB10 (use `vlm_step`, reduce
+  `num_workers`); (2) FSDP/DeepSpeed won't survive the weight-gather traffic on 200GbE
+  for 200B+ models; (3) training on 3+ nodes without a switch requires NCCL subnet-aware
+  env vars (mandatory past 2 nodes). The "low MFU" report on GB10 Megatron was a config
+  error, not an sm_121 limitation.
 
 ## See also
 `[[wiki/platform-gb10.md]]` · `[[wiki/cudagraphs-and-compile.md]]` · `[[wiki/llama-cpp-rpc.md]]` · `[[wiki/engines.md]]`

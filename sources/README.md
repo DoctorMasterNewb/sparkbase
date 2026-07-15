@@ -260,6 +260,14 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-llama32-finetune | forum | Llama 3.2 3B full fine-tuning 8× slower than benchmark — 0.59 steps/s vs expected ~5 steps/s; NVIDIA redirect to DGX Spark Performance FAQ + benchmarking guide (arijitmukh007, raphael.amorim) | https://forums.developer.nvidia.com/t/353011 | 2025-11-30 |
 | S-forum-hpc-slurm | forum | HPC/slurm/MPI on DGX Spark — NVIDIA Deepops all-in-one slurm on single Spark; CPU topology NUMA (Cortex-X925 perf + Cortex-A725 efficiency cores); P/E core binding for slurm partitions; CX-7 switch topology needs special config; enroot/pyxis containers for GenAI; RoCE not real IB (pavuknm, bugsareyummy, dbsci, paul448) | https://forums.developer.nvidia.com/t/366724 | 2026-04-15 |
 
+## Batch 15 forum sources (2026-07-15 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-cx7-hotplug | forum | ASUS GX10 ConnectX-7 not showing in ifconfig/lspci — CX-7 ports are hot-pluggable; controlled by /etc/nvidia/cx7-hotplug-enabled; idle power draw nearly doubles when cable connected (mhoare1984, elsaco, mashie) | https://forums.developer.nvidia.com/t/376825 | 2026-07-14 |
+| S-forum-llm-comfyui | forum | Running large LLM on 2× Spark cluster while keeping ComfyUI usable — vLLM KV cache reserve starves co-hosted workloads, --gpu-memory-utilization 0.7-0.8 workaround, llama.cpp better for co-hosting than vLLM, ComfyUI on head node works with reduced util (Alexander-F, AakankshaS, clawdiusmaximus, C_G, vasimv) | https://forums.developer.nvidia.com/t/376650 | 2026-07-12 |
+| S-forum-qwen397-arch | forum | Architecture analysis: Qwen3.6-397B upcycling feasibility — interconnect bottleneck (~23 GB/s cross-node vs ~600 GB/s in-box), MoE all-to-all sensitivity, FP8 training impossible on sm_121, Megatron on GB10 caveats (vedcsolution, raphael.amorim) | https://forums.developer.nvidia.com/t/369561 | 2026-05-09 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

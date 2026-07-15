@@ -3,7 +3,7 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch
 > **updated:** 2026-07-15
 
 Single-stream decode unless noted. All on the 2× GB10 pair. Numbers anchor the rules on
@@ -264,6 +264,17 @@ first-party. Single-node DGX Spark, vLLM 0.24, MTP enabled.
 > **[reported]** Unsloth NVFP4 is consistently ~15% slower than nvidia NVFP4 on GB10 across 3
 > independent benchmarks (hedelyuk.alexandr, J-R, TheAwakenOne). The "2.5× faster" claim is B200-only.
 > At c=16 the gap narrows to ~2% (420 vs 410 tok/s aggregate). (S-forum-unsloth-qwen36)
+
+## Forum-reported benchmarks (2026-07-15 ingest, Batch 15)
+
+All rows below are **[conjecture]** — single-source community-reported numbers, not first-party.
+
+|| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+||---|---|---|---|---|---|---|---||
+|| Qwen3.5-397B-A17B | FP8 | — | 8 (TP=8) | 31–35 | — | largest reported DGX Spark cluster; MoE gains flatten past TP=4; no config details provided | S-forum-qwen397-arch ||
+
+> **[conjecture]** Single forum reference (raphael.amorim) citing the 8× GB10 cluster result.
+> No engine, flags, or configuration details provided — treat as a data point only.
 
 ## Image generation benchmarks (diffusion models on GB10, 2026-07-10)
 

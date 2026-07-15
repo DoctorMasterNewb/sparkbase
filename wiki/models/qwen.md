@@ -3,7 +3,7 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36
+> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch
 > **updated:** 2026-07-15
 
 The best-supported family on GB10 — both Atlas (AOT kernels for the MoE variants) and vLLM serve it.
@@ -145,3 +145,24 @@ claiming 2.5× speedup on B200. On GB10 the reality is different:
 
 ## See also
 `[[wiki/engines.md]]` · `[[wiki/quantization-on-gb10.md]]` · `[[wiki/models/holo-3.1.md]]` (Qwen3.5 VL MoE)
+
+## Forum ingest: Qwen3.5-397B architecture & 8× GB10 cluster benchmark (2026-07-15)
+
+- **[conjecture]** **Qwen3.5-397B-A17B on 8× GB10: 31–35 tok/s FP8** (S-forum-qwen397-arch,
+  raphael.amorim): the largest DGX Spark cluster reported in the forums (8× GB10) runs
+  Qwen3.5-397B-A17B FP8 inference at 31–35 tok/s. MoE scaling gains flatten past TP=4 —
+  the all-to-all interconnect overhead dominates at higher parallelism. This is a single
+  forum reference; no configuration details or reproduction provided. See
+  `[[wiki/multinode-tp-and-networking.md]]` for the interconnect bottleneck analysis.
+- **[conjecture]** **Architecture comparison: Qwen3.6 dense vs MoE vs 397B**
+  (S-forum-qwen397-arch, vedcsolution): parameter math validated from HF config.json files:
+  - Qwen3.6-27B (dense): 64 layers, hidden 5120, 24 attn heads / 4 KV heads, intermediate
+    17408, ~27B total
+  - Qwen3.6-35B-A3B (MoE): 40 layers, hidden 2048, 16 attn / 2 KV heads, 256 experts (8
+    routed + 1 shared), moe_intermediate 512, ~35B total / ~3B active
+  - Qwen3.5-397B-A17B (MoE): 60 layers, hidden 4096, 32 attn / 2 KV heads, 512 experts
+    (10 routed + 1 shared), moe_intermediate 1024, ~397B total / ~17B active
+  All share: head_dim 256, vocab 248320, max_position 262144, rope_theta 10M,
+  full_attention_interval 4, MTP 1 layer, vision encoder 27 layers/1152 hidden.
+  "Qwen3.6-397B" (proposed upcycle) would require matching the 397B's expert count with
+  the 3.6 architecture — feasibility is constrained by the interconnect, not memory.

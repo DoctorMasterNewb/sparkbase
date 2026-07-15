@@ -137,6 +137,17 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   platform-gb10 (HPC/slurm CPU P/E core topology, CX-7 switch config, Llama 3.2 3B finetune
   8× slower than benchmark — known FAQ).
 
+## Forum ingest 2026-07-15 (Batch 15)
+- 4 new forum topics found (3 technically relevant, 1 skipped: buying advice).
+- 3 new sources registered (Batch 15). 4 topic IDs added to processed_topics.txt (total now 379).
+- Pages touched: platform-gb10 (CX-7 hot-pluggable ports — not visible until cable connected,
+  /etc/nvidia/cx7-hotplug-enabled, idle power doubles when active), engines (LLM + ComfyUI
+  co-hosting — vLLM KV cache starves UMA, --gpu-memory-utilization 0.7-0.8, llama.cpp better
+  for co-hosting, swapoff -a), multinode-tp-and-networking (~23 GB/s cross-node vs ~600 GB/s
+  in-box bottleneck, MoE gains flatten past TP=4, FP8 training impossible on sm_121, Megatron
+  caveats), models/qwen (Qwen3.5-397B on 8× GB10 31-35 tok/s, architecture comparison),
+  benchmarks (1 new row: Qwen3.5-397B FP8 8× GB10).
+
 ## Forum ingest 2026-07-13 (Batch 11)
 - 4 new forum topics found (2 technically relevant, 2 skipped as non-technical).
 - 2 new sources registered (Batch 11). 4 topic IDs added to processed_topics.txt (total now 364).
