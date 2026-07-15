@@ -53,6 +53,10 @@ TP=2.** It hits models on the **breakable_cudagraph path** (custom-quant → aut
 ⇒ eager-only" is too strong — it's M3's fused-norm + breakable path specifically. (Wall 1, MoE-on-sm121,
 is the broader eager-forcer.)
 
+**[proven]** **Qwen3.6-35B-A3B** (HauhauCS NVFP4) also captures cleanly — single-node TP=1 with MTP-3,
+PIECEWISE mode, 11 graphs in 3s, zero faults (S-sess-jul14). Confirms the standard piecewise path
+(Qwen3.6 uses `vllm::qwen_gdn_attention_core` as a split op, not breakable) avoids Wall 2 entirely.
+
 ### Upstream status — PR #46372 (`fixes #46253`)
 Community dev Pranav-d33 opened **vllm#46372**: add `@eager_break_during_capture` to
 `tensor_model_parallel_all_reduce` + copy the result back into the input buffer (so the collective runs

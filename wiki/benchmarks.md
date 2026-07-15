@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed
-> **updated:** 2026-07-14
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36
+> **updated:** 2026-07-15
 
 Single-stream decode unless noted. All on the 2× GB10 pair. Numbers anchor the rules on
 `[[wiki/platform-gb10.md]]` (bandwidth-bound) and `[[wiki/quantization-on-gb10.md]]` (MoE-NVFP4 wins).
@@ -247,6 +247,23 @@ first-party. Measured with `llama-benchy` (MTP2 + fp8 KV + prefix cache, C=1 × 
 > wins prefill has a weaker small-M decode GEMM; a hybrid CUTLASS-prefill + Triton-decode path is in
 > progress. TokenSpeed also fits +25% more KV cache (1.90M vs 1.52M tokens) and has zero tool-calling
 > HTTP 500s. Both are single-source (jasl). (S-forum-tokenspeed)
+
+## Forum-reported benchmarks (2026-07-15 ingest, Batch 14)
+
+All rows below are **[reported]** — community-reported numbers from the NVIDIA DGX Spark forums, not
+first-party. Single-node DGX Spark, vLLM 0.24, MTP enabled.
+
+||||| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source |||
+|||||---|---|---|---|---|---|---|---|||
+||||| Qwen3.6-35B-A3B (nvidia) | NVFP4 + MTP=2, fp8 KV | vLLM 0.24 | 1 | ~90 (c=1) / ~420 (c=16 agg) | 262K | nvidia/Qwen3.6-35B-A3B-NVFP4; Marlin MoE; baseline for Unsloth comparison | S-forum-unsloth-qwen36 |||
+||||| Qwen3.6-35B-A3B (Unsloth) | NVFP4 + MTP=2, fp8 KV | vLLM 0.24 | 1 | ~75 (c=1) / ~410 (c=16 agg) | 262K | unsloth/Qwen3.6-35B-A3B-NVFP4; ~15% slower than nvidia; gap narrows at high concurrency | S-forum-unsloth-qwen36 |||
+||||| Qwen3.6-35B-A3B (nvidia) | NVFP4 + MTP, fp8 KV | vLLM 0.24 | 1 | 103.4 avg (4 workloads) | — | hedelyuk.alexandr benchmark: short_ok 107.2, coding 112.3, reasoning 93.2, agentic 100.8 | S-forum-unsloth-qwen36 |||
+||||| Qwen3.6-35B-A3B (Unsloth) | NVFP4 + MTP, fp8 KV | vLLM 0.24 | 1 | 87.6 avg (4 workloads) | — | hedelyuk.alexandr: short_ok 92.9, coding 95.7, reasoning 77.3, agentic 84.6; −15.2% avg | S-forum-unsloth-qwen36 |||
+||||| Qwen3.6-35B-A3B (Unsloth-Fast) | NVFP4 + MTP, fp8 KV | vLLM 0.24 | 1 | 97 (tuned) / 75 (initial) | 262K | unsloth/Qwen3.6-35B-A3B-NVFP4-Fast; TheAwakenOne tuned recipe; still behind nvidia | S-forum-unsloth-qwen36 |||
+
+> **[reported]** Unsloth NVFP4 is consistently ~15% slower than nvidia NVFP4 on GB10 across 3
+> independent benchmarks (hedelyuk.alexandr, J-R, TheAwakenOne). The "2.5× faster" claim is B200-only.
+> At c=16 the gap narrows to ~2% (420 vs 410 tok/s aggregate). (S-forum-unsloth-qwen36)
 
 ## Image generation benchmarks (diffusion models on GB10, 2026-07-10)
 

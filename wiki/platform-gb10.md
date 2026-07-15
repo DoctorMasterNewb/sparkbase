@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup
-> **updated:** 2026-07-12
+> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup, S-forum-hpc-slurm, S-forum-llama32-finetune
+> **updated:** 2026-07-15
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -335,6 +335,29 @@ only after unexplained slow tok/s).
   pinning or low-power state observed) — it's a **power-delivery / soft-reboot
   completion** issue. Single source; may be related to the USB-C PD firmware area
   that NVIDIA is already patching. Status: `open`.
+
+### Batch 14 forum ingest (2026-07-15)
+
+- **[conjecture]** **HPC/slurm on DGX Spark — CPU P/E core topology matters for job binding**
+  (S-forum-hpc-slurm, pavuknm): `numactl` reports one socket with Cortex-X925 (performance) and another
+  with Cortex-A725 (efficiency) — 10 P-cores + 10 E-cores. Efficiency cores can bottleneck performance
+  cores in MPI jobs; `--cpu-bind=map_cpu` in slurm can pin to specific cores once mapping is known.
+  Suggested approach: two slurm partitions (all-core vs P-core-only). On conventional x86/PCIe systems
+  only a few CPUs are needed for full GPU utilization, but NVLink-C2C may change this dynamic. No MPI
+  library currently optimizes for ARM P/E core asymmetry. NVIDIA Deepops all-in-one slurm setup
+  (login+ondemand+compute+slurm-master on one node) works on a single Spark after ansible playbook
+  patching; enroot/pyxis containers are the most efficient way to test GenAI (TensorRT-LLM, vLLM).
+- **[conjecture]** **CX-7 in switch topology needs special configuration** (S-forum-hpc-slurm,
+  pavuknm): using ConnectX-7 with an external switch (vs direct-cable) requires additional
+  configuration beyond the standard direct-cable setup. Referenced ServeTheHome article on GB10
+  ConnectX-7 200GbE networking differences. RoCE (not real InfiniBand) — confirmed by bugsareyummy
+  and dbsci. Relevant for HPC users planning >2-node clusters with switches.
+- **[conjecture]** **Llama 3.2 3B full fine-tuning 8× slower than benchmark** (S-forum-llama32-finetune,
+  arijitmukh007): measured 0.59 steps/s vs expected ~5 steps/s (benchmark claims ~80k tok/s peak
+  fine-tuning). NVIDIA redirect to DGX Spark Performance FAQ + benchmarking guide — the gap is a
+  known issue with a documented FAQ answer, not a new finding. Training throughput on GB10 is limited
+  by the same bandwidth/compute constraints that bound inference; benchmark numbers assume specific
+  configurations (batch size, sequence length, data pipeline) that may not match user setups.
 
 ## Reference cluster
 

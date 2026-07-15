@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed
-> **updated:** 2026-07-14
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision
+> **updated:** 2026-07-15
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -172,3 +172,24 @@ Three engines run on the Spark pair; pick by arch support and quant.
   after changing it. `fast_hadamard_transform` must be built from the GitHub repo (PyPI sdist is
   missing its `csrc/`). Uninstall torchvision/torchaudio (unused; its torch-2.13 ABI trips
   transformers).
+
+## Forum ingest: Multi-model co-hosting — vision + LLM on 2× Spark (2026-07-15)
+
+- **[conjecture]** **Co-hosting a vision model alongside DSV4 on 2× Spark is memory-starved**
+  (S-forum-dsv4-vision, cerchez07): running DeepSeek V4 + Qwen3-VL on the same 2-node cluster requires
+  cutting DSV4 to 256K context at `--gpu-memory-utilization 0.73` to free enough VRAM for the vision
+  model — and it's still "teetering on the edge of OOM." The single-tenant-per-node constraint
+  (`[[wiki/platform-gb10.md]]`) makes this fundamentally difficult on 2× 121 GB UMA.
+- **[reported]** **Recommended pattern: offload vision to a separate machine** (StarChickenXVII, 0rand):
+  host the vision model (Gemma-4-12B, Qwen3.5-4B with vision tower) on a separate device (MacBook Pro,
+  etc.) and expose it as a tool/API to the LLM running on the Spark cluster. This keeps the 2× cluster
+  fully dedicated to the text LLM. Multiple users independently arrived at this approach.
+- **[conjecture]** **Multimodal front-end + text reasoning pipeline** (gpieceoffice): runs
+  `RedHatAI/Gemma-12B-NVFP4` or `RedHatAI/Qwen3.5-9B-FP8-dynamic` as a multimodal front-end (vision +
+  audio analysis) alongside DSV4 with MTP=3 as the text reasoning engine on 2× Spark — combined
+  ~35–40 tok/s. The vision model extracts structured information from visual/audio inputs and passes
+  it to DSV4 for reasoning. Key insight: "simply connecting the models is not enough" — the multimodal
+  analysis prompt and information transfer pipeline design is the most important aspect.
+- **[conjecture]** **Qwen3.5-4B with vision tower fits in worker node spare memory** (0rand): 2–3 GB
+  more room available on a worker node for a small vision model. Lower quality but sufficient for
+  debugging / screenshot analysis.

@@ -125,6 +125,18 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   tok-s numbers/quant formats, and "fits in 121 GB" is trivially true for a single-model workload
   with no quantization. Source registered for provenance; no wiki page created.
 
+## Forum ingest 2026-07-15 (Batch 14)
+- 6 new forum topics found (4 technically relevant, 2 skipped: robotics RT kernel, RMA complaint).
+- 4 new sources registered (Batch 14). 6 topic IDs added to processed_topics.txt (total now 375).
+- Pages touched: models/qwen (Unsloth NVFP4 ~15% slower than nvidia on GB10 [reported] via 3
+  independent benchmarks; flashinfer_b12x unavailable on stock vLLM; working Marlin+MTP recipe;
+  W4A16 bypass hypothesis; quality parity), quantization-on-gb10 (Unsloth NVFP4 slower on GB10,
+  flashinfer_b12x gap, W4A16 bypass), benchmarks (5 new forum-reported rows: nvidia vs Unsloth
+  Qwen3.6-35B-A3B NVFP4 comparison), engines (multi-model co-hosting — vision+LLM on 2× Spark
+  memory-starved, offload vision to separate machine [reported], multimodal front-end pipeline),
+  platform-gb10 (HPC/slurm CPU P/E core topology, CX-7 switch config, Llama 3.2 3B finetune
+  8× slower than benchmark — known FAQ).
+
 ## Forum ingest 2026-07-13 (Batch 11)
 - 4 new forum topics found (2 technically relevant, 2 skipped as non-technical).
 - 2 new sources registered (Batch 11). 4 topic IDs added to processed_topics.txt (total now 364).

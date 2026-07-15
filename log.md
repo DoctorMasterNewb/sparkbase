@@ -322,3 +322,31 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   unified memory" is trivially true for a single unquantized model. Source registered for provenance
   only. No wiki page created or edited.
 - **Pages touched:** sources/README, index, log.
+
+## 2026-07-15 — Forum ingest: Batch 14 — 6 new topics (4 processed, 2 skipped)
+
+- **Sources:** 4 new forum sources registered (Batch 14) in `sources/README.md`.
+  6 topic IDs added to `processed_topics.txt` (total now 375).
+- **Topics found:** 6 new topics. 4 technically relevant, 2 skipped:
+  - 376806 (Franka RT kernel) — robotics, not LLM inference on GB10. Skipped.
+  - 376761 (Power on failure after outage) — hardware RMA complaint. Skipped.
+- **Pages touched:**
+  - models/qwen (Unsloth NVFP4 ~15% slower than nvidia on GB10 — [reported] via 3 independent
+    benchmarks; flashinfer_b12x unavailable on stock vLLM; working Marlin MoE+MTP recipe; W4A16
+    bypass hypothesis; quality parity; "Paths to 100+ tok/s" updated — Unsloth path struck through
+    as tested),
+  - quantization-on-gb10 (Unsloth NVFP4 slower on GB10, flashinfer_b12x gap, W4A16 bypass
+    hypothesis),
+  - benchmarks (5 new forum-reported rows: Qwen3.6-35B-A3B nvidia vs Unsloth NVFP4 comparison),
+  - engines (multi-model co-hosting: vision+LLM on 2× Spark is memory-starved, offload vision
+    to separate machine [reported], multimodal front-end+text reasoning pipeline pattern),
+  - platform-gb10 (HPC/slurm CPU P/E core topology for job binding, CX-7 switch topology config,
+    Llama 3.2 3B finetuning 8× slower than benchmark — known FAQ),
+  - sources/README, index, log.
+- **Key findings:**
+  1. Unsloth Qwen3.6 NVFP4 quants are ~15% slower than nvidia NVFP4 on GB10 — 3 independent forum
+     benchmarks agree → [reported]. Unsloth's "2.5× faster" is B200-only, does not transfer to sm_121.
+  2. flashinfer_b12x kernel unavailable on stock vLLM despite capability detection returning True.
+  3. Multi-model co-hosting (vision + LLM) on 2× Spark is memory-starved; offload vision to a
+     separate machine is the recommended pattern (multiple users independently arrived at this).
+  4. CPU P/E core topology (Cortex-X925 + A725) matters for HPC slurm job binding on Spark.

@@ -3,8 +3,8 @@
 > **area:** quantization
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth
-> **updated:** 2026-07-13
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36
+> **updated:** 2026-07-15
 
 GB10 has **no native FP4 compute and no native FP8 block-scale**. That one fact decides which quant
 to pick. Decode is **bandwidth-bound** (`[[wiki/platform-gb10.md]]`), so the winning quant is usually
@@ -68,6 +68,25 @@ decompress, because at low batch you're memory-bound, not compute-bound.
 - **[proven]** **AutoRound 16-bit-base reject:** stock validator only accepts bits ∈ {2,3,4,8}; a 16-bit
   base with per-module overrides needs the `autoround_mixed` method + a `config.json` `quant_method`
   rename.
+
+## Forum ingest: Unsloth NVFP4 quants on GB10, flashinfer_b12x gap (2026-07-15)
+
+- **[reported]** **Unsloth NVFP4 quants are ~15% slower than nvidia NVFP4 on GB10** (S-forum-unsloth-qwen36):
+  3 independent forum benchmarks agree — hedelyuk.alexandr (−15.2% avg across 4 workloads), J-R (−17%
+  at c=1), TheAwakenOne (75→97 tok/s tuned, still behind nvidia). All on single-node DGX Spark, vLLM 0.24.
+  Unsloth's "2.5× faster" claim is B200-specific and does not transfer to sm_121. The nvidia NVFP4 Marlin
+  MoE path remains the fastest NVFP4 option on GB10.
+- **[conjecture]** **`flashinfer_b12x` kernel unavailable on stock vLLM** despite `has_flashinfer_b12x_gemm()`
+  returning True on sm_121 (jbourny): `--moe-backend flashinfer_b12x` → `ValueError: no 'flashinfer_b12x'
+  kernel exists for this layer type`. Unsloth's optimum recipe requires b12x but falls back to Marlin on
+  stock builds. JW2026 measured <3% difference with b12x flags (within margin of error). The b12x path
+  may require a custom vLLM build or specific container image.
+- **[conjecture]** **Unsloth "speedup" may be W4A16 bypass** (robert287): Unsloth's performance boost on
+  Qwen may come from bypassing NVFP4 on weights via W4A16 — consistent with GB10 findings that AWQ/W4A16
+  Marlin and NVFP4 Marlin are within noise on decode (kernel efficiency, not bytes, is the differentiator
+  at ~4-bit — see AWQ-vs-NVFP4 section above).
+- **[reported]** **Quality parity**: tool-eval-bench scores equal to nvidia NVFP4 with more run-to-run
+  variance (azampatti, 2 independent eval runs).
 
 ## See also
 `[[wiki/platform-gb10.md]]` · `[[wiki/attention-and-kv-cache.md]]` · `[[wiki/containers-and-tooling.md]]` · per-model pages under `wiki/models/`

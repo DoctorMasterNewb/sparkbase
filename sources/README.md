@@ -251,6 +251,15 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 |---|---|---|---|---|
 | S-forum-acestep-music | forum | ACE-Step v1.5 XL music generation on single Spark — fits comfortably in VRAM; 5Hz-LM-4B companion model for lyrics; 3 independent users confirm (danielgbates, joey28, aostang) | https://forums.developer.nvidia.com/t/376653 | 2026-07-12 |
 
+## Batch 14 forum sources (2026-07-15 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-unsloth-qwen36 | forum | Unsloth Qwen3.6 NVFP4 quants on DGX Spark — 35B-A3B Unsloth NVFP4 ~15% slower than nvidia NVFP4 on GB10 (3 independent benchmarks); 27B fits 24GB; flashinfer_b12x unavailable on stock vLLM (falls back to Marlin); working spark-vllm-docker recipe with Marlin MoE + MTP; W4A16 bypass hypothesis (emX0r, hedelyuk.alexandr, J-R, TheAwakenOne, jbourny, azampatti, robert287) | https://forums.developer.nvidia.com/t/376484 | 2026-07-10 |
+| S-forum-dsv4-vision | forum | DeepSeek V4 + vision model co-hosting on 2× Spark — memory balancing: DSV4 context cut to 256K @ 0.73 util to fit Qwen3-VL; recommended offloading vision to separate machine (MacBook, etc.); gpieceoffice runs Gemma-12B-NVFP4 + Qwen3.5-9B-FP8 as multimodal front-end + DSV4 MTP=3 as text reasoning, 35-40 tok/s combined (cerchez07, StarChickenXVII, 0rand, gpieceoffice) | https://forums.developer.nvidia.com/t/376790 | 2026-07-14 |
+| S-forum-llama32-finetune | forum | Llama 3.2 3B full fine-tuning 8× slower than benchmark — 0.59 steps/s vs expected ~5 steps/s; NVIDIA redirect to DGX Spark Performance FAQ + benchmarking guide (arijitmukh007, raphael.amorim) | https://forums.developer.nvidia.com/t/353011 | 2025-11-30 |
+| S-forum-hpc-slurm | forum | HPC/slurm/MPI on DGX Spark — NVIDIA Deepops all-in-one slurm on single Spark; CPU topology NUMA (Cortex-X925 perf + Cortex-A725 efficiency cores); P/E core binding for slurm partitions; CX-7 switch topology needs special config; enroot/pyxis containers for GenAI; RoCE not real IB (pavuknm, bugsareyummy, dbsci, paul448) | https://forums.developer.nvidia.com/t/366724 | 2026-04-15 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and
