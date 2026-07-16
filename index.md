@@ -158,6 +158,19 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   TP=4/TP=2, M3-AWQ+EAGLE TP=4), containers-and-tooling (easy-vllm tool),
   models/minimax (M3-AWQ+EAGLE on CRS504 corroborates existing benchmarks).
 
+## Forum ingest 2026-07-16 (Batch 16)
+- 3 new forum topics found (2 technically relevant, 1 skipped as buying advice/warranty/social).
+- 2 new sources registered (Batch 16). 3 topic IDs added to processed_topics.txt (total now 382).
+- Pages touched: engines (Colibri — pure-C expert-streaming engine for GLM-5.2 744B MoE on
+  single Spark, 2.4-3.3 tok/s, O_DIRECT 9.69 GB/s, CACHE_ROUTE experimental routing),
+  containers-and-tooling (ComfyUI Docker optimized for DGX Spark — CUDA 13.1 sm_121, SageAttention 2,
+  double-VRAM bug fix copy=False + --disable-mmap, --disable-dynamic-vram, cudaMemGetInfo
+  under-reports free UMA when co-resident CUDA process — psutil fix),
+  platform-gb10 (cudaMemGetInfo under-reports free memory on UMA with co-resident process
+  [conjecture]), benchmarks (1 new forum-reported row: GLM-5.2 744B Colibri expert streaming),
+  roadmap (Colibri demonstrates expert-streaming approach in practice — bottleneck is attention
+  not disk I/O).
+
 ## Forum ingest 2026-07-11 (Batch 7)
 - 2 new forum topics found, both technically relevant.
 - 2 new sources registered (Batch 7). 2 topic IDs added to processed_topics.txt (total now 354).

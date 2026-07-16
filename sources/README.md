@@ -268,6 +268,13 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-llm-comfyui | forum | Running large LLM on 2× Spark cluster while keeping ComfyUI usable — vLLM KV cache reserve starves co-hosted workloads, --gpu-memory-utilization 0.7-0.8 workaround, llama.cpp better for co-hosting than vLLM, ComfyUI on head node works with reduced util (Alexander-F, AakankshaS, clawdiusmaximus, C_G, vasimv) | https://forums.developer.nvidia.com/t/376650 | 2026-07-12 |
 | S-forum-qwen397-arch | forum | Architecture analysis: Qwen3.6-397B upcycling feasibility — interconnect bottleneck (~23 GB/s cross-node vs ~600 GB/s in-box), MoE all-to-all sensitivity, FP8 training impossible on sm_121, Megatron on GB10 caveats (vedcsolution, raphael.amorim) | https://forums.developer.nvidia.com/t/369561 | 2026-05-09 |
 
+## Batch 16 forum sources (2026-07-16 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-colibri-glm52 | forum | Colibri engine: pure C, zero deps, streams GLM-5.2 (744B MoE) experts from disk on single DGX Spark — 2.4 tok/s full top-8, 3.33 tok/s with experimental CACHE_ROUTE; O_DIRECT disk I/O 9.69 GB/s; int4 MoE + int8 MTP heads; COLI_CUDA_UNIFIED=1 (Jcagle, Keving; benchmark by VincentMarquez via GitHub issue #161) | https://forums.developer.nvidia.com/t/376749 | 2026-07-13 |
+| S-forum-comfyui-optimized | forum | ComfyUI Docker optimized for DGX Spark — CUDA 13.1 base, PyTorch cu130, SageAttention 2 compiled for sm_121, Comfy Kitchen NVFP4; double-VRAM bug fix (copy=False in tensor.to() with --disable-mmap); --disable-dynamic-vram; cudaMemGetInfo under-reports free UMA when co-resident CUDA process — fix via psutil.virtual_memory().available (luix93, Haidij) | https://forums.developer.nvidia.com/t/364846 | 2026-03-26 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

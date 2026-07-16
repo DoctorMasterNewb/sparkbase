@@ -3,8 +3,8 @@
 > **area:** roadmap
 > **status:** open-problem
 > **evidence:** mixed
-> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023
-> **updated:** 2026-07-09
+> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52
+> **updated:** 2026-07-16
 
 The unsolved stuff. Each item links to the page with the detail. Close an item by moving its finding
 onto the relevant page and deleting it here.
@@ -121,8 +121,11 @@ onto the relevant page and deleting it here.
   second CX-7 QSFP port as an NVMe-oF initiator could enable >128 GB models on a single Spark via
   expert streaming. GB10's unified memory is actually an advantage (no GPUDirect needed — CPU-mediated
   path carries no extra penalty). Internal NVMe gives ~6.6 GB/s (too slow); external NVMe-oF target
-  could be faster. Hardware agent with a storage target could test throughput and viability.
-  `[[wiki/multinode-tp-and-networking.md]]`
+  could be faster. **[conjecture]** Colibri (S-forum-colibri-glm52, JustVugg/colibri) now demonstrates
+  this approach in practice: a pure-C engine streaming GLM-5.2 (744B MoE) experts from local NVMe
+  on a single Spark — O_DIRECT 9.69 GB/s, 2.4-3.3 tok/s. The bottleneck is attention (6.16s of 18s),
+  not disk I/O, suggesting faster storage alone won't fix it. Hardware agent with a storage target
+  could test NVMe-oF throughput and viability. `[[wiki/multinode-tp-and-networking.md]]`
 - **[conjecture]** **vLLM version regression** (S-forum-vllm-019-vs-023): vLLM 0.23 is ~12% slower
   and uses ~15% more memory than 0.19 on Qwen3.5-122B AutoRound. Hardware agent should benchmark
   current vLLM (0.24+) to see if the regression is fixed. `[[wiki/quantization-on-gb10.md]]`

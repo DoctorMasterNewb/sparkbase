@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch
-> **updated:** 2026-07-15
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52
+> **updated:** 2026-07-16
 
 Single-stream decode unless noted. All on the 2× GB10 pair. Numbers anchor the rules on
 `[[wiki/platform-gb10.md]]` (bandwidth-bound) and `[[wiki/quantization-on-gb10.md]]` (MoE-NVFP4 wins).
@@ -275,6 +275,20 @@ All rows below are **[conjecture]** — single-source community-reported numbers
 
 > **[conjecture]** Single forum reference (raphael.amorim) citing the 8× GB10 cluster result.
 > No engine, flags, or configuration details provided — treat as a data point only.
+
+## Forum-reported benchmarks (2026-07-16 ingest, Batch 16)
+
+All rows below are **[conjecture]** — single-source community-reported numbers, not first-party.
+
+||| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+|||---|---|---|---|---|---|---|---||
+||| GLM-5.2 (744B/40B MoE) | int4 MoE + int8 MTP | Colibri (expert streaming) | 1 | 2.39 (full top-8) / 3.33 (CACHE_ROUTE) | short | Experts streamed from disk; O_DIRECT 9.69 GB/s; 82-97% expert cache hit; RSS 76-78.5 GB; `COLI_CUDA_UNIFIED=1`; single-Spark 744B | S-forum-colibri-glm52 ||
+
+> **[conjecture]** Colibri is the first reported engine to run a 744B MoE on a single 121 GB Spark,
+> streaming experts from disk (only hot experts cached via LRU/pin). 2.4-3.3 tok/s is very slow but
+> coherent — the streaming-from-disk approach is fundamentally different from multi-node TP. Attention
+> dominates the profile (6.16s of 18s), not disk I/O. Experimental CACHE_ROUTE (cache-aware routing,
+> ~14% expert substitution) raises hit 82→97% and tok/s 2.4→3.3; not upstream default. (S-forum-colibri-glm52)
 
 ## Image generation benchmarks (diffusion models on GB10, 2026-07-10)
 

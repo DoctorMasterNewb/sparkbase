@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-nvfp4, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio
-> **updated:** 2026-07-14
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-nvfp4, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized
+> **updated:** 2026-07-16
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -184,3 +184,50 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   (uses your own subscription, no extra setup); **Optimize Speed** strictly measurement-based
   (≥10% or it rolls back); multi-node cluster view with no node limit. Recipes pulled from
   sparkrun community recipes and spark-arena. GitHub: `TheAwaken1/Spark-Studio`.
+
+### Batch 16 forum ingest (2026-07-16)
+
+- **[conjecture]** **ComfyUI Docker optimized for DGX Spark** (S-forum-comfyui-optimized,
+  luix93): a community Docker setup targeting ComfyUI on GB10. Key GB10-specific features:
+  - **CUDA 13.1 base** with full `nvcc` support for sm_121 (enables CUDA extension compilation).
+  - **PyTorch cu130** prebuilt ARM64 wheels from PyTorch's cu130 index.
+  - **SageAttention 2** compiled from source directly against sm_121 for full hardware
+    attention acceleration (cf. S-forum-sage-attn — the silent-fallback risk).
+  - **Comfy Kitchen** (`comfy_kitchen`) for NVFP4 quantization support on Blackwell.
+  - **`--disable-dynamic-vram`** — ComfyUI's dynamic VRAM management doesn't work properly on
+    the Spark; with it disabled, models that fit in memory stay resident (faster prompt-to-image).
+  - **Double-VRAM bug fix** — patches `comfy/utils.py` to set `copy=False` in `tensor.to()`,
+    fixing double memory usage on unified memory systems with `--disable-mmap`. On UMA,
+    ComfyUI's default `copy=True` duplicates tensor data in the same physical pool.
+  - **`CUDA_MODULE_LOADING`** — a typo in the original compose (`CUDA` is not a valid value)
+    silently defaulted to `LAZY`, which performed better than `EAGER` in testing (S-forum-comfyui-
+    optimized, AoE). LAZY module loading is the accidental winner on GB10.
+  - Repo: `luix93/DGX-Spark-ComfyUI`. Multiple users confirm stability improvements (Schordan,
+    Zhiqing Yu Cn). ComfyUI v0.27 broke fp8/fp4 precision support — Comfy Kitchen needs
+    updating to 0.2.61 (report from post #10, status open).
+- **[conjecture]** **`cudaMemGetInfo` under-reports free memory on unified memory when a
+  co-resident CUDA process holds allocation** (S-forum-comfyui-optimized, Haidij):
+  **Symptom:** ComfyUI alone runs fine (~19-25s/image at 1080×1350, 5 steps, Flux2). With vLLM
+  co-resident (34 GB bound, `gpu_memory_utilization=0.3`), every ComfyUI job shows text encoder
+  *partially offloaded* and per-image time grows from ~20s to 100-330s. `/system_stats`
+  reveals: `vram_free: 6.2 GB` (what CUDA reports) vs `ram_free: 46.3 GB` (what the host
+  actually has free).
+  **Root cause:** `comfy/model_management.py::get_free_memory()` uses
+  `torch.cuda.mem_get_info()` (wrapping `cudaMemGetInfo`) to decide whether to keep a model
+  resident vs offload. On unified-memory systems, `cudaMemGetInfo` reports only memory **not
+  currently allocated by any CUDA process** on the same device — not the true free pool. When
+  vLLM has 34 GB bound, `cudaMemGetInfo` returns ~6 GB free even though 40+ GB of unified
+  memory is actually available. ComfyUI then offloads a ~7.7 GB text encoder to "CPU" (which
+  on UMA is the *same physical RAM* it just decided it couldn't keep on GPU), paying the
+  partial-offload penalty every forward pass.
+  **Fix (verified by testing):** replace the CUDA memory query with
+  `psutil.virtual_memory().available` in the CUDA branch of `get_free_memory()`. On GB10
+  these are semantically the same pool; psutil's view correctly accounts for system reality
+  including other processes' allocations. Patch (Dockerfile RUN):
+  ```python
+  # Replace: mem_free_cuda, _ = torch.cuda.mem_get_info(dev)
+  # With:    import psutil as _psutil; mem_free_cuda = _psutil.virtual_memory().available
+  ```
+  This is a GB10-specific UMA finding that generalizes beyond ComfyUI — any application using
+  `cudaMemGetInfo` to make memory decisions will under-report free memory when another CUDA
+  process is resident on the same unified device. See `[[wiki/platform-gb10.md]]`.

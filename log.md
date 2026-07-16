@@ -387,3 +387,42 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
      TP=4 — the largest reported cluster (8× GB10, Qwen3.5-397B FP8) achieves only 31-35 tok/s.
   4. FP8 training is impossible on sm_121 (TransformerEngine has no backend, no roadmap).
      Megatron-LM works on GB10 for MoE expert parallelism but with VRAM and networking caveats.
+
+## 2026-07-16 — Forum ingest: 3 new topics (Batch 16)
+
+- **Sources:** 3 new forum topics found. 2 technically relevant, 1 skipped (buying advice/warranty/social
+  — MSI EdgeXpert reliability thread, topic 371537, contains minor PD firmware 600MHz cap and EC
+  firmware corruption mentions but is predominantly buying advice; the PD firmware finding overlaps
+  with the already-documented power-controller wedge). Registered 2 new `S-forum-*` sources (Batch 16):
+  S-forum-colibri-glm52, S-forum-comfyui-optimized.
+- **Pages touched:**
+  - engines (Colibri — sixth engine, pure-C expert-streaming for GLM-5.2 744B MoE on single Spark,
+    2.4-3.3 tok/s, O_DIRECT 9.69 GB/s, CACHE_ROUTE cache-aware routing, profile breakdown,
+    scale-out hypothesis [conjecture]),
+  - containers-and-tooling (ComfyUI Docker optimized for DGX Spark — CUDA 13.1/sm_121, SageAttention 2,
+    double-VRAM bug fix copy=False + --disable-mmap, --disable-dynamic-vram, CUDA_MODULE_LOADING
+    LAZY accidental winner; cudaMemGetInfo under-reports free UMA with co-resident CUDA process —
+    psutil.virtual_memory().available fix [conjecture]),
+  - platform-gb10 (cudaMemGetInfo under-reports free memory on UMA when another CUDA process is
+    resident — generalizes beyond ComfyUI to any multi-process UMA workload [conjecture]),
+  - benchmarks (1 new forum-reported row: GLM-5.2 744B Colibri expert streaming 2.39/3.33 tok/s),
+  - roadmap (Colibri demonstrates expert-streaming approach in practice — bottleneck is attention
+    not disk I/O, suggesting faster storage alone won't fix throughput),
+  - sources/README, index, log.
+- **Key findings:**
+  1. Colibri (JustVugg/colibri) is a new pure-C engine that streams MoE experts from disk, enabling
+     a 744B MoE (GLM-5.2) to run on a single 121 GB Spark — first reported engine to do so. 2.4-3.3
+     tok/s is very slow but coherent. The profile shows attention dominates (6.16s of 18s), not disk
+     I/O — so faster storage alone won't dramatically improve throughput. Experimental CACHE_ROUTE
+     (cache-aware expert routing, ~14% substitution) raises expert hit 82→97% and tok/s 2.4→3.3.
+  2. `cudaMemGetInfo` (the API behind `torch.cuda.mem_get_info()`) under-reports free unified memory
+     when another CUDA process is resident on the same GB10 device. With vLLM holding 34 GB,
+     `cudaMemGetInfo` returns ~6 GB free even though 40+ GB is actually available. This causes
+     applications (ComfyUI, and potentially others) to needlessly offload to "CPU" — which on UMA
+     is the same physical RAM. Fix: use `psutil.virtual_memory().available`. This generalizes to
+     any multi-process UMA workload and is a fundamental GB10 platform finding.
+  3. ComfyUI on DGX Spark has a double-VRAM bug: `copy=True` in `tensor.to()` with `--disable-mmap`
+     duplicates tensor data in the same unified pool. Fix: patch `comfy/utils.py` to `copy=False`.
+  4. Topic 371537 (MSI EdgeXpert reliability) skipped — buying advice/warranty/social. Minor technical
+     mentions (PD firmware 600MHz cap, EC firmware corruption via DGX dashboard) are single-source
+     and overlap with existing power-controller wedge documentation.

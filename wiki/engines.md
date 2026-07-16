@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui
-> **updated:** 2026-07-15
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52
+> **updated:** 2026-07-16
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -219,3 +219,31 @@ Three engines run on the Spark pair; pick by arch support and quant.
   AakankshaS): `sudo swapoff -a` before loading large models — when swap is active, massive
   allocations force the OS to thrash data onto storage, creating kernel lockups. Documented
   in DGX Spark troubleshooting.
+
+## Forum ingest: Colibri — expert-streaming engine for 744B MoE on single Spark (2026-07-16)
+
+- **[conjecture]** **Colibri engine** (S-forum-colibri-glm52, JustVugg/colibri): a sixth engine
+  alongside vLLM/Atlas/llama.cpp/ds4/TokenSpeed — pure C, zero deps, streams MoE experts from
+  disk on demand. Designed to run GLM-5.2 (744B MoE, 40B activated) on a single DGX Spark with
+  121 GB unified memory — the experts never all live in RAM; only the hot ones get cached via
+  LRU/pin. Repo: `JustVugg/colibri`. **[conjecture]** A forum user (Keving) linked a benchmark
+  by VincentMarquez (GitHub issue #161) run on a real DGX Spark: Ubuntu 24.04, kernel 6.17,
+  driver 580.126.09, int4 MoE + int8 MTP heads, `COLI_CUDA_UNIFIED=1` · `CUDA_DENSE=1` ·
+  `CUDA_GROUPED=1` · `DIRECT=1` · `PIPE=1`. Results:
+  - **Tier A (full top-8, stock routing):** 2.39 decode tok/s (timed profile), ~2.08 tok/s
+    (chat warm session), 82% expert cache hit, RSS ~76 GB.
+  - **Tier B (experimental CACHE_ROUTE, opt-in not upstream):** 3.33 decode tok/s best,
+    97% hit, 14% expert substitution, RSS 78.5 GB. `CACHE_ROUTE=1 ROUTE_J=2 ROUTE_M=12`
+    (keep true top-2, fill remaining 6 slots preferring pinned/LRU experts ranked in top-12).
+  - **Disk I/O:** buffered 4.25 GB/s, O_DIRECT **9.69 GB/s** (`c/iobench`, 19 MB × 64 reads,
+    8 threads). This corroborates the existing NVMe-oF/expert-streaming direction
+    (`[[wiki/roadmap.md]]`).
+  - **Profile breakdown (Tier B timed one-shot):** expert-disk 3.85s, expert-matmul 3.83s,
+    attention 6.16s, other 4.16s — attention dominates, not disk.
+  - MTP=0/DRAFT=0 for all speed cells; `TEMP=0.7`; short context via `:reset` each turn.
+  - Correct output (first-20 primes) every turn; not a full quality gate.
+  **[conjecture]** Scale-out hypothesis (joshua.dale.warner): could this scale to 2× Sparks
+  via expert parallel? Twice the resident RAM, twice the SSD read bandwidth. Untested.
+  This is the first reported engine that makes a 744B model usable (if very slowly) on a
+  single 121 GB Spark — the streaming-from-disk approach is the complement to the
+  multi-node TP path used for other large MoE models.

@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup, S-forum-hpc-slurm, S-forum-llama32-finetune, S-forum-cx7-hotplug
-> **updated:** 2026-07-15
+> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup, S-forum-hpc-slurm, S-forum-llama32-finetune, S-forum-cx7-hotplug, S-forum-comfyui-optimized
+> **updated:** 2026-07-16
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -86,6 +86,15 @@ delta to be found — because on identical hardware, it always is.
   (`~/.cache/huggingface`, `~/.cache/vllm`, `~/.cache/flashinfer`). Standard env:
   `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_LEVEL=ERROR`
   (`HF_HUB_OFFLINE=1` when weights are cached).
+- **[conjecture]** **`cudaMemGetInfo` under-reports free memory on UMA when another CUDA process is
+  resident** (S-forum-comfyui-optimized, Haidij): `cudaMemGetInfo` (the API behind
+  `torch.cuda.mem_get_info()`) reports only memory **not currently allocated by any CUDA process**
+  on the device — not the true free unified pool. When vLLM holds 34 GB, `cudaMemGetInfo` returns
+  ~6 GB free even though 40+ GB of host unified memory is actually available. This causes
+  applications using `cudaMemGetInfo` for memory decisions (e.g. ComfyUI's model offload logic)
+  to needlessly offload to "CPU" — which on UMA is the *same physical RAM*. Fix: use
+  `psutil.virtual_memory().available` instead (semantically the same pool on GB10). This
+  generalizes to any multi-process UMA workload. See `[[wiki/containers-and-tooling.md]]`.
 
 ## GPU power-controller wedge (the "14 W cap") — known firmware bug
 
