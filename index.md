@@ -171,6 +171,22 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   roadmap (Colibri demonstrates expert-streaming approach in practice — bottleneck is attention
   not disk I/O).
 
+## Forum ingest 2026-07-16 (Batch 17)
+- 5 new forum topics found (4 technically relevant, 1 skipped: 376589 = buying advice "triple stack").
+- 4 new sources registered (Batch 17). 5 topic IDs added to processed_topics.txt (total now 387).
+- Pages touched: quantization-on-gb10 (NVFP4 meta-analysis — NVFP4 leaves ~half layers bf16 vs
+  Int4 all-layers; TRT-LLM NVFP4 slower than GGUF Q4_K_M; bandwidth efficiency 42-48%; NVFP4 now
+  operational via community Docker; FlashInfer 0.6.8.1 improvements [reported]),
+  models/nemotron-3 (Ollama v0.30.x-v0.31.2 parser regression breaks Nemotron-3-Super on GB10,
+  fix: downgrade to 0.24.0 [conjecture]; NVFP4 bandwidth efficiency 42-48% [reported]),
+  multinode-tp-and-networking (ib_write_bw falsely reports >64 KiB RDMA WRITE failure on GB10 —
+  fabric is fine; NCCL_NET_PLUGIN=none, NCCL_TOPO_FILE correction, RoCE NIC-offloaded counters,
+  arp_ignore=1/arp_announce=2 [conjecture]),
+  platform-gb10 (Ollama parser regression [conjecture], NVFP4 bandwidth efficiency 42-48% [reported]),
+  engines (DSV4-Flash-DSpark-Abliterated source added),
+  benchmarks (5 new forum-reported rows: Llama-3.3-70B NVFP4 vs GGUF Q4_K_M, Nemotron-3-Super
+  NVFP4 1×/2×, DSV4-Flash-DSpark-Abliterated 50-60 tok/s).
+
 ## Forum ingest 2026-07-11 (Batch 7)
 - 2 new forum topics found, both technically relevant.
 - 2 new sources registered (Batch 7). 2 topic IDs added to processed_topics.txt (total now 354).

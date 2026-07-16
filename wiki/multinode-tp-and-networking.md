@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch
-> **updated:** 2026-07-15
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false
+> **updated:** 2026-07-16
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -351,3 +351,32 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
 - **[conjecture]** **CRS504 Noctua fan swap** (S-forum-4node-crs504, CosmicRaisins): swapping
   stock CRS504 fans for Noctua 40mm significantly reduces noise, though the switch forces
   ~5000 RPM minimum (slight whine remains). Non-critical ops finding.
+
+### Batch 17 forum ingest (2026-07-16)
+
+- **[conjecture]** **ib_write_bw falsely reports >64 KiB RDMA WRITE failure on GB10 — fabric is
+  fine** (S-forum-ibwrite-false, noc19): `ib_write_bw` (RC) deterministically fails above exactly
+  65,536 bytes with local protection error (`0x3b 0x0 0x9d`) on the responder — every node pair,
+  every RDMA device, 72/72 cells. Boundary is exactly 16 pages. Survives kernel downgrade, IOMMU
+  passthrough, fresh reimage; invariant to MR flags, ODP, and relaxed ordering. A minimal
+  libibverbs probe doing the identical RC WRITE with responder-side content verification **passes
+  at every size to 8 MiB**, every pair, every device — 72/72 clean, byte-exact. NCCL
+  all_reduce_perf full sweep: zero validation errors, 24.0 GB/s busbw. The failure is specific to
+  the `perftest` instrument, not the transport. Prior reports of the same defect class: thread
+  243518 (CX-5, 2023) and 282142 (CX-7/KVM, 2024). Cluster: 3-node Dell Pro Max FCM1253, DGX OS
+  7.5.0, CX-7 FW 28.45.4028, dual-rail RoCEv2 via 2× MikroTik CRS804.
+  - **[conjecture]** **NCCL_NET_PLUGIN=none required on GB10** (S-forum-ibwrite-false): the
+    bundled AWS OFI plugin fails on GB10 unified memory regardless of `NCCL_IB_DISABLE`.
+    Set `NCCL_NET_PLUGIN=none` to use NCCL's native IB transport.
+  - **[conjecture]** **NCCL_TOPO_FILE correction needed — auto-detected PCIe Gen1×1**
+    (S-forum-ibwrite-false): NCCL's detected topology read the GPU PCIe link as Gen1×1 and
+    cost-modeled itself to ~0.9 GB/s. A corrected `NCCL_TOPO_FILE` restored expected performance.
+    This corroborates the existing `[reported]` CX-7 firmware cap finding (old FW mis-reports
+    PCIe as Gen1×1 — S-dgxspark-report).
+  - **[conjecture]** **RoCE data is NIC-offloaded — netdev soft counters and tcpdump see nothing**
+    (S-forum-ibwrite-false): use `*_phy` counters for port totals and `*_vport_unicast_bytes`
+    for per-MAC attribution. The two MACs of one cage share the phy counter.
+  - **[conjecture]** **One interface per subnet per node + arp_ignore=1/arp_announce=2**
+    (S-forum-ibwrite-false): four subnets for the four fabric netdevs, plus
+    `arp_ignore=1`/`arp_announce=2` scoped to the fabric interfaces prevents cross-interface ARP
+    collapsing both MACs onto one PCIe x4 root.

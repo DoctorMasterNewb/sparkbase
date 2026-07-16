@@ -275,6 +275,15 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-colibri-glm52 | forum | Colibri engine: pure C, zero deps, streams GLM-5.2 (744B MoE) experts from disk on single DGX Spark — 2.4 tok/s full top-8, 3.33 tok/s with experimental CACHE_ROUTE; O_DIRECT disk I/O 9.69 GB/s; int4 MoE + int8 MTP heads; COLI_CUDA_UNIFIED=1 (Jcagle, Keving; benchmark by VincentMarquez via GitHub issue #161) | https://forums.developer.nvidia.com/t/376749 | 2026-07-13 |
 | S-forum-comfyui-optimized | forum | ComfyUI Docker optimized for DGX Spark — CUDA 13.1 base, PyTorch cu130, SageAttention 2 compiled for sm_121, Comfy Kitchen NVFP4; double-VRAM bug fix (copy=False in tensor.to() with --disable-mmap); --disable-dynamic-vram; cudaMemGetInfo under-reports free UMA when co-resident CUDA process — fix via psutil.virtual_memory().available (luix93, Haidij) | https://forums.developer.nvidia.com/t/364846 | 2026-03-26 |
 
+## Batch 17 forum sources (2026-07-16 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-nvfp4-broken | forum | NVFP4 on GB10 meta-analysis — 9× Spark customer: TRT-LLM NVFP4 slower than GGUF Q4_K_M, NVFP4 leaves ~half layers bf16, bandwidth efficiency 42-48%, flashinfer 0.6.8.1 merged, NVFP4 now operational via community Docker (DropTheBeat, tenari, jwarner, whpthomas) | https://forums.developer.nvidia.com/t/367082 | 2026-04-19 |
+| S-forum-dsv4-abliterated | forum | DeepSeek-V4-Flash-DSpark-Abliterated-Uncensored on 2× Spark TP=2 — fork of DS4 DSpark recipe with model swapped in, 50-60 tok/s, abliterated (uncensored) variant (tonyd615) | https://forums.developer.nvidia.com/t/376500 | 2026-07-10 |
+| S-forum-nemotron-ollama | forum | Nemotron-3-Super 120B on Ollama v0.30.x-v0.31.2 parser regression — SSE stream aborts mid-response, no finish_reason; fix: downgrade to Ollama 0.24.0; v0.31.2-rc1 does NOT fix (frank.stockmans) | https://forums.developer.nvidia.com/t/375835 | 2026-07-07 |
+| S-forum-ibwrite-false | forum | ib_write_bw falsely reports >64 KiB RDMA WRITE failure on GB10 — fabric is fine; minimal libibverbs probe passes all sizes; NCCL_NET_PLUGIN=none, NCCL_TOPO_FILE correction, RoCE NIC-offloaded counters, arp_ignore=1/arp_announce=2 (noc19) | https://forums.developer.nvidia.com/t/375603 | 2026-07-05 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

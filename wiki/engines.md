@@ -3,7 +3,7 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated
 > **updated:** 2026-07-16
 
 Three engines run on the Spark pair; pick by arch support and quant.

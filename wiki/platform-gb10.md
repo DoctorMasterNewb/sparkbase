@@ -3,7 +3,7 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup, S-forum-hpc-slurm, S-forum-llama32-finetune, S-forum-cx7-hotplug, S-forum-comfyui-optimized
+> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup, S-forum-hpc-slurm, S-forum-llama32-finetune, S-forum-cx7-hotplug, S-forum-comfyui-optimized, S-forum-nemotron-ollama, S-forum-nvfp4-broken
 > **updated:** 2026-07-16
 
 The hardware facts every model bring-up assumes. Read this first.
@@ -382,6 +382,24 @@ only after unexplained slow tok/s).
   idle power draw to nearly double — the CX-7 port draws significant power when active
   even with no traffic. Relevant to the 100W "rest" budget (CX-7 + SSD + USB, see power
   spec above).
+
+### Batch 17 forum ingest (2026-07-16)
+
+- **[conjecture]** **Ollama v0.30.x–v0.31.2 SSE parser regression on Nemotron-3-Super**
+  (S-forum-nemotron-ollama, frank.stockmans): since Ollama adopted llama.cpp as backend (v0.30),
+  a server-side SSE parser regression causes the stream to abort mid-response → no `finish_reason`
+  on the client. Not config/model/temp/ctx related. Temp 0.3 only reduced rate; stock model failed
+  identically. **Fix:** downgrade to Ollama 0.24.0 (last known-good). Verified 20/20 multi-tool
+  requests clean, zero parse errors. v0.31.2-rc1 does NOT fix. Config: GB10, Ubuntu 24.04.4,
+  kernel 6.17.0-1021-nvidia, CUDA 13.0, driver 580.159.03; `nemotron-3-super-512k` (Q4_K_M ~87 GB,
+  524288 ctx). Related to existing llama.cpp sm_121 build + GGUF incompatibility fix
+  (S-forum-nemotron-sm121). See `[[wiki/models/nemotron-3.md]]`.
+- **[reported]** **NVFP4 on GB10 achieves only 42–48% of bandwidth-limited theoretical ceiling**
+  (S-forum-nvfp4-broken, DropTheBeat): quantified across multiple forum measurements. For
+  Nemotron-3-Super (12B active @ 0.5 bytes = ~6 GB/token), theoretical ceiling at 273 GB/s = ~45
+  tok/s. Measured 19–22 tok/s = 42–48%. A well-optimized NVFP4 path should reach 60–80% (routine on
+  GB10 in other configurations). The gap is software/kernel efficiency, not hardware bandwidth.
+  See `[[wiki/quantization-on-gb10.md]]` → NVFP4 meta-analysis.
 
 ## Reference cluster
 

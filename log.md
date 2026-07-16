@@ -426,3 +426,53 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   4. Topic 371537 (MSI EdgeXpert reliability) skipped — buying advice/warranty/social. Minor technical
      mentions (PD firmware 600MHz cap, EC firmware corruption via DGX dashboard) are single-source
      and overlap with existing power-controller wedge documentation.
+
+## 2026-07-16 — Forum ingest: Batch 17 — 5 new topics (4 processed, 1 skipped)
+
+- **Sources:** 4 new forum sources registered (Batch 17) in `sources/README.md`.
+  5 topic IDs added to `processed_topics.txt` (total now 387).
+- **Topics found:** 5 new topics. 4 technically relevant, 1 skipped:
+  - 376589 (Triple stack) — buying advice/support question about 3-node stacking. Skipped.
+- **Pages touched:**
+  - quantization-on-gb10 (NVFP4 meta-analysis — NVFP4 leaves ~half layers bf16 unlike Int4 which
+    quantizes all layers [reported]; TRT-LLM NVFP4 5 tok/s slower than GGUF Q4_K_M 4.6-4.9 tok/s
+    on same Spark [reported]; Nemotron-3-Super NVFP4 bandwidth efficiency 42-48% of theoretical
+    ~45 tok/s ceiling [reported]; NVFP4 now operational via community Docker, FlashInfer 0.6.8.1
+    merged [reported]; PrismQuant project for full-NVFP4 quantization noted [conjecture]),
+  - models/nemotron-3 (Ollama v0.30.x-v0.31.2 parser regression breaks Nemotron-3-Super — SSE
+    stream aborts mid-response, no finish_reason; fix: downgrade to Ollama 0.24.0; v0.31.2-rc1
+    does NOT fix; full config documented [conjecture]; NVFP4 bandwidth efficiency 42-48%
+    [reported]),
+  - multinode-tp-and-networking (ib_write_bw falsely reports >64 KiB RDMA WRITE failure on GB10
+    — fabric is fine, minimal libibverbs probe passes all sizes to 8 MiB, NCCL all_reduce
+    24.0 GB/s busbw zero errors [conjecture]; NCCL_NET_PLUGIN=none required — AWS OFI plugin
+    fails on GB10 UMA [conjecture]; NCCL_TOPO_FILE correction — auto-detected PCIe Gen1×1
+    [conjecture]; RoCE data NIC-offloaded, use *_phy counters [conjecture]; one interface per
+    subnet + arp_ignore=1/arp_announce=2 [conjecture]),
+  - platform-gb10 (Ollama parser regression [conjecture], NVFP4 bandwidth efficiency 42-48%
+    [reported]),
+  - engines (DSV4-Flash-DSpark-Abliterated source added — abliterated/uncensored variant, fork
+    of DS4 DSpark recipe, 50-60 tok/s [conjecture]),
+  - benchmarks (5 new forum-reported rows: Llama-3.3-70B NVFP4 vs GGUF Q4_K_M, Nemotron-3-Super
+    NVFP4 1×/2×, DSV4-Flash-DSpark-Abliterated),
+  - sources/README, index, log.
+- **Key findings:**
+  1. NVFP4 on GB10 leaves ~half of layers in BF16 (quality concerns), unlike Int4/AutoRound which
+     quantizes all layers. This structural difference means NVFP4 moves more bytes/token than
+     pure Int4, contributing to its decode underperformance. Multiple independent forum sources
+     agree → [reported]. Community is working on full-NVFP4 quant (tenari's PrismQuant).
+  2. TRT-LLM NVFP4 (NVIDIA's own stack, 5 tok/s) is slower than GGUF Q4_K_M via LM Studio
+     (4.6-4.9 tok/s) for the same 70B model on the same Spark — NVIDIA's NVFP4 path is slower than
+     non-NVIDIA quant on non-NVIDIA tooling. Multiple reporters → [reported].
+  3. NVFP4 achieves only 42-48% of the bandwidth-limited theoretical ceiling on GB10 (measured
+     19-22 tok/s vs theoretical ~45 tok/s for Nemotron-3-Super). A well-optimized path should
+     reach 60-80%. The gap is software/kernel efficiency, not hardware. Multiple sources →
+     [reported].
+  4. ib_write_bw falsely reports RDMA WRITE failure above 64 KiB on GB10 — the fabric is healthy.
+     A minimal libibverbs probe passes all sizes. NCCL works fine (24.0 GB/s busbw). The failure
+     is in the perftest instrument, not the transport. Same defect class seen on CX-5 (2023) and
+     CX-7/KVM (2024). Single source → [conjecture].
+  5. Ollama v0.30.x-v0.31.2 has a server-side SSE parser regression that breaks Nemotron-3-Super
+     on GB10. Fix: downgrade to 0.24.0. v0.31.2-rc1 does NOT fix. Single source → [conjecture].
+  6. NCCL_NET_PLUGIN=none is required on GB10 — the bundled AWS OFI plugin fails on unified memory
+     regardless of NCCL_IB_DISABLE. Single source → [conjecture].

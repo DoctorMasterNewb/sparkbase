@@ -3,7 +3,7 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama
 > **updated:** 2026-07-16
 
 Single-stream decode unless noted. All on the 2× GB10 pair. Numbers anchor the rules on
@@ -289,6 +289,25 @@ All rows below are **[conjecture]** — single-source community-reported numbers
 > coherent — the streaming-from-disk approach is fundamentally different from multi-node TP. Attention
 > dominates the profile (6.16s of 18s), not disk I/O. Experimental CACHE_ROUTE (cache-aware routing,
 > ~14% expert substitution) raises hit 82→97% and tok/s 2.4→3.3; not upstream default. (S-forum-colibri-glm52)
+
+## Forum-reported benchmarks (2026-07-16 ingest, Batch 17)
+
+All rows below are **[reported]** — community-reported numbers from the NVIDIA DGX Spark forums, not
+first-party. Numbers from a meta-analysis thread (S-forum-nvfp4-broken) citing multiple independent
+forum sources, plus an abliterated model variant (S-forum-dsv4-abliterated).
+
+||||| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source |||
+|||||---|---|---|---|---|---|---|---|||
+||||| Llama-3.3-70B-Instruct-NVFP4 | NVFP4 | TensorRT-LLM | 1 | 5 (reporter 1) / 2.5 (reporter 2) | — | NVIDIA's own NVFP4 model on NVIDIA's TRT-LLM; slower than GGUF Q4_K_M via LM Studio (4.6-4.9 tok/s) on same Spark | S-forum-nvfp4-broken |||
+||||| Llama-3.3-70B-Instruct | GGUF Q4_K_M | LM Studio (llama.cpp) | 1 | 4.6–4.9 | — | Non-NVIDIA quant on non-NVIDIA tooling beats NVIDIA NVFP4 on TRT-LLM | S-forum-nvfp4-broken |||
+||||| Nemotron-3-Super-120B-A12B | NVFP4 | vLLM | 1 | 19–22 | — | 42-48% of theoretical bandwidth ceiling (~45 tok/s); 12B active @ 0.5 bytes = ~6 GB/token vs 273 GB/s | S-forum-nvfp4-broken |||
+||||| Nemotron-3-Super-120B-A12B | NVFP4 | vLLM | 2 (TP=2) | 24 | — | ~200 GB/s cluster bandwidth; 71% of ~34 tok/s theoretical at that BW | S-forum-nvfp4-broken |||
+||||| DeepSeek-V4-Flash-DSpark-Abliterated | NVFP4 (DSpark recipe) | vLLM (DSpark) | 2 (TP=2) | 50–60 | — | Abliterated (uncensored) variant; fork of DS4 DSpark recipe with model swapped in | S-forum-dsv4-abliterated |||
+
+> **[reported]** The NVFP4 meta-analysis (S-forum-nvfp4-broken) aggregates multiple independent forum
+> measurements confirming that NVFP4 on GB10 achieves only 42–48% of the bandwidth-limited theoretical
+> ceiling — a software/kernel gap, not a hardware limitation. TRT-LLM NVFP4 (NVIDIA's own stack) is
+> slower than GGUF Q4_K_M (community tooling) for the same 70B model. Multiple sources agree.
 
 ## Image generation benchmarks (diffusion models on GB10, 2026-07-10)
 

@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-nemotron-rpc, S-swapper, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-nemotron-super-abi
-> **updated:** 2026-07-09
+> **sources:** S-nemotron-rpc, S-swapper, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-nemotron-super-abi, S-forum-nemotron-ollama, S-forum-nvfp4-broken
+> **updated:** 2026-07-16
 
 NVIDIA Nemotron-3 — **hybrid Mamba-2 + attention MoE** (`nemotron_h_moe`). Most layers are SSM with a
 few attention layers (2 KV heads), so KV is cheap and native context is huge. Two paths on GB10.
@@ -59,3 +59,23 @@ few attention layers (2 KV heads), so KV is cheap and native context is huge. Tw
   **cu130/cu132 ABI mismatch**: the prebuilt vLLM wheel is `cu132` but the Dockerfile installs PyTorch
   from `cu130` index → different `libc10.so` ABI. Fix: change `cu130` → `cu132` in the Dockerfile
   (lines 48 + 259). Also resolved by newer `.dev176` prebuilt wheel (clear wheel cache to pull).
+
+## Forum ingest: Ollama parser regression, NVFP4 bandwidth efficiency (2026-07-16)
+
+- **[conjecture]** **Ollama v0.30.x–v0.31.2 parser breaks Nemotron-3-Super on GB10**
+  (S-forum-nemotron-ollama, frank.stockmans): since Ollama adopted llama.cpp as its backend (v0.30),
+  a server-side SSE parser regression causes the stream to abort mid-response → client sees no
+  `finish_reason`. Not caused by config, model, temperature, context size, or multiple users.
+  Confirmed server-side parser regression — temp 0.3 only reduced the rate; stock model failed
+  identically. **Fix:** downgrade to Ollama 0.24.0 (last known-good). Verified 20/20 multi-tool
+  requests clean, zero parse errors. v0.31.2-rc1 does NOT fix it. Config: DGX Spark GB10, Ubuntu
+  24.04.4 LTS, aarch64, kernel 6.17.0-1021-nvidia, 128 GB unified memory, CUDA 13.0, driver
+  580.159.03; model `nemotron-3-super-512k` (nemotron_h_moe, 123.6B-A12B MoE, Q4_K_M ~87 GB,
+  524288 context). Related to existing llama.cpp sm_121 build fix (S-forum-nemotron-sm121).
+- **[reported]** **Nemotron-3-Super NVFP4 bandwidth efficiency is 42–48% of theoretical ceiling**
+  (S-forum-nvfp4-broken, DropTheBeat): 12B active params at NVFP4 (0.5 bytes) = ~6 GB active
+  weights/token. At 273 GB/s → theoretical ~45 tok/s. Measured 19–22 tok/s single-Spark = 42–48%
+  efficiency. A well-optimized path should reach 60–80% (~30–40 tok/s). On 2× Spark TP=2 with
+  ~200 GB/s cluster bandwidth, measured 24 tok/s (vs ~34 tok/s theoretical at that bandwidth).
+  The gap is software/kernel efficiency, not hardware. See
+  `[[wiki/quantization-on-gb10.md]]` → NVFP4 meta-analysis for full context.

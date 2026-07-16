@@ -3,8 +3,8 @@
 > **area:** quantization
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36
-> **updated:** 2026-07-15
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken
+> **updated:** 2026-07-16
 
 GB10 has **no native FP4 compute and no native FP8 block-scale**. That one fact decides which quant
 to pick. Decode is **bandwidth-bound** (`[[wiki/platform-gb10.md]]`), so the winning quant is usually
@@ -87,6 +87,41 @@ decompress, because at low batch you're memory-bound, not compute-bound.
   at ~4-bit — see AWQ-vs-NVFP4 section above).
 - **[reported]** **Quality parity**: tool-eval-bench scores equal to nvidia NVFP4 with more run-to-run
   variance (azampatti, 2 independent eval runs).
+
+## Forum ingest: NVFP4 meta-analysis — NVFP4 on GB10 state of play (2026-07-16)
+
+- **[reported]** **NVFP4 leaves ~half of layers in BF16, unlike Int4 which quantizes all layers**
+  (S-forum-nvfp4-broken, tenari): when a model is quantized to NVFP4, approximately half the layers
+  stay in BF16 due to quality-degradation concerns. Int4 (via AutoRound) quantizes ALL layers. This
+  structural difference explains part of why NVFP4 underperforms vs Int4 on decode: more BF16 layers
+  = more bytes/token read from memory. The community is working on full-NVFP4 quantization (tenari's
+  PrismQuant project). Corroborates the existing `[proven]` finding that fewer weight bytes/token ⇒
+  faster decode — NVFP4's mixed-precision nature means it moves more bytes than a pure Int4 path.
+- **[reported]** **TRT-LLM NVFP4 is slower than GGUF Q4_K_M via LM Studio on the same Spark**
+  (S-forum-nvfp4-broken, DropTheBeat citing two separate forum threads): Llama-3.3-70B-Instruct-NVFP4
+  on TensorRT-LLM = 5 tok/s decode (one reporter), 2.5 tok/s (another reporter). The same 70B model
+  via GGUF Q4_K_M in LM Studio = 4.6–4.9 tok/s. NVIDIA's own NVFP4 model on NVIDIA's own TRT-LLM is
+  slower than a non-NVIDIA quant on non-NVIDIA tooling. This corroborates the existing `[reported]`
+  finding that AWQ/Int4 outperforms NVFP4 on decode on GB10 (kernel efficiency, not bytes).
+- **[reported]** **Nemotron-3-Super NVFP4 bandwidth efficiency is 42–48% of theoretical ceiling**
+  (S-forum-nvfp4-broken, DropTheBeat): Nemotron-3-Super-120B has 12B active params/token. At NVFP4
+  (0.5 bytes/param), each decoded token reads ~6 GB of active weights. GB10 bandwidth = 273 GB/s
+  (NVIDIA datasheet) → theoretical ceiling ~45 tok/s. Measured 19–22 tok/s = 42–48% of ceiling.
+  A well-optimized NVFP4 path should deliver ~30–40 tok/s (60–80% efficiency, which is routine on
+  GB10 in other configurations). The hardware is leaving roughly half its achievable throughput on
+  the floor on NVIDIA's own NVFP4-native flagship model. This is NOT a bandwidth limitation — it's
+  a software/kernel efficiency gap. Corroborates the existing `[proven]` bandwidth-bound decode
+  finding and quantifies the NVFP4 kernel overhead.
+- **[reported]** **NVFP4 is now operational on GB10 via community Docker** (S-forum-nvfp4-broken,
+  jwarner): a completely operational NVFP4 path exists on GB10 as of the last month, even on
+  inference frameworks NVIDIA doesn't control. This is the default on the community Docker image
+  (spark-vllm-docker). Required PRs across many open repositories, mostly by NVIDIA employees.
+  FlashInfer 0.6.8.1 has further improvements merged. This partially mitigates the "NVFP4 is broken"
+  framing — the path works but performance is still sub-optimal vs theoretical ceiling.
+- **[conjecture]** **FlashInfer 0.6.8.1 brings further NVFP4 improvements** (S-forum-nvfp4-broken,
+  jwarner): merged just days before the post. Specific improvements not detailed but described as
+  incremental. Consistent with the existing `[reported]` finding that FlashInfer-CUTLASS is now
+  stable for NVFP4 recipes (S-forum-m27-recipe).
 
 ## See also
 `[[wiki/platform-gb10.md]]` · `[[wiki/attention-and-kv-cache.md]]` · `[[wiki/containers-and-tooling.md]]` · per-model pages under `wiki/models/`
