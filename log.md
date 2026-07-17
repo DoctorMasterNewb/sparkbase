@@ -476,3 +476,53 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
      on GB10. Fix: downgrade to 0.24.0. v0.31.2-rc1 does NOT fix. Single source → [conjecture].
   6. NCCL_NET_PLUGIN=none is required on GB10 — the bundled AWS OFI plugin fails on unified memory
      regardless of NCCL_IB_DISABLE. Single source → [conjecture].
+
+## 2026-07-17 — Forum ingest: Batch 18 — 2 new topics (both processed)
+
+- **Sources:** 2 new forum sources registered (Batch 18) in `sources/README.md`:
+  S-forum-glm52-8x (topic 376831), S-forum-bonsai27b (topic 376879).
+  2 topic IDs added to `processed_topics.txt` (total now 389).
+- **Topics found:** 2 new topics, both technically relevant:
+  - 376831 (GLM-5.2-Int4-Int8Mix on 8× GB10) — highly technical, largest reported DGX Spark cluster.
+  - 376879 (Qwen3.6-27B Binary/Ternary Bonsai 27B by Prism-ML) — release announcement + Spark
+    relevance hypothesis; no GB10 benchmarks yet.
+- **Pages touched:**
+  - benchmarks (3 new [conjecture] rows — GLM-5.2-Int4-Int8Mix on 8× GB10 TP8 DCP=1 ~1,200 t/s
+    prefill / 33–54 t/s decode; TP4+PP2 ~12 t/s MTP collapse; DCP4 decode-starvation scheduler),
+  - multinode-tp-and-networking (NCCL_BUFFSIZE 16 MB at TP8 [conjecture]; TP4+PP2 wrecks MTP
+    acceptance → 8% [conjecture]; DCP4 decode starvation + decode-aware prefill scheduler
+    [conjecture]; draft_tensor_parallel_size=1 [conjecture]),
+  - quantization-on-gb10 (b12x W4A8 MoE backend — INT4 weights + INT8 activations via native
+    FP8 CUTLASS [conjecture]; stale topk_indices_buffer in flashinfer SM120 sparse MLA PR#46994
+    [conjecture]; quantized NextN draft token mapping [conjecture];
+    VLLM_B12X_MLA_SPEC_EXTEND_AS_DECODE=1 [conjecture]; Int4-Int8 mix quant [conjecture]),
+  - models/qwen (Bonsai 27B binary/ternary Qwen3.6-27B — hypothesis: faster decode on
+    bandwidth-bound Spark dense, no GB10 benchmarks yet [conjecture]),
+  - roadmap (3 new open problems: v16+b12x W4A8 isolated contribution, Bonsai sm_121 kernel
+    path, DCP4 decode-aware scheduler on DCP1),
+  - sources/README, index, log.
+- **Key findings:**
+  1. GLM-5.2-Int4-Int8Mix on 8× GB10 is the largest reported DGX Spark cluster run — ~1,200 t/s
+     prefill (v16-unified branch is the biggest prefill lever), 33–54 t/s avg decode (33–39 prose,
+     40–55 code, peak 54.5–58). Stack: vLLM v16-unified fork (local-inference-lab/vllm 5dffea8) +
+     b12x W4A8 MoE (lukealonso/b12x 97b3d64) + CosmicRaisins DCP1 patches + NCCL 2.30.4. All from
+     one thread (ciprianveg + penguinchang) → [conjecture], not [reported] (same thread, not
+     independent).
+  2. b12x W4A8 MoE is a new quant regime on GB10: INT4 weights (Marlin decompress) + INT8
+     activations (native FP8 CUTLASS). Extends the "fewest bytes" principle to activations and
+     may explain the decode jump from ~28–49 (older MTP k=4 image) to 33–54 t/s. Not yet
+     isolated from the 8× scale or v16 branch contributions.
+  3. TP4+PP2 raises prefill to ~1,800 t/s but collapses MTP acceptance to ~8% → decode drops to
+     ~12 t/s. Pipeline parallelism is too latency-sensitive for MTP draft acceptance on Spark —
+     corroborates existing PP-over-ethernet finding (S-forum-2d-parallel).
+  4. DCP4 on TP8 causes decode starvation (decode → 0.0–0.2 tok/s during prefill). A decode-aware
+     prefill scheduler (ENABLE_DECODE_AWARE_PREFILL=1) caps stalls to ~1.6s but decode still
+     drops to ~2.74 tok/s under pressure. DCP1 is ~30% faster prefill / ~60% faster gen but DCP4
+     enables 320K×10 context (3.2M KV tokens).
+  5. Stale topk_indices_buffer in flashinfer SM120 sparse MLA (PR #46994) is a subtle bug class
+     that silently drops MTP acceptance from ~85% to ~30% with no error — needs two patches
+     (flashinfer + b12x_mla_sparse.py). GB10/sm_121-specific sparse-MLA kernel bug.
+  6. Bonsai 27B (Prism-ML) — 1-bit/ternary Qwen3.6-27B, ~94% quality, much smaller footprint.
+     Hypothesis: faster decode on bandwidth-bound Spark dense. No GB10 benchmarks; sm_121 kernel
+     path for 1-bit/ternary unverified (Marlin doesn't support it natively). Queued for hardware
+     agent verification.

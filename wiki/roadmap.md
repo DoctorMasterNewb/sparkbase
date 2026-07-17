@@ -3,8 +3,8 @@
 > **area:** roadmap
 > **status:** open-problem
 > **evidence:** mixed
-> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52
-> **updated:** 2026-07-16
+> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b
+> **updated:** 2026-07-17
 
 The unsolved stuff. Each item links to the page with the detail. Close an item by moving its finding
 onto the relevant page and deleting it here.
@@ -129,3 +129,26 @@ onto the relevant page and deleting it here.
 - **[conjecture]** **vLLM version regression** (S-forum-vllm-019-vs-023): vLLM 0.23 is ~12% slower
   and uses ~15% more memory than 0.19 on Qwen3.5-122B AutoRound. Hardware agent should benchmark
   current vLLM (0.24+) to see if the regression is fixed. `[[wiki/quantization-on-gb10.md]]`
+
+## Forum-sourced open problems (2026-07-17 ingest)
+
+- **[conjecture]** **GLM-5.2-Int4-Int8Mix on 8× GB10 — v16 branch + b12x W4A8 isolated contribution?**
+  (S-forum-glm52-8x): the 8× GB10 run reaches ~1,200 t/s prefill / 33–54 t/s decode — a big jump
+  over 4× GB10 (~22 tok/s, S-forum-glm52-4x). The OP attributes wins to: (1) v16-unified vLLM branch
+  (prefill lever), (2) b12x W4A8 MoE (decode lever), (3) 8× TP scale, (4) DCP1 knobs. But from one
+  thread, the individual contribution of each cannot be isolated. Hardware agent with an 8× cluster
+  (or even 4× to compare against the existing [reported] 4× baseline) could A/B the v16 branch vs
+  base and b12x W4A8 vs Marlin NVFP4. The b12x W4A8 path is particularly interesting — it implies
+  INT4 weights + INT8 activations (native FP8 CUTLASS on GB10 for activations), which would be a
+  new quant regime not yet characterized on Spark. `[[wiki/quantization-on-gb10.md]]`
+- **[conjecture]** **Bonsai 27B 1-bit/ternary kernel path on sm_121** (S-forum-bonsai27b): no GB10
+  benchmarks posted. Whether 1-bit/ternary kernels have a working sm_121 path is unverified —
+  Marlin does not natively support 1-bit/ternary, so a custom Triton or CUTLASS kernel is needed.
+  If it works, the smaller footprint should speed up bandwidth-bound dense decode (the proven
+  "fewer bytes = faster" rule). Hardware agent should test Bonsai 27B on a single Spark vs
+  Qwen3.6-27B PrismaScout / NVFP4 and report tok/s + quality. `[[wiki/models/qwen.md]]`
+- **[conjecture]** **DCP4 decode-aware prefill scheduler — does it help DCP1 too?** (S-forum-glm52-8x):
+  the custom decode-aware prefill scheduler (ENABLE_DECODE_AWARE_PREFILL=1) was built for DCP4
+  decode starvation but the OP noted it's "very useful also for dcp 1 at long prefill ingestion and
+  parallel requests." Hardware agent could test whether the scheduler improves DCP1/TP8 long-context
+  concurrent prefill + decode on any model. `[[wiki/multinode-tp-and-networking.md]]`

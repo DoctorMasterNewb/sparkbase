@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch
-> **updated:** 2026-07-15
+> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b
+> **updated:** 2026-07-17
 
 The best-supported family on GB10 — both Atlas (AOT kernels for the MoE variants) and vLLM serve it.
 The recurring lesson: **MoE-A3B NVFP4 + MTP is the fastest regime on Spark; the dense variant of the
@@ -142,6 +142,29 @@ claiming 2.5× speedup on B200. On GB10 the reality is different:
   dense is buggy.**
 - **[proven]** ⟹ **No Qwopus3.6 currently loads on Atlas.** Fallbacks: AEON-7 NVFP4 VL-MoE, llama.cpp
   GGUF, or self-quantize the MoE to NVFP4 with modelopt.
+
+## Forum ingest: Bonsai 27B — binary/ternary Qwen3.6-27B (2026-07-17)
+
+- **[conjecture]** **Bonsai 27B (Prism-ML): 1-bit and ternary builds of Qwen3.6-27B** (S-forum-bonsai27b,
+  nerhun): Prism-ML released "Bonsai 27B" — binary (1-bit) and ternary quantization of Qwen3.6-27B,
+  the largest binary/ternary attempt so far. Claimed ~94% of full quality at a much smaller memory
+  footprint. Collection: `huggingface.co/collections/prism-ml/bonsai-27b`.
+  - **[conjecture]** **Hypothesis: faster decode on Spark due to smaller footprint** (m0l0):
+    Qwen3.6-27B dense is naturally bandwidth-limited on Spark for token generation (~10 tok/s
+    ceiling, see `[[wiki/quantization-on-gb10.md]]` dense MTP math). Bonsai's much smaller footprint
+    should leave prompt processing unaffected but significantly speed up token generation —
+    especially with MTP. This is consistent with the proven "fewer bytes = faster decode" rule
+    for bandwidth-bound dense models. However, **no GB10 benchmarks have been posted yet** — the
+    1-bit/ternary kernel path on sm_121 is unverified. A user (m0l0) plans to benchmark Bonsai
+    vs their daily driver (Qwen3.6-27B PrismaScout) and vs Qwen3.6-9B (~same footprint).
+  - **[conjecture]** **Not much use on a Spark for the binary build** (stu.miller): "we can obviously
+    do much better" — the binary/ternary footprint advantage matters most on laptops/phones, not
+    on 121 GB unified memory. There could be merit for co-hosting a small model alongside other
+    workflows where less memory is available without giving up too much quality.
+  - **GB10-specific unknowns:** whether 1-bit/ternary kernels have a working sm_121 path (Marlin
+    does not natively support 1-bit/ternary — would need a custom Triton or CUTLASS kernel), and
+    whether the ~94% quality claim holds on agentic/tool-calling workloads. Queue for hardware
+    agent verification.
 
 ## See also
 `[[wiki/engines.md]]` · `[[wiki/quantization-on-gb10.md]]` · `[[wiki/models/holo-3.1.md]]` (Qwen3.5 VL MoE)

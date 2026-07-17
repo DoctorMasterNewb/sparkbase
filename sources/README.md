@@ -284,6 +284,13 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-nemotron-ollama | forum | Nemotron-3-Super 120B on Ollama v0.30.x-v0.31.2 parser regression — SSE stream aborts mid-response, no finish_reason; fix: downgrade to Ollama 0.24.0; v0.31.2-rc1 does NOT fix (frank.stockmans) | https://forums.developer.nvidia.com/t/375835 | 2026-07-07 |
 | S-forum-ibwrite-false | forum | ib_write_bw falsely reports >64 KiB RDMA WRITE failure on GB10 — fabric is fine; minimal libibverbs probe passes all sizes; NCCL_NET_PLUGIN=none, NCCL_TOPO_FILE correction, RoCE NIC-offloaded counters, arp_ignore=1/arp_announce=2 (noc19) | https://forums.developer.nvidia.com/t/375603 | 2026-07-05 |
 
+## Batch 18 forum sources (2026-07-17 ingest)
+
+||| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+|| S-forum-glm52-8x | forum | GLM-5.2-Int4-Int8Mix (QuantTrio) on 8× GB10 TP8 DCP=1 — ~1,200 t/s prefill, 33–54 t/s avg decode; v16-unified branch (local-inference-lab/vllm 5dffea8), b12x W4A8 MoE (lukealonso/b12x 97b3d64), 4-patch set, DCP4 decode-starvation scheduler (penguinchang), NCCL_BUFFSIZE 16 MB, draft_tp=1, VLLM_B12X_MLA_SPEC_EXTEND_AS_DECODE=1; TP4+PP2 MTP collapses to ~8% (ciprianveg, penguinchang) | https://forums.developer.nvidia.com/t/376831 | 2026-07-14 |
+|| S-forum-bonsai27b | forum | Qwen3.6-27B Binary/Ternary (Bonsai 27B) by Prism-ML — 1-bit and ternary builds, 94% quality claim, much smaller footprint; hypothesis: faster decode on bandwidth-bound Spark dense, esp. with MTP; no GB10 benchmarks yet (nerhun, m0l0, stu.miller, robert287) | https://forums.developer.nvidia.com/t/376879 | 2026-07-15 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

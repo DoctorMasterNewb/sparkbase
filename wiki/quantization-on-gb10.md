@@ -3,8 +3,8 @@
 > **area:** quantization
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken
-> **updated:** 2026-07-16
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x
+> **updated:** 2026-07-17
 
 GB10 has **no native FP4 compute and no native FP8 block-scale**. That one fact decides which quant
 to pick. Decode is **bandwidth-bound** (`[[wiki/platform-gb10.md]]`), so the winning quant is usually
@@ -122,6 +122,41 @@ decompress, because at low batch you're memory-bound, not compute-bound.
   jwarner): merged just days before the post. Specific improvements not detailed but described as
   incremental. Consistent with the existing `[reported]` finding that FlashInfer-CUTLASS is now
   stable for NVFP4 recipes (S-forum-m27-recipe).
+
+## Forum ingest: b12x W4A8 MoE, stale topk buffer, Int4-Int8 mix (2026-07-17)
+
+- **[conjecture]** **b12x W4A8 MoE backend (lukealonso/b12x @ 97b3d64) raises GLM-5.2 decode on GB10**
+  (S-forum-glm52-8x, ciprianveg): `b12x` (a unified SM120 sparse-MLA + PCIe DCP collectives backend)
+  with W4A8 MoE quantization raised GLM-5.2 Int4-Int8Mix decode from ~28–49 (MTP k=4, older image)
+  to 33–54 t/s on 8× GB10. The W4A8 path weights are INT4 but activations are INT8 — distinct from
+  NVFP4 W4A4 (FP4 weights AND activations via Marlin decompress) and from weight-only AWQ/Marlin
+  W4A16. On GB10 (no native FP4/FP8-blockscale), W4A8 activations run via the native FP8 online-
+  dynamic CUTLASS path (weights INT4 Marlin-decompress, activations FP8 CUTLASS) — this is the
+  "fewest bytes" principle extended to activations. Stack: vLLM v16-unified fork + b12x.
+- **[conjecture]** **Stale topk_indices_buffer in flashinfer SM120 sparse MLA (PR #46994)** — a class
+  of subtle bugs where `_maybe_share_lm_head` swaps the indexer's buffer but the backend keeps a
+  stale reference → garbage DSA (deeply-sharded attention) output and ~30% MTP acceptance instead
+  of ~85%. Two fixes needed: (1) patch 04 — flashinfer SM120 sparse MLA stale topk_indices_buffer
+  (vLLM PR #46994), (2) patch 06 — same stale-buffer fix applied to b12x_mla_sparse.py (PR #46994
+  Fix #4). Without both, MTP acceptance collapses silently (no error — just bad acceptance).
+  This is a GB10/sm_121-specific kernel bug in the sparse-MLA path (the DSA / sparse attention
+  architecture used by GLM-5.2 and DeepSeek-V4-Flash). (S-forum-glm52-8x)
+- **[conjecture]** **Quantized NextN draft token mapping required for MTP with quantized drafts**
+  (S-forum-glm52-8x, patch 03 from CosmicRaisins): without the quantized NextN draft token mapping
+  patch, quantized drafts silently build unquantized and MTP acceptance collapses. A GB10-specific
+  MTP + quant interaction — the draft model must use the same quant mapping as the main model or
+  the draft tokens are computed in the wrong precision.
+- **[conjecture]** **`VLLM_B12X_MLA_SPEC_EXTEND_AS_DECODE=1`** (S-forum-glm52-8x): treats spec-extend
+  as decode so the B12X indexer path stays consistent during MTP — a b12x-specific env var for
+  sparse-MLA models (GLM-5.2, DS-V4-Flash) using the b12x backend with MTP.
+- **[conjecture]** **Int4-Int8 mix quant (QuantTrio/GLM-5.2-Int4-Int8Mix)** (S-forum-glm52-8x): a
+  mixed-precision checkpoint where MoE experts are INT4 and other layers (attention, MTP heads)
+  are INT8 — distinct from pure NVFP4 (W4A4) or pure AWQ (W4A16). On GB10 this runs via Marlin
+  decompress for INT4 experts + native FP8 CUTLASS for INT8 activations. The 8× GB10 run reached
+  ~1,200 t/s prefill and 33–54 t/s decode — the fastest reported GLM-5.2 result on DGX Spark
+  (vs ~22 tok/s at TP=4 NVFP4/AWQ-INT4 in S-forum-glm52-4x, ~24 tok/s NVFP4 MTP4 in
+  S-forum-glm52-mtp-fix). Whether the speedup is from the quant mix, the 8× scale, the v16 branch,
+  or the b12x backend cannot be isolated from a single source.
 
 ## See also
 `[[wiki/platform-gb10.md]]` · `[[wiki/attention-and-kv-cache.md]]` · `[[wiki/containers-and-tooling.md]]` · per-model pages under `wiki/models/`

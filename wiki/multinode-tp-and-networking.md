@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false
-> **updated:** 2026-07-16
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x
+> **updated:** 2026-07-17
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -184,6 +184,38 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
   for 200B+ models; (3) training on 3+ nodes without a switch requires NCCL subnet-aware
   env vars (mandatory past 2 nodes). The "low MFU" report on GB10 Megatron was a config
   error, not an sm_121 limitation.
+
+### Batch 18 forum ingest (2026-07-17)
+
+- **[conjecture]** **`NCCL_BUFFSIZE=16777216` (16 MB) improves long-context decode allreduce on TP8**
+  (S-forum-glm52-8x, ciprianveg): the default 8 MB NCCL buffer starts bottlenecking the allreduce
+  on long-context decode at TP8 scale. Raising to 16 MB adds ~10%+ gen speed at high context on top
+  of other DCP1 tweaks. This is a GB10-specific collective-tuning finding at 8× scale — consistent
+  with the existing `[reported]` NCCL 2.30.4 mandatory finding (S-forum-ds4f-4x-vllm, S-forum-tokenspeed)
+  and `[conjecture]` NCCL_CUMEM_ENABLE=0 / NCCL_MAX_NCHANNELS=2 / NCCL_BUFFSIZE=8388608 (MiMo TP=2
+  recipe, S-forum-mimo-2x-opt). At TP8, the larger buffer pays off more; at TP2, 8 MB is fine.
+- **[conjecture]** **TP4+PP2 raises prefill (~1,800 vs ~1,200 t/s) but wrecks MTP (acceptance → ~8%)**
+  (S-forum-glm52-8x, ciprianveg): GLM-5.2 Int4-Int8 on 8× GB10 — the pipeline split collapses MTP
+  acceptance to ~8%, dragging decode to ~12 t/s (vs 33–54 at TP8+PP1). Production stays on TP8+PP1.
+  Corroborates the existing `[conjecture]` PP-over-ethernet is too latency-sensitive finding
+  (S-forum-2d-parallel) — here the latency sensitivity hits MTP draft acceptance specifically, not
+  just throughput.
+- **[conjecture]** **DCP4 on TP8 causes decode starvation during concurrent prefill** (S-forum-glm52-8x,
+  penguinchang): with DCP4 (distributed KV cache, 4 ranks) on TP8 GLM-5.2, concurrent long-prefill
+  requests starve ongoing decode to ~0.0–0.2 tok/s until prefill completes — distributed KV cache
+  prefill saturates the interconnect. A custom "decode-aware prefill" scheduler patch
+  (ENABLE_DECODE_AWARE_PREFILL=1, DECODE_PREFILL_TOKEN_BUDGET=1024, IDLE_PREFILL_TOKEN_BUDGET=16384,
+  MAX_LONG_PREFILLS_PER_STEP=1) caps decode stall to ~1.6 s and keeps all 4 prefill requests
+  completing, but decode still drops to ~2.74 tok/s under pressure. Validated on 8× DGX Spark
+  (1 continuous decode + 4 × ~8K prefills: idle PP 831.6 tok/s, pressure PP 735.8, pressure decode
+  2.74, max stall 1.64 s). DCP1 avoids this entirely (~30% faster prefill, ~60% faster gen per
+  the OP), but DCP4 enables 320K×10 context (3.2M KV tokens). This is a GB10-specific distributed-KV
+  scheduling issue — the host-staged cross-node collectives amplify the prefill/decode contention.
+- **[conjecture]** **`draft_tensor_parallel_size=1` avoids TP8 collectives on every MTP draft step**
+  (S-forum-glm52-8x, ciprianveg): keeping the MTP drafter unsharded (draft_tp=1) is a ~10% gen-speed
+  lever at TP8 — paying TP8 collectives on every draft step would dominate the spec-decode overhead.
+  Consistent with the MTP-needs-cudagraphs / cross-node-amortization findings on
+  `[[wiki/cudagraphs-and-compile.md]]`.
 
 ## See also
 `[[wiki/platform-gb10.md]]` · `[[wiki/cudagraphs-and-compile.md]]` · `[[wiki/llama-cpp-rpc.md]]` · `[[wiki/engines.md]]`

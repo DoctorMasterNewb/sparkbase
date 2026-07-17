@@ -172,7 +172,8 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   not disk I/O).
 
 ## Forum ingest 2026-07-16 (Batch 17)
-- 5 new forum topics found (4 technically relevant, 1 skipped: 376589 = buying advice "triple stack").
+- 5 new forum topics found (4 technically relevant, 1 skipped: 376589 = buying advice "triple
+  stack").
 - 4 new sources registered (Batch 17). 5 topic IDs added to processed_topics.txt (total now 387).
 - Pages touched: quantization-on-gb10 (NVFP4 meta-analysis — NVFP4 leaves ~half layers bf16 vs
   Int4 all-layers; TRT-LLM NVFP4 slower than GGUF Q4_K_M; bandwidth efficiency 42-48%; NVFP4 now
@@ -182,10 +183,26 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   multinode-tp-and-networking (ib_write_bw falsely reports >64 KiB RDMA WRITE failure on GB10 —
   fabric is fine; NCCL_NET_PLUGIN=none, NCCL_TOPO_FILE correction, RoCE NIC-offloaded counters,
   arp_ignore=1/arp_announce=2 [conjecture]),
-  platform-gb10 (Ollama parser regression [conjecture], NVFP4 bandwidth efficiency 42-48% [reported]),
-  engines (DSV4-Flash-DSpark-Abliterated source added),
+  platform-gb10 (Ollama parser regression [conjecture], NVFP4 bandwidth efficiency 42-48%
+  [reported]), engines (DSV4-Flash-DSpark-Abliterated source added),
   benchmarks (5 new forum-reported rows: Llama-3.3-70B NVFP4 vs GGUF Q4_K_M, Nemotron-3-Super
   NVFP4 1×/2×, DSV4-Flash-DSpark-Abliterated 50-60 tok/s).
+
+## Forum ingest 2026-07-17 (Batch 18)
+- 2 new forum topics found, both technically relevant.
+- 2 new sources registered (Batch 18). 2 topic IDs added to processed_topics.txt (total now 389).
+- Pages touched: benchmarks (3 new [conjecture] rows — GLM-5.2-Int4-Int8Mix on 8× GB10 TP8 DCP=1
+  ~1,200 t/s prefill / 33–54 t/s decode; TP4+PP2 ~12 t/s MTP collapse; DCP4 decode-starvation
+  scheduler), multinode-tp-and-networking (NCCL_BUFFSIZE 16 MB at TP8 [conjecture], TP4+PP2 wrecks
+  MTP acceptance → 8% [conjecture], DCP4 decode starvation + decode-aware prefill scheduler
+  [conjecture], draft_tensor_parallel_size=1 [conjecture]), quantization-on-gb10 (b12x W4A8 MoE
+  backend — INT4 weights + INT8 activations via native FP8 CUTLASS [conjecture]; stale
+  topk_indices_buffer in flashinfer SM120 sparse MLA PR#46994 [conjecture]; quantized NextN draft
+  token mapping [conjecture]; VLLM_B12X_MLA_SPEC_EXTEND_AS_DECODE=1 [conjecture]; Int4-Int8 mix
+  quant [conjecture]), models/qwen (Bonsai 27B binary/ternary Qwen3.6-27B — hypothesis: faster
+  decode on bandwidth-bound Spark dense, no GB10 benchmarks yet [conjecture]), roadmap (3 new
+  open problems: v16+b12x W4A8 isolated contribution, Bonsai sm_121 kernel path, DCP4 scheduler
+  on DCP1).
 
 ## Forum ingest 2026-07-11 (Batch 7)
 - 2 new forum topics found, both technically relevant.

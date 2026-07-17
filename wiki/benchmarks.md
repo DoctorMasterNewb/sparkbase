@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama
-> **updated:** 2026-07-16
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama, S-forum-glm52-8x
+> **updated:** 2026-07-17
 
 Single-stream decode unless noted. All on the 2× GB10 pair. Numbers anchor the rules on
 `[[wiki/platform-gb10.md]]` (bandwidth-bound) and `[[wiki/quantization-on-gb10.md]]` (MoE-NVFP4 wins).
@@ -289,6 +289,57 @@ All rows below are **[conjecture]** — single-source community-reported numbers
 > coherent — the streaming-from-disk approach is fundamentally different from multi-node TP. Attention
 > dominates the profile (6.16s of 18s), not disk I/O. Experimental CACHE_ROUTE (cache-aware routing,
 > ~14% expert substitution) raises hit 82→97% and tok/s 2.4→3.3; not upstream default. (S-forum-colibri-glm52)
+
+## Forum-reported benchmarks (2026-07-17 ingest, Batch 18)
+
+All rows below are **[conjecture]** — single-source community-reported numbers (two forum users in one
+thread, not independent threads), not first-party.
+
+||||| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source |||
+|||||---|---|---|---|---|---|---|---|||
+||||| GLM-5.2 (744B/40B MoE) | Int4-Int8 mix (QuantTrio GLM-5.2-Int4-Int8Mix) | vLLM v16-unified + b12x W4A8 | 8 (TP=8, DCP=1) | 33–54 avg (33–39 prose, 40–55 code, peak 54.5–58) | 200K | ~1,200 t/s prefill (1,000→1,200 vs older branch); TTFR 1.7s→198s @ 0–200K depth; 2 conc → 50 (prose) / 60–70 (code); Snake game 54.16 tok/s; tool-eval 91/100 | S-forum-glm52-8x |||
+||||| GLM-5.2 (744B/40B MoE) | Int4-Int8 mix | vLLM v16-unified | 8 (TP=4+PP2, experimental) | ~12 | — | ~1,800 t/s prefill but MTP acceptance collapses to ~8% → decode drops to ~12 t/s; NOT viable | S-forum-glm52-8x |||
+||||| GLM-5.2 (744B/40B MoE) | Int4-Int8 mix | vLLM v16-unified (decode-aware scheduler) | 8 (TP=8, DCP=4, MTP3) | ~2.74 (under prefill pressure) / 26 (post-prefill) | 320K (×10 seq) | DCP4 gives 3.2M KV tokens; decode starves to ~0.0–0.2 tok/s during prefill; scheduler patch ENABLE_DECODE_AWARE_PREFILL=1 limits stalls to ~1.6s | S-forum-glm52-8x |||
+
+> **[conjecture]** **GLM-5.2-Int4-Int8Mix on 8× GB10 is the largest reported DGX Spark cluster run**
+> (S-forum-glm52-8x, ciprianveg + penguinchang, single thread). Key numbers from the OP benchmark
+> (llama-benchy, tg=1500, single stream):
+> - **Prefill stays >1,000 t/s all the way to 200K context** (1,211 at depth 0, 1,019 at 200K).
+>   The v16-unified branch (local-inference-lab/vllm @ 5dffea8, branch
+>   `codex/fathomless-firmament-v16-unified-20260712`) is the single biggest prefill lever — older
+>   branch capped ~1,000, v16 climbs to ~1,200.
+> - **Single-stream avg decode: 33–39 t/s on coherent prose (stable across 0–200K context),
+>   40–55 t/s on coding/structured** (peak 53.5–58 t/s). Two concurrent: ~50 (prose) / 60–70 (code).
+>   Snake game generation (temp=0, thinking=off): 54.16 tok/s.
+> - **Stack:** vLLM v16-unified fork + b12x W4A8 MoE (lukealonso/b12x @ 97b3d64, unified SM120
+>   sparse MLA + PCIe DCP collectives) + DCP1 patches from CosmicRaisins/glm-5.2-gb10. CUDA 13.2.0,
+>   PyTorch 2.11.0, NCCL 2.30.4 (custom aarch64), transformers ≥5.0 (--tf5 build flag), prebuilt
+>   sm_121 FlashInfer wheels.
+> - **DCP1 knobs (3 vs CosmicRaisins base):** `VLLM_B12X_MLA_SPEC_EXTEND_AS_DECODE=1` (keeps B12X
+>   indexer path consistent), `draft_tensor_parallel_size=1` (unsharded drafter avoids TP8
+>   collectives on every draft step), `NCCL_BUFFSIZE=16777216` (16 MB, up from 8 MB — bigger
+>   NCCL buffer for gen speed at high context; 8 MB starts bottlenecking allreduce on long-context
+>   decode).
+> - **TP4+PP2 is not viable for MTP:** prefill climbs to ~1,800 t/s but MTP acceptance collapses to
+>   ~8% on the pipeline split → decode drops to ~12 t/s. Staying on TP8+PP1 for production. (OP)
+> - **DCP4 decode starvation (penguinchang):** on TP8 DCP4 with MTP3, concurrent prefill requests
+>   starve decode to ~0.0–0.2 tok/s until prefill completes. A custom "decode-aware prefill"
+>   scheduler (ENABLE_DECODE_AWARE_PREFILL=1, DECODE_PREFILL_TOKEN_BUDGET=1024,
+>   IDLE_PREFILL_TOKEN_BUDGET=16384, MAX_LONG_PREFILLS_PER_STEP=1) limits stalls to ~1.6s max
+>   but decode still falls to ~2.74 tok/s under pressure. DCP1 would get ~30% faster prefill and
+>   ~60% faster gen per the OP, but DCP4 enables 320K×10 context (3.2M KV tokens).
+> - **Four production patches:** 01 (DCP config → draft model, prevents MTP collapse under DCP>1),
+>   03 (quantized NextN draft token mapping — without it quantized drafts silently build
+>   unquantized and MTP acceptance collapses), 04 (DeepSeekMTP SupportsPP + stale topk_indices_buffer
+>   in flashinfer SM120 sparse MLA PR#46994 + MTP embed_tokens loading under PP), 06 (b12x stale
+>   topk buffer PR#46994 Fix #4 — without it _maybe_share_lm_head swaps the indexer's buffer but the
+>   backend keeps a stale ref → garbage DSA attention and ~30% acceptance instead of ~85%).
+>
+> This corroborates: (1) NCCL 2.30.4 mandatory on multi-node (S-forum-ds4f-4x-vllm, S-forum-tokenspeed),
+> (2) MoE gains flatten / interconnect-bound at scale (S-forum-qwen397-arch), (3) pipeline parallelism
+> is latency-sensitive and can wreck MTP on Spark (S-forum-2d-parallel). All numbers are from one
+> thread with two active users — `[conjecture]`, not `[reported]` (the two posters are in the same
+> thread and not independent).
 
 ## Forum-reported benchmarks (2026-07-16 ingest, Batch 17)
 
