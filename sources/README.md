@@ -291,6 +291,16 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 || S-forum-glm52-8x | forum | GLM-5.2-Int4-Int8Mix (QuantTrio) on 8× GB10 TP8 DCP=1 — ~1,200 t/s prefill, 33–54 t/s avg decode; v16-unified branch (local-inference-lab/vllm 5dffea8), b12x W4A8 MoE (lukealonso/b12x 97b3d64), 4-patch set, DCP4 decode-starvation scheduler (penguinchang), NCCL_BUFFSIZE 16 MB, draft_tp=1, VLLM_B12X_MLA_SPEC_EXTEND_AS_DECODE=1; TP4+PP2 MTP collapses to ~8% (ciprianveg, penguinchang) | https://forums.developer.nvidia.com/t/376831 | 2026-07-14 |
 || S-forum-bonsai27b | forum | Qwen3.6-27B Binary/Ternary (Bonsai 27B) by Prism-ML — 1-bit and ternary builds, 94% quality claim, much smaller footprint; hypothesis: faster decode on bandwidth-bound Spark dense, esp. with MTP; no GB10 benchmarks yet (nerhun, m0l0, stu.miller, robert287) | https://forums.developer.nvidia.com/t/376879 | 2026-07-15 |
 
+## Batch 19 forum sources (2026-07-17 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-usb2-fallback | forum | USB3 SuperSpeed PHY not registered — all USB falls back to 480 Mbps USB 2.0; MediaTek T-PHY (phy-mtk-tphy) has no ACPI binding; FE vs GX10 behavioral split (rstovall, elsaco, paulsc.liu, rob-engassist, al9999, pontostroy) | https://forums.developer.nvidia.com/t/362015 | 2026-03-01 |
+| S-forum-fw-july2026 | forum | New FE Spark firmware: EC 0x03000302→0x03000508, UEFI SoC 0x0200980f→0x02009b0b; fwupdmgr not seeing update initially (elsaco, vasimv, mrDragonFox) | https://forums.developer.nvidia.com/t/376890 | 2026-07-15 |
+| S-forum-ota-loop | forum | DGX Dashboard July 2026 software update stuck in loop — manual `apt upgrade` workaround; nvidia-spark-ota-check diagnostic tool; nv-docker-options missing (andybchen131, elsaco) | https://forums.developer.nvidia.com/t/376981 | 2026-07-15 |
+| S-forum-asus-fw0103 | forum | ASUS Ascent GX10 BIOS/Firmware v0103 — PD/0x507 capsule update fixed 4× inter-Spark link speed, lower temps, ~8-10 W less; July 2026 OTA loop on Asus (brian322, trithemius, btvd, robert287, elsaco) | https://forums.developer.nvidia.com/t/364160 | 2026-03-20 |
+| S-forum-host-freeze-tp2 | forum | Total host freeze (not process hang) during multi-node TP=2 vLLM prefill on 2× Spark — Step-3.7-Flash-NVFP4; zero forensic trace across kdump/watchdogs/netconsole; diagnosed as thermal shutdown (heathen0711, jrsphd) | https://forums.developer.nvidia.com/t/376882 | 2026-07-15 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

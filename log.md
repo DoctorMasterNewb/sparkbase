@@ -526,3 +526,59 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
      Hypothesis: faster decode on bandwidth-bound Spark dense. No GB10 benchmarks; sm_121 kernel
      path for 1-bit/ternary unverified (Marlin doesn't support it natively). Queued for hardware
      agent verification.
+
+## 2026-07-17 — Forum ingest: Batch 19 — 5 new topics (all processed)
+
+- **Sources:** 5 new forum sources registered (Batch 19) in `sources/README.md`:
+  S-forum-usb2-fallback (362015), S-forum-fw-july2026 (376890), S-forum-ota-loop (376981),
+  S-forum-asus-fw0103 (364160), S-forum-host-freeze-tp2 (376882).
+  5 topic IDs added to `processed_topics.txt` (total now 394).
+- **Topics found:** 5 new topics, all technically relevant (no social/buying/RMA to skip):
+  - 362015 (USB2 fallback) — USB3 SuperSpeed PHY not registered, all USB at 480 Mbps.
+  - 376890 (New firmware) — FE Spark EC + UEFI SoC firmware update.
+  - 376981 (July 2026 update issue) — DGX Dashboard OTA stuck in loop.
+  - 364160 (ASUS GX10 firmware) — BIOS v0103 PD capsule fixes thermals + link speed.
+  - 376882 (Host freeze TP=2 prefill) — Total host death during heavy multi-node prefill.
+- **Pages touched:**
+  - platform-gb10 (USB3 SuperSpeed PHY not registered → USB2 fallback [reported] via 7
+    independent users; MediaTek T-PHY `phy-mtk-tphy` has no ACPI binding and is not loaded;
+    debugfs portsc RxDetect on all controllers; not universal — some FE Sparks work fine;
+    new FE firmware EC 0x03000302→0x03000508, UEFI SoC 0x0200980f→0x02009b0b [conjecture];
+    DGX Dashboard OTA stuck in loop — manual `apt upgrade` workaround, nvidia-spark-ota-check
+    diagnostic tool with torn-score [conjecture]; ASUS GX10 v0103 PD/0x507 capsule fixes
+    thermals ~8-10 W lower [reported] via 2 independent users, 4× link speed [conjecture];
+    total host freeze during heavy TP=2 prefill = thermal shutdown with zero forensic trace
+    across kdump/watchdogs/netconsole/NCCL Flight Recorder [conjecture]),
+  - multinode-tp-and-networking (ASUS PD firmware 4× link speed [conjecture] — may relate
+    to CX-7 SlotPowerLimit 0W throttle; host freeze during heavy prefill = highest combined
+    SoC power draw scenario [conjecture]),
+  - sources/README, index, log.
+- **Key findings:**
+  1. USB3 SuperSpeed PHY not registered on some FE DGX Sparks — all USB falls back to 480 Mbps
+     USB 2.0. 7 independent users report the issue. Root cause indicator: MediaTek T-PHY
+     (`phy-mtk-tphy`) has no ACPI binding and is not loaded. Debugfs confirms all xHCI
+     SuperSpeed ports stuck in RxDetect. Not universal (elsaco's FE Spark works fine). No
+     firmware fix confirmed. → [reported] (multiple independent users, same symptom).
+  2. New FE Spark firmware available: EC 0x03000302→0x03000508, UEFI SoC 0x0200980f→0x02009b0b.
+     May address the USB2 fallback and power-controller wedge (both EC/firmware-level).
+     LVFS publication lagged the dashboard announcement. → [conjecture] (impact unconfirmed).
+  3. DGX Dashboard OTA can get stuck in a persistent update loop — manual `apt upgrade` or
+     `apt full-upgrade` is the workaround. The `nvidia-spark-ota-check` tool
+     (`/opt/nvidia/spark-ota-check/check_ota_status.py`) exposes `torn-score` (0 = fully
+     applied) and per-component version comparison. Related to existing fwupd mismatch
+     finding. → [conjecture] (single source, but consistent with known fwupd issues).
+  4. ASUS Ascent GX10 BIOS/Firmware v0103 — the PD/0x507 (USB-C PD 5.7) capsule update
+     lowers thermals by ~8-10 W (2 independent users via UPS measurement, ComfyUI peak
+     75-80°C→65-70°C) → [reported]. The 4× inter-Spark link speed improvement is
+     single-source → [conjecture]. The PD capsule may influence CX-7 power delivery or
+     PCIe slot power advertisement — potentially related to the existing CX-7
+     SlotPowerLimit 0W throttle finding. The GUI update failed on both machines; manual
+     `capsule_update.sh usbpd_5.7.cap` worked. July 2026 OTA also triggers the loop issue
+     on Asus (Asus pipeline lags NVIDIA availability).
+  5. Total host freeze (not process hang) during heavy multi-node TP=2 vLLM prefill on 2×
+     Spark — Step-3.7-Flash-NVFP4 via spark-vllm-docker. Zero forensic trace across kdump,
+     hung_task_panic, softlockup_panic, bidirectional netconsole, and NCCL Flight Recorder.
+     Diagnosed as thermal shutdown (field diagnostic failed → RMA). Heavy non-cached prefill
+     maximally stresses GPU + CPU-side host-staged NCCL simultaneously — the highest combined
+     SoC power scenario. Consistent with existing thermal sensor blind-spot finding. →
+     [conjecture] (single source, but diagnosis confirmed by NVIDIA field diagnostic).

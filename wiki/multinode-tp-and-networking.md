@@ -3,7 +3,7 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2
 > **updated:** 2026-07-17
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
@@ -216,6 +216,30 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
   lever at TP8 — paying TP8 collectives on every draft step would dominate the spec-decode overhead.
   Consistent with the MTP-needs-cudagraphs / cross-node-amortization findings on
   `[[wiki/cudagraphs-and-compile.md]]`.
+
+### Batch 19 forum ingest (2026-07-17)
+
+- **[conjecture]** **ASUS GX10 PD firmware capsule (v0103, PD/0x507) reportedly 4× faster
+  inter-Spark link** (S-forum-asus-fw0103, brian322): after manually applying
+  `capsule_update.sh usbpd_5.7.cap` (the PD capsule failed via GUI on both machines),
+  the inter-Spark connection speed was reported as 4× faster and MiniMax M2.5 tok/s
+  improved to 25-30 range. The USB-C PD firmware may influence CX-7 power delivery or
+  PCIe slot power advertisement — potentially related to the existing `[conjecture]`
+  CX-7 `SlotPowerLimit 0W` throttle finding (S-forum-cx7-13gbps). Single source for the
+  4× claim; thermal improvement corroborated by trithemius (see platform-gb10). If
+  confirmed, this would be a significant firmware-level fix for CX-7 throughput on the
+  ASUS GX10 variant. Status: `open` — needs hardware verification.
+- **[conjecture]** **Total host freeze during heavy TP=2 prefill — thermal shutdown, not
+  software** (S-forum-host-freeze-tp2, heathen0711): serving Step-3.7-Flash-NVFP4 via
+  spark-vllm-docker (TP=2, Ray) on 2× Spark, heavy non-cached prefill caused total host
+  death (no ping/SSH/display) with zero forensic trace. The "zero trace" pattern is
+  GB10-specific: kdump, hung_task_panic, softlockup_panic, netconsole, and NCCL Flight
+  Recorder all captured nothing — suggesting a hardware/firmware-level lockup below the
+  OS's ability to log. Diagnosed as thermal shutdown via the NVIDIA field diagnostic
+  (failed → RMA). This is relevant to multi-node because heavy prefill (long/resumed-chat
+  prompts with low cache hit rate) maximally stresses both the GPU and the CPU-side
+  host-staged NCCL collectives simultaneously — the highest combined SoC power draw
+  scenario. See `[[wiki/platform-gb10.md]]` → thermal shutdown for the full finding.
 
 ## See also
 `[[wiki/platform-gb10.md]]` · `[[wiki/cudagraphs-and-compile.md]]` · `[[wiki/llama-cpp-rpc.md]]` · `[[wiki/engines.md]]`

@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup, S-forum-hpc-slurm, S-forum-llama32-finetune, S-forum-cx7-hotplug, S-forum-comfyui-optimized, S-forum-nemotron-ollama, S-forum-nvfp4-broken
-> **updated:** 2026-07-16
+> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup, S-forum-hpc-slurm, S-forum-llama32-finetune, S-forum-cx7-hotplug, S-forum-comfyui-optimized, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-usb2-fallback, S-forum-fw-july2026, S-forum-ota-loop, S-forum-asus-fw0103, S-forum-host-freeze-tp2
+> **updated:** 2026-07-17
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -400,6 +400,71 @@ only after unexplained slow tok/s).
   tok/s. Measured 19–22 tok/s = 42–48%. A well-optimized NVFP4 path should reach 60–80% (routine on
   GB10 in other configurations). The gap is software/kernel efficiency, not hardware bandwidth.
   See `[[wiki/quantization-on-gb10.md]]` → NVFP4 meta-analysis.
+
+### Batch 19 forum ingest (2026-07-17)
+
+- **[reported]** **USB3 SuperSpeed PHY not registered — all USB falls back to 480 Mbps USB 2.0**
+  (S-forum-usb2-fallback, rstovall, elsaco, paulsc.liu, rob-engassist, al9999, pontostroy):
+  on some FE DGX Sparks (kernel 6.17.0-1008-nvidia, EC FW 0x02004e12, SoC FW 0x02009418),
+  all xHCI SuperSpeed ports are stuck in RxDetect — no USB3 device is ever detected.
+  Debugfs confirms: `portsc = 0x000002a0 Powered Not-connected Disabled Link:RxDetect
+  PortSpeed:0` on every controller (NVDA8000:00 through :04). Root cause indicator: no USB
+  PHY provider registered in the kernel — `devm_usb_get_phy_by_phlite` finds no PHY;
+  **MediaTek T-PHY (`phy-mtk-tphy`) has no ACPI binding and is not loaded**. The `uas` module
+  is loaded but `usb-storage` claims devices because they enumerate at USB 2.0 speed (UAS
+  requires SuperSpeed). Multiple independent users report the same "always falls back to
+  480 Mbps" symptom, including devices rated for 20 Gbps. Not universal — elsaco's FE Spark
+  enumerates USB3.2 Gen2x2 (20000M/x2) at full speed. The USB-C hot-plug workaround (unplug
+  + replug after boot) works for some users but not all. Some enclosure chips (ASM2464) are
+  reported as especially problematic. DGX Spark USB ports are USB4 (40 Gbps) capable.
+  Status: `open` — no firmware fix confirmed yet. 7 users in the thread report the issue.
+- **[conjecture]** **New FE Spark firmware available: EC 0x03000302→0x03000508, UEFI SoC
+  0x0200980f→0x02009b0b** (S-forum-fw-july2026, elsaco): the EC update "improves the
+  performance and stability of the Embedded Controller"; the UEFI/SoC update "improves the
+  performance and stability of the SoC Firmware including UEFI and GPU". May not appear via
+  `fwupdmgr` immediately — LVFS publication lagged the dashboard announcement. One user
+  confirmed updating all 8 units successfully. Relevant for the USB2 fallback and
+  power-controller wedge (both EC/firmware-level). Tracked as [conjecture] pending
+  confirmation of which issues the firmware addresses.
+- **[conjecture]** **DGX Dashboard OTA stuck in update loop — manual `apt upgrade` workaround**
+  (S-forum-ota-loop, andybchen131, elsaco): the DGX Dashboard "System Update" can get stuck
+  in a persistent loop — clicking update and auto-rebooting multiple times does not complete.
+  Workaround: run `sudo apt update && sudo apt upgrade` (or `sudo apt full-upgrade` for held
+  packages) from a terminal instead. The dashboard continues showing updates as long as
+  packages are on hold. The diagnostic tool `nvidia-spark-ota-check` (`/opt/nvidia/spark-ota-check/check_ota_status.py`)
+  exposes: `is-ota-available`, `torn-score` (0 = fully applied), `installed-versions`,
+  `ota-versions`, `summary`. nv-docker-options package may be missing after the update.
+  Related to the existing fwupd/libfwupd mismatch finding (S-forum-fwupd-mismatch).
+- **[reported]** **ASUS Ascent GX10 BIOS/Firmware v0103 — PD firmware capsule fixes CX-7 link
+  speed, lowers thermals, ~8-10 W less** (S-forum-asus-fw0103, brian322, trithemius):
+  GX10 BIOS/Firmware v0103 includes SOC/0x305, EC/0x204, **PD/0x507** (USB-C PD 5.7),
+  TPM/7.2.4.1. The PD capsule update failed via the System Upgrade GUI on both machines
+  (manual shell fix: `./capsule_update.sh usbpd_5.7.cap`). After the update: **inter-Spark
+  connection speed reportedly 4× faster**, MiniMax M2.5 tok/s up to 25-30 range, machines
+  running cooler (case temperature noticeably lower). trithemius confirms: Z-Image in ComfyUI
+  went from 75-80°C peak to 65-70°C max; **~8-10 W lower** power consumption measured via UPS.
+  Two independent users agree on the thermal improvement → [reported]. The 4× link speed
+  claim is single-source [conjecture]. **Caveat**: July 2026 system update on Asus also
+  triggers the same OTA loop issue (btvd, robert287) — the Asus OTA pipeline lags NVIDIA's
+  availability, causing a mismatch. The `nvidia-spark-ota-check` tool (above) helps diagnose.
+- **[conjecture]** **Total host freeze (not process hang) during heavy multi-node TP=2 prefill
+  on 2× Spark — thermal shutdown** (S-forum-host-freeze-tp2, heathen0711, jrsphd): serving
+  Step-3.7-Flash-NVFP4 via spark-vllm-docker (TP=2, Ray), heavy non-cached prefill (long/
+  resumed-chat prompts) caused one node to totally freeze — no ping, no SSH, no display —
+  5 times across 2 days. Normal chat at 70% of 256K context did NOT trigger it. An initial
+  UMA OOM bug (percentage-based `gpu_memory_utilization` with no floor) was fixed but the
+  freezes continued. Every freeze left **zero forensic trace**: no OOM-killer, no kernel
+  panic, no NVRM/Xid GPU fault, no hung-task/softlockup warning, kdump never produced a
+  vmcore despite being enabled. Added `hung_task_panic`, `softlockup_panic`, bidirectional
+  netconsole, and NCCL Flight Recorder — still nothing. The simultaneous wedge of interrupts/
+  scheduler/NIC points to hardware/firmware-level lockup. Config: driver 580.159.03,
+  kernel 6.17.0-1026-nvidia, CUDA 13.0. **Diagnosed as thermal shutdown** — the user ran the
+  DGX Spark field diagnostic and it failed, prompting RMA. Units were in an air-conditioned
+  room with 120mm 4k rpm fans; thermal can still occur on affected units (see existing
+  [reported] thermal paste degradation / sensor blind-spot finding, S-forum-thermal-shutdown).
+  The "zero forensic trace" pattern is a GB10-specific signature: a total hardware-level
+  freeze leaves nothing for software watchdogs to capture. This is consistent with the
+  existing finding that OS thermal sensors may report average not hot-spot temperature.
 
 ## Reference cluster
 

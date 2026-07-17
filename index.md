@@ -204,6 +204,19 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   open problems: v16+b12x W4A8 isolated contribution, Bonsai sm_121 kernel path, DCP4 scheduler
   on DCP1).
 
+## Forum ingest 2026-07-17 (Batch 19)
+- 5 new forum topics found, all technically relevant (USB2 fallback, firmware updates, OTA
+  loop, ASUS GX10 firmware, host freeze during TP=2 prefill).
+- 5 new sources registered (Batch 19). 5 topic IDs added to processed_topics.txt (total now 394).
+- Pages touched: platform-gb10 (USB3 SuperSpeed PHY not registered → USB2 fallback [reported]
+  via 7 independent users; MediaTek T-PHY no ACPI binding; new FE firmware EC/UEFI versions;
+  DGX Dashboard OTA loop + nvidia-spark-ota-check diagnostic tool; ASUS GX10 v0103 PD firmware
+  fixes thermals ~8-10 W lower [reported] + 4× link speed [conjecture]; total host freeze
+  during heavy TP=2 prefill = thermal shutdown with zero forensic trace [conjecture]),
+  multinode-tp-and-networking (ASUS PD firmware 4× link speed [conjecture]; host freeze
+  during prefill = highest combined SoC power scenario [conjecture]),
+  sources/README, index, log.
+
 ## Forum ingest 2026-07-11 (Batch 7)
 - 2 new forum topics found, both technically relevant.
 - 2 new sources registered (Batch 7). 2 topic IDs added to processed_topics.txt (total now 354).
