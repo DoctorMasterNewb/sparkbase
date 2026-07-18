@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup, S-forum-hpc-slurm, S-forum-llama32-finetune, S-forum-cx7-hotplug, S-forum-comfyui-optimized, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-usb2-fallback, S-forum-fw-july2026, S-forum-ota-loop, S-forum-asus-fw0103, S-forum-host-freeze-tp2
-> **updated:** 2026-07-17
+> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup, S-forum-hpc-slurm, S-forum-llama32-finetune, S-forum-cx7-hotplug, S-forum-comfyui-optimized, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-usb2-fallback, S-forum-fw-july2026, S-forum-ota-loop, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-machineid, S-forum-cve
+> **updated:** 2026-07-18
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -465,6 +465,32 @@ only after unexplained slow tok/s).
   The "zero forensic trace" pattern is a GB10-specific signature: a total hardware-level
   freeze leaves nothing for software watchdogs to capture. This is consistent with the
   existing finding that OS thermal sensors may report average not hot-spot temperature.
+
+### Batch 21 forum ingest (2026-07-18)
+
+- **[reported]** **OEM DGX Spark images ship with identical `/etc/machine-id` (and identical
+  SSH host keys) — CVE-2026-24218, affects MSI EdgeXpert and ASUS GX10**
+  (S-forum-machineid, ohaibuzzle, emptysands, JW2026): two MSI EdgeXpert DGX Sparks
+  fresh from setup had byte-identical `/etc/machine-id`
+  (`295f5139615f4bbaa29921a29574c7a3` on both), and therefore identical SSH host keys
+  (machine-id seeds `ssh-keygen -A`'s key derivation). Googling that machine-id surfaced
+  other users' journal logs — the cloned image wasn't sanitized at the factory. Root
+  cause: OEMs clone a single DGX OS image across units without re-running
+  `systemd-machine-id-setup`. emptysands links it to **CVE-2026-24218** (NVIDIA Security
+  Bulletin: DGX Spark - May 2026; registered separately as S-forum-cve). JW2026 confirms
+  the ASUS GX10 has the same issue — both OEMs clone. MSI reportedly patched in May 2026;
+  some units still ship with the original DGX OS image as of 2026-07. Two independent
+  OEMs/users → [reported]. **Why it bites on Spark:** SSH host-key collision enables
+  silent on-path host impersonation (a real risk when Sparks are direct-cabled over the
+  CX-7 fabric, see `[[wiki/multinode-tp-and-networking.md]]`); DUID-based stateful
+  DHCPv6 address generation also collides; journald `user-<uid>.journal` paths collide
+  if logs are ever aggregated. **One-liner fix:**
+  `sudo rm -f /etc/machine-id /var/lib/dbus/machine-id && sudo systemd-machine-id-setup
+  && sudo rm -f /etc/ssh/ssh_host_* && sudo ssh-keygen -A && sudo reboot`.
+  Recommended for any freshly-unboxed OEM Spark before first network exposure. A
+  postinst-style "if machine_id in (known-bad list): reset()" guard has been suggested
+  but not shipped. Note: this is *not* a GB10 hardware defect — it's an OEM imaging
+  defect that happens to affect the DGX Spark OEM SKUs (MSI EdgeXpert, ASUS GX10).
 
 ## Reference cluster
 

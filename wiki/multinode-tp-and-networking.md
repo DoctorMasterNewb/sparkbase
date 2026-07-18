@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2
-> **updated:** 2026-07-17
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom
+> **updated:** 2026-07-18
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -436,3 +436,40 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
     (S-forum-ibwrite-false): four subnets for the four fabric netdevs, plus
     `arp_ignore=1`/`arp_announce=2` scoped to the fabric interfaces prevents cross-interface ARP
     collapsing both MACs onto one PCIe x4 root.
+
+### Batch 21 forum ingest (2026-07-18)
+
+- **[conjecture]** **NetworkManager "Connection failed / Activation of network connection
+  failed" popup = phantom DHCP profiles looping on ConnectX QSFP ports**
+  (S-forum-nm-phantom, YolandaHuang): out-of-box DGX OS on GB10 exposes several Ethernet
+  interfaces (`enp1s0f0np0`, `enp1s0f1np1`, `enP2p1s0f0np0`, `enP2p1s0f1np1`). The primary
+  port is managed by a netplan-generated profile, but **NetworkManager also auto-creates
+  default DHCP profiles (`Wired connection 1..5`) for the remaining ports**. Any port that
+  has carrier but no DHCP server behind it (typical when a cable goes directly to another
+  Spark, or to a switch segment with no DHCP service) enters a retry loop: activate →
+  ip-config → fail (`ip-config-unavailable`) → wait ~45 s → repeat, firing a desktop
+  notification each cycle and flooding the NetworkManager journal (which buries real
+  network problems later). Does not affect working connections (primary Ethernet, Wi-Fi,
+  SSH). **GB10-specific angle:** the multiple CX-7 QSFP fabric interfaces are exactly what
+  triggers the phantom-profile storm — a single-port box wouldn't see it. **Diagnosis:**
+  `journalctl -u NetworkManager --since "30 min ago" --no-pager | grep -iE "fail|timed out"
+  | tail -20` — `ip-config-unavailable` means the port HAS link but got no DHCP lease
+  (distinguishes "nothing plugged in" from "plugged in but nobody is serving addresses").
+  Cross-check with `nmcli connection show` / `nmcli device status`: looping profiles have
+  no DEVICE bound (`--`), while working connections are untouched. **Clean fix:** disable
+  autoconnect on the offending profiles only (reversible, no reboot, no service restart):
+  `sudo nmcli connection modify "Wired connection 1" connection.autoconnect no` (substitute
+  the profile names your journal reported). **Timing gotcha:** `autoconnect no` does not
+  cancel a retry cycle already in flight — expect one more failure round, then verify with
+  `sleep 120; journalctl -u NetworkManager --since "2 min ago" --no-pager | grep -i fail`
+  (empty output = fixed). `nmcli device disconnect <iface>` may error
+  `Error: This device is not active` because the device sits in disconnected state between
+  attempts — harmless. **To use those ports later:** the phantom-profile loop and "using
+  the QSFP ports for clustering" don't conflict — don't rely on DHCP there; follow the
+  official Spark clustering playbook (netplan-based, on both systems), or give the profile
+  a static address and re-enable: `sudo nmcli connection modify "Wired connection 1"
+  ipv4.method manual ipv4.addresses 10.0.0.1/24 connection.autoconnect yes && sudo nmcli
+  connection up "Wired connection 1"`. NVIDIA staff had already confirmed (threads 357235,
+  352948) this is a NetworkManager message, not a real connectivity error — this finding
+  adds the full diagnosis chain and the exact commands. Related to the existing
+  NetworkManager fabric config finding (S-forum-cx7-dual-setup).

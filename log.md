@@ -628,3 +628,56 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
 - **Evidence cap:** All findings capped at [conjecture] — single forum thread, no independent
   corroboration, no hardware verification available. Quality-impact claim is load-bearing
   and explicitly flagged for hardware-agent measurement in roadmap.
+
+## 2026-07-18 — Forum ingest: Batch 21 — 2 new topics (both processed)
+
+- **Sources:** 2 new forum sources registered (Batch 21) in `sources/README.md`:
+  S-forum-machineid (377208), S-forum-nm-phantom (377220). 2 topic IDs added to
+  `processed_topics.txt` (total now 397). Also folded the previously-registered but
+  unplaced S-forum-cve (374930) into platform-gb10.md alongside the machine-id finding.
+- **Topics found:** 2 new topics, both technically GB10-relevant (no social/buying/RMA
+  to skip):
+  - 377208 (MSI EdgeXpert DGX Spark having identical Machine IDs) — CVE-2026-24218;
+    MSI + ASUS GX10 both ship cloned images with byte-identical `/etc/machine-id` and
+    SSH host keys; one-liner fix; MSI patched May 2026.
+  - 377220 (Connection failed / Activation of network connection failed on DGX Spark
+    — root cause and clean fix) — NetworkManager phantom DHCP profiles auto-created for
+    the ConnectX QSFP ports retry every ~45 s when carrier present but no DHCP server;
+    full diagnosis + nmcli autoconnect fix.
+- **Pages touched:**
+  - platform-gb10 (new "Batch 21" ingest section — OEM images ship with identical
+    `/etc/machine-id` + identical SSH host keys → CVE-2026-24218 [reported]; affects
+    MSI EdgeXpert + ASUS GX10; two independent OEMs/users; one-liner fix
+    `systemd-machine-id-setup` + `ssh-keygen -A`; SSH impersonation risk is real when
+    Sparks are direct-cabled over CX-7; not a GB10 hardware defect, an OEM imaging
+    defect; also placed S-forum-cve on this page),
+  - multinode-tp-and-networking (new "Batch 21" ingest section — NetworkManager phantom
+    DHCP profile retry loop on ConnectX QSFP ports [conjecture]; GB10-specific because
+    the multiple CX-7 fabric interfaces trigger it; `ip-config-unavailable` = has link,
+    no lease; `nmcli connection.autoconnect no` fix; timing gotcha on in-flight cycle;
+    clustering playbook doesn't conflict),
+  - sources/README, log.
+- **Key findings:**
+  1. OEM DGX Spark images (MSI EdgeXpert, ASUS GX10) ship with byte-identical
+     `/etc/machine-id` — and therefore identical SSH host keys — because the factory
+     DGX OS image is cloned without re-running `systemd-machine-id-setup`. This is
+     CVE-2026-24218 (NVIDIA Security Bulletin: DGX Spark - May 2026). Two independent
+     OEMs/users (ohaibuzzle on MSI, JW2026 on ASUS) → [reported]. Real Spark-specific
+     bite: SSH host-key collision enables silent on-path impersonation when Sparks are
+     direct-cabled over the CX-7 fabric; DUID-based DHCPv6 also collides. MSI reportedly
+     patched in May 2026 but some units still ship with the original image. One-liner
+     fix provided. Note: OEM imaging defect, not a GB10 hardware defect.
+  2. NetworkManager on out-of-box DGX OS auto-creates DHCP profiles for every ConnectX
+     QSFP interface; any port with carrier but no DHCP server (typical Spark-to-Spark
+     direct cable) loops activate→ip-config→fail→retry every ~45 s, firing a desktop
+     popup and flooding the journal. The multiple CX-7 fabric interfaces are exactly
+     what triggers it (GB10-specific). `ip-config-unavailable` distinguishes "no cable"
+     from "cable, no lease". Clean fix: `nmcli connection.autoconnect no` on the looping
+     profiles; verify with `sleep 120; journalctl ... | grep -i fail`. Doesn't conflict
+     with the clustering playbook. NVIDIA staff had already confirmed it's a
+     NetworkManager message, not a connectivity error; this adds the full diagnosis
+     chain. → [conjecture] (single source for the fix; corroborated by the existing
+     [conjecture] NetworkManager fabric config finding S-forum-cx7-dual-setup).
+- **Evidence cap:** Machine-id/CVE finding capped at [reported] (two independent OEMs/
+  users + the official NVIDIA Security Bulletin). NetworkManager phantom-profile
+  finding capped at [conjecture] (single source; no hardware verification available).

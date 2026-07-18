@@ -306,6 +306,8 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | ID | type | What it is | Reference | Date |
 |---|---|---|---|---|
 | S-forum-mtp-lossless | forum | MTP lossless? — quality debate: MTP measurably affects output quality (tool-call bench ~5 pts, Qwen3.6-27B ~2% hit); vLLM+llama.cpp MTP+prefix-cache interaction bugs; DS4F prefix-batch 16384/MTP4 → 70-75% acceptance; "theory != deployment" practical-lossiness argument (JasonW, Nerhun, A3refaat, Azampatti, 0rand, mangosq) | https://forums.developer.nvidia.com/t/377030 | 2026-07-16 |
+| S-forum-machineid | forum | MSI EdgeXpert DGX Sparks ship with identical /etc/machine-id (and identical SSH host keys) — CVE-2026-24218; ASUS GX10 same; OEM clone-image not sanitized; one-liner fix; MSI patched May 2026 (ohaibuzzle, emptysands, JW2026) | https://forums.developer.nvidia.com/t/377208 | 2026-07-17 |
+| S-forum-nm-phantom | forum | NetworkManager "Connection failed" popup on DGX Spark — phantom DHCP profiles auto-created for ConnectX QSFP ports retry every ~45 s when carrier present but no DHCP server (Spark-to-Spark direct cable typical); fix: nmcli connection.autoconnect no on looping profiles; ip-config-unavailable = has link, no lease (YolandaHuang) | https://forums.developer.nvidia.com/t/377220 | 2026-07-17 |
 
 ## Adding a source
 
