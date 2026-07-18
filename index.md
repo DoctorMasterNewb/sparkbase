@@ -226,3 +226,12 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   QR→product page, monitor+keyboard workaround), attention-and-kv-cache (TRITON_ATTN_DIFFKV
   quantized KV guard), multinode-tp-and-networking (NCCL v2.30u1 CGA buffer), benchmarks (1 new
   forum-reported row: MiMo-V2.5-NVFP4 renek recipe 30-33 tok/s).
+
+## Forum ingest 2026-07-18 (Batch 20)
+- 1 new forum topic found, technically relevant (MTP lossless? — quality & prefix-cache bugs).
+- 1 new source registered (Batch 20). 1 topic ID added to processed_topics.txt (total now 395).
+- Pages touched: engines (MTP measurably affects output quality [conjecture] — tool-call bench ~5
+  pts; ~40% speed vs ~2% quality hit on Qwen3.6-27B [conjecture]; vLLM+llama.cpp MTP+prefix-cache
+  interaction bugs [conjecture]; DS4F prefix-batch 16384/MTP=4 → 70-75% acceptance [conjecture];
+  "theory != deployment" practical-lossiness debate [conjecture]), roadmap (new open problem:
+  measure MTP quality impact & prefix-cache interaction on real Spark).

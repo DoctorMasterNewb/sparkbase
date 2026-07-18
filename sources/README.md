@@ -301,6 +301,12 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-asus-fw0103 | forum | ASUS Ascent GX10 BIOS/Firmware v0103 — PD/0x507 capsule update fixed 4× inter-Spark link speed, lower temps, ~8-10 W less; July 2026 OTA loop on Asus (brian322, trithemius, btvd, robert287, elsaco) | https://forums.developer.nvidia.com/t/364160 | 2026-03-20 |
 | S-forum-host-freeze-tp2 | forum | Total host freeze (not process hang) during multi-node TP=2 vLLM prefill on 2× Spark — Step-3.7-Flash-NVFP4; zero forensic trace across kdump/watchdogs/netconsole; diagnosed as thermal shutdown (heathen0711, jrsphd) | https://forums.developer.nvidia.com/t/376882 | 2026-07-15 |
 
+## Batch 20 forum sources (2026-07-18 ingest)
+
+| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-mtp-lossless | forum | MTP lossless? — quality debate: MTP measurably affects output quality (tool-call bench ~5 pts, Qwen3.6-27B ~2% hit); vLLM+llama.cpp MTP+prefix-cache interaction bugs; DS4F prefix-batch 16384/MTP4 → 70-75% acceptance; "theory != deployment" practical-lossiness argument (JasonW, Nerhun, A3refaat, Azampatti, 0rand, mangosq) | https://forums.developer.nvidia.com/t/377030 | 2026-07-16 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

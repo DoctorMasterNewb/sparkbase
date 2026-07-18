@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated
-> **updated:** 2026-07-16
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless
+> **updated:** 2026-07-18
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -247,3 +247,42 @@ Three engines run on the Spark pair; pick by arch support and quant.
   This is the first reported engine that makes a 744B model usable (if very slowly) on a
   single 121 GB Spark — the streaming-from-disk approach is the complement to the
   multi-node TP path used for other large MoE models.
+
+## Forum ingest: MTP quality & prefix-cache interaction (2026-07-18)
+
+- **[conjecture]** **MTP measurably affects output quality, not just throughput**
+  (S-forum-mtp-lossless, JasonW): on GB10 runs, MTP-on vs MTP-off shows quality deltas
+  on tool-call benches — up to ~5 points difference that "cannot be explained by noise
+  or SD." Temperature/sampling tuning did not eliminate the gap. Note: the theoretical
+  argument for losslessness assumes strict causal verification of drafted tokens, but
+  community members report quality drift in practice. See the practical-lossiness
+  argument below.
+- **[conjecture]** **MTP gives ~40% speed vs ~2% quality hit on Qwen3.6-27B**
+  (S-forum-mtp-lossless, Azampatti): a custom capability suite shows "almost identical"
+  scores with and without MTP — a tradeoff worth having for the ~40% throughput gain.
+  This corroborates (independent second source) that the quality delta, where present,
+  is small for general capability benchmarks but can be larger for tool-call evals.
+- **[conjecture]** **vLLM and llama.cpp both have MTP + prefix-caching interaction bugs**
+  (S-forum-mtp-lossless, mangosq / Yen): noticeable quality/output degradation appears
+  when MTP and prefix caching are enabled together; without prefix caching, no visible
+  degradation. Practical mitigation: disable prefix caching when running MTP, or leave
+  MTP off for agentic workflows. This is an engine bug, not a theoretical property of
+  MTP — corroborates that "theory != deployment": practical MTP deployments can be
+  lossy due to serving-stack bugs (how attention treats discarded blocks / re-evaluates).
+  Affects both engines Spark users run.
+- **[conjecture]** **DS4F MTP tuning — prefix-batch 16384, MTP=4 → 70–75% acceptance**
+  (S-forum-mtp-lossless, 0rand): for DS4F the optimal prefix-batch size is 16384 with
+  MTP=4, yielding 70–75% stable prediction quality — up to ~80% on coding workloads,
+  down to ~70% on llama-benchy performance tests. Depends on model (attention type,
+  head count, attention-cache size) and number of prediction tokens. Note:
+  prefix-batch size "greatly eats into KV cache" on unified memory — a real tradeoff
+  on GB10's 121 GB pool. Quality impact unconfirmed ("the hunch is it does").
+- **[conjecture]** **Practical MTP deployments are lossy by design** (S-forum-mtp-lossless,
+  Nerhun): "theory != deployment" — strict mathematical verification of drafted tokens
+  would yield terrible acceptance rates due to early specialization of NTP layers;
+  real-world deployments cut corners to keep throughput. Counter-argument (A3refaat,
+  JasonW): properly-implemented MTP enforces causality between drafted tokens and the
+  target verify step, making it mathematically lossless — 0% acceptance only costs
+  throughput, not quality. The disagreement is unresolved in-thread; the observed
+  quality deltas (above) suggest at least some serving stacks are not enforcing strict
+  verification. Flagged for hardware-agent verification (see roadmap).

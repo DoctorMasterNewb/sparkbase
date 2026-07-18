@@ -582,3 +582,49 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
      maximally stresses GPU + CPU-side host-staged NCCL simultaneously — the highest combined
      SoC power scenario. Consistent with existing thermal sensor blind-spot finding. →
      [conjecture] (single source, but diagnosis confirmed by NVIDIA field diagnostic).
+
+## 2026-07-18 — Forum ingest: Batch 20 — 1 new topic (processed)
+
+- **Sources:** 1 new forum source registered (Batch 20) in `sources/README.md`:
+  S-forum-mtp-lossless (377030). 1 topic ID added to `processed_topics.txt`
+  (total now 395).
+- **Topics found:** 1 new topic, technically relevant (no social/buying/RMA to skip):
+  - 377030 (MTP lossless?) — quality debate: MTP measurably affects output quality; vLLM +
+    llama.cpp MTP+prefix-cache interaction bugs; DS4F prefix-batch tuning.
+- **Pages touched:**
+  - engines (new ingest section — MTP quality impact [conjecture]: up to ~5 pts on tool-call
+    bench, temperature tuning does not eliminate the gap; ~40% speed vs ~2% quality hit on
+    Qwen3.6-27B [conjecture]; vLLM + llama.cpp both have MTP+prefix-cache interaction bugs
+    causing visible degradation that disappears when prefix caching is off [conjecture];
+    DS4F prefix-batch 16384 / MTP=4 → 70-75% acceptance (80% coding, 70% llama-benchy),
+    prefix-batch eats KV cache on UMA [conjecture]; "theory != deployment" practical-lossiness
+    debate — strict verification would kill acceptance rates, real deployments cut corners
+    [conjecture], countered by the math-lossless argument [conjecture]),
+  - roadmap (new open problem: measure MTP quality impact & prefix-cache interaction on real
+    Spark — run MTP-on vs off with prefix caching ON/OFF on a known model, isolate whether
+    the prefix-cache interaction is the sole cause),
+  - sources/README, index, log.
+- **Key findings:**
+  1. MTP measurably affects output quality, not just throughput — up to ~5 points on tool-call
+     bench, not explained by noise (JasonW). A second user (Azampatti) reports "almost
+     identical" capability-suite scores with/without MTP, ~40% speed vs ~2% quality hit on
+     Qwen3.6-27B — so the delta is workload-dependent (capability benchmarks small,
+     tool-call evals larger). → [conjecture] (single thread; two users but same thread, not
+     independent).
+  2. vLLM and llama.cpp both have MTP + prefix-caching interaction bugs (mangosq/Yen): visible
+     degradation only when both are enabled together; without prefix caching, no visible
+     degradation. Practical mitigation: disable prefix caching with MTP, or leave MTP off
+     for agentic workflows. This is an engine bug, not a theoretical MTP property — affects
+     both engines Spark users run. → [conjecture] (single source for the bug claim).
+  3. DS4F MTP tuning (0rand): prefix-batch 16384 with MTP=4 → 70-75% stable prediction quality
+     (80% coding, 70% llama-benchy). Tuning is model-dependent (attention type, heads,
+     cache size, num prediction tokens). Prefix-batch size "greatly eats into KV cache"
+     — a real tradeoff on GB10's 121 GB unified memory. → [conjecture].
+  4. Unresolved in-thread debate on whether practical MTP is "lossy by design" (Nerhun:
+     strict verification kills acceptance, deployments cut corners) vs "mathematically
+     lossless if implemented correctly" (A3refaat, JasonW: causality is enforced, 0%
+     acceptance costs throughput not quality). The observed quality deltas suggest at
+     least some serving stacks do not enforce strict verification. → [conjecture].
+- **Evidence cap:** All findings capped at [conjecture] — single forum thread, no independent
+  corroboration, no hardware verification available. Quality-impact claim is load-bearing
+  and explicitly flagged for hardware-agent measurement in roadmap.

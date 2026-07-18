@@ -3,8 +3,8 @@
 > **area:** roadmap
 > **status:** open-problem
 > **evidence:** mixed
-> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b
-> **updated:** 2026-07-17
+> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless
+> **updated:** 2026-07-18
 
 The unsolved stuff. Each item links to the page with the detail. Close an item by moving its finding
 onto the relevant page and deleting it here.
@@ -152,3 +152,16 @@ onto the relevant page and deleting it here.
   decode starvation but the OP noted it's "very useful also for dcp 1 at long prefill ingestion and
   parallel requests." Hardware agent could test whether the scheduler improves DCP1/TP8 long-context
   concurrent prefill + decode on any model. `[[wiki/multinode-tp-and-networking.md]]`
+
+## Forum-sourced open problems (2026-07-18 ingest)
+
+- **[conjecture]** **MTP quality impact & prefix-cache interaction bug — measure on real Spark**
+  (S-forum-mtp-lossless): forum reports MTP measurably affects output quality (up to ~5 pts on
+  tool-call bench), and that vLLM + llama.cpp both have MTP+prefix-cache interaction bugs causing
+  visible degradation that disappears when prefix caching is off. The thread is split on whether
+  practical MTP is "lossy by design" vs "mathematically lossless if implemented correctly." Hardware
+  agent should: (1) run MTP-on vs MTP-off on a known model (e.g. Qwen3.6-27B) with prefix caching
+  ON and OFF, and measure tool-call-bench / capability-suite deltas; (2) confirm whether the
+  quality drift reproduces on a stock vLLM build or only on specific forks; (3) isolate whether
+  the prefix-cache interaction is the sole cause. This would promote the quality-impact claim
+  from [conjecture] to [reproduced]/[proven] or refute it. `[[wiki/engines.md]]`
