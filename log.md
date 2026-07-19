@@ -681,3 +681,62 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
 - **Evidence cap:** Machine-id/CVE finding capped at [reported] (two independent OEMs/
   users + the official NVIDIA Security Bulletin). NetworkManager phantom-profile
   finding capped at [conjecture] (single source; no hardware verification available).
+
+## 2026-07-19 — Forum ingest: Batch 22 — 3 new topics (all processed)
+
+- **Sources:** 3 new forum sources registered (Batch 22) in `sources/README.md`:
+  S-forum-ec-fan-rollback (377069), S-forum-nemo-rt (376248),
+  S-forum-litellm-orchestrator (376407). 3 topic IDs added to
+  `processed_topics.txt` (total now 400).
+- **Topics found:** 3 new topics, all technically GB10-relevant (no social/buying/RMA
+  to skip):
+  - 377069 (EC firmware rollback fixes fan curve) — GB10 firmware-level thermal finding.
+  - 376248 (Nemo-RT voice agent) — vLLM-based GB10 tool, native-FP8 + unified-memory
+    rationale, ~20 concurrent calls on Spark.
+  - 376407 (LiteLLM multi-model orchestrator) — single-Spark model lifecycle tool;
+    thread also surfaces sparkstation.
+- **Pages touched:**
+  - platform-gb10 (new "Batch 22" ingest section — EC firmware 0x0300xxxx breaks fan
+    curve → 96-97°C ACPI zones, inaudible fans; EC isolates fan control from OS
+    (fancontrol/pwmconfig/nvidia-settings can't override); fwupdmgr downgrade to
+    0x02004e18 fix; idle 60→32°C, load 35-37°C, 0% throttling, 120-125W/node @ 95%
+    GPU util; avoid blanket fwupdmgr update afterward; first reported EC firmware
+    *regression* on Spark; relationship to 0x03000508 "improves EC" update unresolved
+    [conjecture]; fan control is EC-isolated, not OS-overridable [conjecture]),
+  - containers-and-tooling (new "Batch 22" ingest section — harinezumigel-llm-stack
+    LiteLLM+vLLM orchestrator for single-Spark multi-model lifecycle management
+    [conjecture]; thread surfaces sparkstation (kshetrajna12/sparkstation) and
+    reinforces existing single-tenant-per-node constraint; Nemo-RT Community voice
+    agent — VAD+STT+LLM(Qwen3-8B-FP8 via vLLM)+TTS on one GPU, OpenAI Realtime
+    API-compatible, ~20 concurrent calls on Spark, native FP8 + arm64 build
+    [conjecture]),
+  - sources/README, log.
+- **Key findings:**
+  1. EC firmware 0x0300xxxx breaks the fan curve on DGX Spark — ACPI zones hit 96-97°C,
+     fans inaudible, case too hot to touch. The EC isolates fan control from the OS, so
+     fancontrol/pwmconfig/nvidia-settings cannot override it. Fix: `fwupdmgr downgrade`
+     the EC to 0x02004e18 (full procedure documented). After rollback: idle 60→32°C,
+     load 35-37°C under vLLM (~120-125W/node @ 95% GPU util), 0% thermal throttling.
+     Warning: don't run a blanket `fwupdmgr update` afterward (re-pushes broken 0x3).
+     This is the first reported EC firmware *regression* on Spark and the first finding
+     that fan control is EC-isolated (not OS-overridable). Single source (one cluster
+     report spanning multiple nodes) → [conjecture]. Tied to the existing EC firmware
+     lineage — the newer 0x03000508 branch reportedly *improves* EC stability, so the
+     relationship between the broken fan-curve branch and the "improves EC" update is
+     unresolved; users should test 0x03000508 before rolling back.
+  2. harinezumigel-llm-stack is a thin LiteLLM+vLLM Docker orchestrator for managing
+     multiple local models on a single Spark (inference/guard/coding/RAG) where memory
+     precludes co-residency. Defines models in config.yaml + .env, reuses containers,
+     exposes a single OpenAI-compatible endpoint. Thread also surfaces sparkstation
+     (kshetrajna12/sparkstation) — a unified gateway for vLLM/SGLang/TensorRT-LLM.
+     Reinforces the [proven] single-tenant-per-node constraint: multi-model on one Spark
+     is lifecycle-management (start/stop/swap), not co-residency. → [conjecture].
+  3. Nemo-RT Community is a real-time bilingual ES/EN voice agent (VAD+STT+LLM+TTS)
+     co-located on one GPU, OpenAI Realtime API-compatible. On DGX Spark: ~20 concurrent
+     calls, sub-second TTFA. GB10-relevant: native FP8 for the Qwen3-8B-FP8 LLM stage
+     (via vLLM), 128 GB unified memory as the concurrency enabler, arm64 build = no
+     cross-compile. Reference perf (RTX 4090): full stack ~21.5 GB, LLM 52 tok/s
+     single-stream. Single source → [conjecture]. Marginal to core LLM-inference scope
+     but registered because it exercises the native-FP8 + vLLM + unified-memory path.
+- **Evidence cap:** All three findings capped at [conjecture] — single forum source each,
+  no independent corroboration, no hardware verification available.

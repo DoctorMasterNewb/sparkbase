@@ -235,3 +235,18 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   interaction bugs [conjecture]; DS4F prefix-batch 16384/MTP=4 → 70-75% acceptance [conjecture];
   "theory != deployment" practical-lossiness debate [conjecture]), roadmap (new open problem:
   measure MTP quality impact & prefix-cache interaction on real Spark).
+
+## Forum ingest 2026-07-19 (Batch 22)
+- 3 new forum topics found, all technically relevant (EC firmware fan-curve regression, Nemo-RT
+  voice agent, LiteLLM multi-model orchestrator).
+- 3 new sources registered (Batch 22). 3 topic IDs added to processed_topics.txt (total now 400).
+- Pages touched: platform-gb10 (EC firmware 0x0300xxxx breaks fan curve → 96-97°C ACPI zones,
+  inaudible fans; EC isolates fan control from OS — fancontrol/pwmconfig/nvidia-settings can't
+  override; fwupdmgr downgrade to 0x02004e18 fix; idle 60→32°C, load 35-37°C, 0% throttling,
+  120-125W/node @ 95% GPU util; first reported EC firmware *regression* on Spark; fan control is
+  EC-isolated, not OS-overridable [conjecture]; relationship to 0x03000508 "improves EC" update
+  unresolved), containers-and-tooling (harinezumigel-llm-stack LiteLLM+vLLM orchestrator for
+  single-Spark multi-model lifecycle management [conjecture]; thread surfaces sparkstation
+  (kshetrajna12/sparkstation); Nemo-RT Community voice agent — VAD+STT+LLM(Qwen3-8B-FP8 via
+  vLLM)+TTS on one GPU, OpenAI Realtime API-compatible, ~20 concurrent calls on Spark, native
+  FP8 + arm64 build [conjecture]).

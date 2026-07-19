@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup, S-forum-hpc-slurm, S-forum-llama32-finetune, S-forum-cx7-hotplug, S-forum-comfyui-optimized, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-usb2-fallback, S-forum-fw-july2026, S-forum-ota-loop, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-machineid, S-forum-cve
-> **updated:** 2026-07-18
+> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup, S-forum-hpc-slurm, S-forum-llama32-finetune, S-forum-cx7-hotplug, S-forum-comfyui-optimized, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-usb2-fallback, S-forum-fw-july2026, S-forum-ota-loop, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-machineid, S-forum-cve, S-forum-ec-fan-rollback
+> **updated:** 2026-07-19
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -465,6 +465,39 @@ only after unexplained slow tok/s).
   The "zero forensic trace" pattern is a GB10-specific signature: a total hardware-level
   freeze leaves nothing for software watchdogs to capture. This is consistent with the
   existing finding that OS thermal sensors may report average not hot-spot temperature.
+
+### Batch 22 forum ingest (2026-07-19)
+
+- **[conjecture]** **EC firmware 0x0300xxxx breaks the fan curve on DGX Spark — roll back to
+  0x02004e18 to restore aggressive cooling** (S-forum-ec-fan-rollback, veelacleave):
+  **Symptom:** after a recent EC firmware update, DGX Sparks (Gigabyte + MSI FE variants
+  observed) run extremely hot — case temperature difficult to touch, ACPI zones hitting
+  96–97°C, fans virtually inaudible under load. The **Embedded Controller (EC) isolates fan
+  control from the OS**, so `fancontrol`, `pwmconfig`, and `nvidia-settings` cannot override
+  the broken fan curve. **Root cause:** the `0x0300xxxx` EC firmware version broke the fan
+  profile. **Workaround — roll back the EC firmware via `fwupdmgr`:**
+  1. `sudo fwupdmgr get-devices` → find the **Embedded Controller** entry, copy its Device ID
+     (long hex string, e.g. `de4d7b5fa8e558b2…`).
+  2. `sudo fwupdmgr downgrade <DEVICE_ID>` → select the `0x02004e18` release (or latest
+     `0x02…` available). For scripted/cluster use: `echo "1" | sudo fwupdmgr downgrade
+     <DEVICE_ID> -y`.
+  3. `sudo reboot` — the staged capsule is caught at boot, EC is re-flashed, system boots back.
+  **Results (reported by OP across a multi-node cluster):** idle 60°C → ~32°C; under sustained
+  vLLM inference (~120–125 W/node at 95% GPU util) package/GPU temps sit 35–37°C; **0% thermal
+  throttling**, PROCHOT trips ceased. **Warning:** after rolling back, **do not run a blanket
+  `sudo fwupdmgr update`** — it will push the broken `0x3` firmware back. JW2026 suggests
+  hex-editing the staged version to `0x3` so `fwupdmgr` won't re-offer it until a fixed `0x4+`
+  ships. **Caveat:** single source (one cluster report, though it spans multiple nodes);
+  pending NVIDIA acknowledgement or independent reproduction. Tied to the existing EC
+  firmware lineage (cf. S-forum-fw-july2026: EC 0x03000302→0x03000508 is the *newer* branch
+  that reportedly *improves* EC stability — the relationship between the broken `0x0300xxxx`
+  fan-curve branch and the `0x03000508` "improves EC" update is unresolved; users on the
+  broken branch should test the newer `0x03000508` before rolling back, or roll back if it
+  doesn't help). Status: `open` — no NVIDIA-patched fan-curve firmware confirmed.
+  - **[conjecture]** This is the first reported case of an EC firmware *regression* (vs. an
+    improvement) on Spark, and the first finding that **fan control is EC-isolated and not
+    OS-overridable** — `fancontrol`/`pwmconfig`/`nvidia-settings` are dead ends for fan tuning
+    on GB10. Any "fix the fan curve" work must target the EC firmware, not the OS.
 
 ### Batch 21 forum ingest (2026-07-18)
 

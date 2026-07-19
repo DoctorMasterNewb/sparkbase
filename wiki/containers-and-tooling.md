@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-nvfp4, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized
-> **updated:** 2026-07-16
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-nvfp4, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt
+> **updated:** 2026-07-19
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -184,6 +184,37 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   (uses your own subscription, no extra setup); **Optimize Speed** strictly measurement-based
   (≥10% or it rolls back); multi-node cluster view with no node limit. Recipes pulled from
   sparkrun community recipes and spark-arena. GitHub: `TheAwaken1/Spark-Studio`.
+
+### Batch 22 forum ingest (2026-07-19)
+
+- **[conjecture]** **harinezumigel-llm-stack — LiteLLM + NVIDIA vLLM Docker orchestrator for
+  single-Spark multi-model management** (S-forum-litellm-orchestrator, HarinezumIgel): a thin
+  management layer around LiteLLM and vLLM for users who need to switch between models
+  (inference, prompt guard, coding, RAG) on one Spark where memory precludes running them all
+  simultaneously. Defines models once in `config.yaml` + `.env`, starts/stops model containers
+  consistently, reuses existing containers, exposes a single OpenAI-compatible LiteLLM
+  endpoint, keeps secrets separate from model params. Not a production orchestrator — a
+  convenience tool for local inference workflows on GB10 where `--gpu-memory-utilization`
+  makes co-hosting impractical. Thread also surfaces two related multi-model management tools:
+  **Spark Studio** (TheAwakenOne, already registered S-forum-spark-studio) and
+  **sparkstation** (`kshetrajna12/sparkstation` — unified LLM orchestration/gateway for
+  vLLM, SGLang, and TensorRT-LLM backends under a single OpenAI-compatible API). Reinforces
+  the existing [proven] single-tenant-per-node constraint: multi-model on one Spark is
+  lifecycle-management (start/stop/swap), not co-residency.
+- **[conjecture]** **Nemo-RT Community — real-time bilingual ES/EN voice agent co-located on
+  one GPU, OpenAI Realtime API-compatible** (S-forum-nemo-rt, InfinitoCloud): full pipeline
+  (VAD → STT NeMo Conformer → LLM Qwen3-8B-FP8 via vLLM → TTS NeMo FastPitch + HiFi-GAN)
+  on a single GPU, speaks the OpenAI Realtime API protocol (drop-in `ws://your-box:8000/v1/realtime`
+  for `wss://api.openai.com/v1/realtime`). Ships an Asterisk/SIP bridge (ARI + external-media
+  RTP) validated on a live call. **On DGX Spark (GB10, 128 GB unified):** ~20 concurrent
+  calls, sub-second TTFA. Rationale: 128 GB unified means memory stops being the ceiling on
+  concurrent sessions; GB10 has **native FP8** (which the default Qwen3-8B-FP8 model wants);
+  arm64 build means no cross-compile. Apache-2.0. One caveat: the measured Spark was already
+  provisioned, so the one-command `setup.sh` hasn't been exercised against a fresh Spark OS.
+  **GB10-relevant bits:** native-FP8 path for the LLM stage, vLLM as the LLM backend, unified
+  memory as the concurrency enabler. Reference perf (RTX 4090, 24 GB): full stack ~21.5 GB,
+  live voice TTFA 0.17–0.59 s, LLM 52 tok/s single-stream. Single source → [conjecture].
+  GitHub: `infinitocloud/nemo-rt-community`.
 
 ### Batch 16 forum ingest (2026-07-16)
 

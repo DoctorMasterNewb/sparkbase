@@ -309,6 +309,14 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-machineid | forum | MSI EdgeXpert DGX Sparks ship with identical /etc/machine-id (and identical SSH host keys) — CVE-2026-24218; ASUS GX10 same; OEM clone-image not sanitized; one-liner fix; MSI patched May 2026 (ohaibuzzle, emptysands, JW2026) | https://forums.developer.nvidia.com/t/377208 | 2026-07-17 |
 | S-forum-nm-phantom | forum | NetworkManager "Connection failed" popup on DGX Spark — phantom DHCP profiles auto-created for ConnectX QSFP ports retry every ~45 s when carrier present but no DHCP server (Spark-to-Spark direct cable typical); fix: nmcli connection.autoconnect no on looping profiles; ip-config-unavailable = has link, no lease (YolandaHuang) | https://forums.developer.nvidia.com/t/377220 | 2026-07-17 |
 
+## Batch 22 forum sources (2026-07-19 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-ec-fan-rollback | forum | EC firmware 0x0300xxxx breaks fan curve on DGX Spark → thermal throttling (96-97°C ACPI zones, inaudible fans); EC isolates fan control from OS (fancontrol/pwmconfig/nvidia-settings can't override); fix: fwupdmgr downgrade to 0x02004e18; idle 60→32°C, load 35-37°C, 0% throttling, 120-125W/node @ 95% GPU util; avoid blanket fwupdmgr update afterward (veelacleave, JW2026) | https://forums.developer.nvidia.com/t/377069 | 2026-07-16 |
+| S-forum-nemo-rt | forum | Nemo-RT Community: real-time bilingual ES/EN voice agent (VAD+STT+LLM+TTS) co-located on one GPU, OpenAI Realtime API-compatible; on DGX Spark GB10 ~20 concurrent calls sub-second TTFA; Qwen3-8B-FP8 via vLLM; native FP8 + arm64 build; Apache-2.0 (InfinitoCloud) | https://forums.developer.nvidia.com/t/376248 | 2026-07-09 |
+| S-forum-litellm-orchestrator | forum | harinezumigel-llm-stack: LiteLLM + NVIDIA vLLM Docker orchestrator for managing multiple local models on single DGX Spark — config.yaml + .env, container reuse, single OpenAI-compatible endpoint; multi-model lifecycle tool (HarinezumIgel); thread also surfaces Spark Studio + sparkstation (kshetrajna12/sparkstation) | https://forums.developer.nvidia.com/t/376407 | 2026-07-10 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and
