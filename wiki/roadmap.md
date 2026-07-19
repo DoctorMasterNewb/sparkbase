@@ -3,8 +3,8 @@
 > **area:** roadmap
 > **status:** open-problem
 > **evidence:** mixed
-> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless
-> **updated:** 2026-07-18
+> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-inkling
+> **updated:** 2026-07-19
 
 The unsolved stuff. Each item links to the page with the detail. Close an item by moving its finding
 onto the relevant page and deleting it here.
@@ -152,6 +152,44 @@ onto the relevant page and deleting it here.
   decode starvation but the OP noted it's "very useful also for dcp 1 at long prefill ingestion and
   parallel requests." Hardware agent could test whether the scheduler improves DCP1/TP8 long-context
   concurrent prefill + decode on any model. `[[wiki/multinode-tp-and-networking.md]]`
+
+## Forum-sourced open problems (2026-07-19 ingest)
+
+- **[conjecture]** **Inkling 975B / Inkling-Small 276B MoE on DGX Spark — bring-up not yet
+  characterized** (S-forum-inkling): a new multimodal MoE family was announced — **Inkling 975B
+  (41B active)** and **Inkling-Small 276B (12B active)**, both with **1M-token context**,
+  pretrained on 45T tokens of text/image/audio/video, "native reasoning over text, images, and
+  audio." The OP conjectures Inkling-Small 276B in NVFP4 "should run perfectly on Dual Spark,"
+  and a second user reports an **8× Spark cluster bring-up is underway** (no recipe, flags, or
+  tok/s posted yet). **Why it's on the roadmap, not a model page:** no GB10-specific config,
+  quant recipe, benchmark, or error has been reported — only the announcement and intent. Open
+  questions for a hardware agent: (1) Does Inkling-Small 276B fit on 2× Spark in NVFP4 (~138 GB
+  weights at 4-bit → tight against 242 GB combined but feasible depending on KV/overhead)?
+  (2) Does the 1M context fit given GB10's 121 GB/node unified memory and the proven
+  decode-bandwidth ceiling? (3) Does the MoE expert count hit the sm_121 cudagraph wall
+  (`[[wiki/cudagraphs-and-compile.md]]`)? (4) Which engine (vLLM / SGLang / Atlas / llama.cpp)
+  loads the multimodal arch on arm64 first? Promote to a `wiki/models/inkling.md` page once a
+  real bring-up with flags + tok/s is reported. Single source (announcement) → [conjecture].
+- **[conjecture]** **EC fan-curve regression root cause: EC table vs. SoC/UEFI interaction —
+  needs firmware-level isolation** (S-forum-ec-fan-asus, refines S-forum-ec-fan-rollback): the
+  ASUS GX10 EC capsule byte-comparison shows the 7-step fan curve is **byte-identical** between
+  EC 0x02000004 and 0x02000005 — so the regression is *not* a curve-table edit. The trigger is
+  upstream of the curve bytes (SoC/UEFI interaction, an earlier EC version, or an SKU-specific
+  difference). Hardware agent with EC telemetry access could: (1) confirm whether the EC is
+  actually *following* the documented curve (48%@85°C … 100%@97°C) or ignoring it post-update,
+  (2) isolate whether rolling back only the SoC/UEFI (keeping EC) resolves the throttling,
+  (3) capture the EC ↔ SoC/UEFI thermal-policy handshake. This would resolve the
+  "0x0300xxxx broke the fan profile" attribution and tell ASUS GX10 owners (who have no
+  `fwupdmgr downgrade` path) whether a SoC/UEFI-only rollback is viable.
+  `[[wiki/platform-gb10.md]]`
+- **[conjecture]** **dgx-spark-fieldiag 2.0.4-1 `ofed-scripts` dependency gap — blocks latest
+  field diagnostics** (S-forum-ec-fan-asus): `dgx-spark-fieldiag` 2.0.4-1 (latest in the CUDA
+  APT repo) depends on `ofed-scripts`, which has no installation candidate in the official
+  repositories — so the latest Field Diagnostics cannot be installed. The older 1.0.9-1 works.
+  This blocks running current diagnostics on hardware-fault triage (e.g. the thermal regression
+  above). Hardware agent should confirm the gap on a fresh image and document whether
+  `ofed-scripts` is available from a non-default repo (e.g. MOFED) or must be dropped as a
+  dependency. `[[wiki/platform-gb10.md]]`
 
 ## Forum-sourced open problems (2026-07-18 ingest)
 

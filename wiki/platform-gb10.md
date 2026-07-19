@@ -3,7 +3,7 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup, S-forum-hpc-slurm, S-forum-llama32-finetune, S-forum-cx7-hotplug, S-forum-comfyui-optimized, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-usb2-fallback, S-forum-fw-july2026, S-forum-ota-loop, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-machineid, S-forum-cve, S-forum-ec-fan-rollback
+> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup, S-forum-hpc-slurm, S-forum-llama32-finetune, S-forum-cx7-hotplug, S-forum-comfyui-optimized, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-usb2-fallback, S-forum-fw-july2026, S-forum-ota-loop, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-machineid, S-forum-cve, S-forum-ec-fan-rollback, S-forum-ec-fan-asus
 > **updated:** 2026-07-19
 
 The hardware facts every model bring-up assumes. Read this first.
@@ -466,10 +466,56 @@ only after unexplained slow tok/s).
   freeze leaves nothing for software watchdogs to capture. This is consistent with the
   existing finding that OS thermal sensors may report average not hot-spot temperature.
 
+### Batch 23 forum ingest (2026-07-19)
+
+- **[reported]** **EC firmware fan-curve regression on DGX Spark — ASUS GX10 corroborates the
+  Gigabyte/MSI finding; root cause narrows from EC table to SoC/UEFI interaction**
+  (S-forum-ec-fan-asus, giunta.francesco; corroborates S-forum-ec-fan-rollback):
+  **Symptom:** on an ASUS GX10 (DGX Spark OEM SKU) after EC 0x02000005 + SoC/UEFI 0x03000006 +
+  UEFI-device 0x00000507 firmware updates, sustained inference drives ACPI `thermal_zone0` and
+  `thermal_zone5` to **96.6°C** (GPU 85–90°C), `nvidia-smi dmon` shows continuous `tviol=1`,
+  SW Thermal Slowdown accumulates ~23.7 s and HW Thermal Slowdown ~4.7 s over a ~4.5-min run,
+  GPU clocks drop from ~2385–2411 MHz to ~2190–2379 MHz, fans stay **N/A** in `nvidia-smi` and
+  Linux exposes no controllable PWM device. Stopping the workload returns zones 0/5 to ~63.8°C.
+  This is the **same symptom fingerprint** as S-forum-ec-fan-rollback (Gigabyte + MSI FE) —
+  three independent OEM SKUs now report the regression → the core finding **promotes from
+  [conjecture] to [reported]**. NVIDIA has escalated internally (Neill, case 260716-000029).
+  **Root-cause nuance (new):** the OP performed a static byte comparison of the official ASUS
+  EC capsules 0x02000004 vs 0x02000005 and found the recovered 7-step fan curve is
+  **byte-identical** between the two versions — targets: **48% @ 85°C, 54% @ 93°C, 68% @ 95°C,
+  100% @ 97°C**. Since the EC fan-curve table did not change, the regression likely originates
+  from a **SoC/UEFI interaction** (or an earlier EC version / SKU-specific difference), not a
+  curve-table edit. This refines the original S-forum-ec-fan-rollback root-cause attribution
+  ("the `0x0300xxxx` EC firmware version broke the fan profile") — the table is unchanged, so
+  the trigger is upstream of the curve bytes.
+  **Workaround gap:** unlike the Gigabyte/MSI FE path, **`fwupdmgr get-releases` offers no
+  downgrade candidate for the ASUS GX10** (device minimum versions are EC 0x01000000, SoC/UEFI
+  0x02000000, but LVFS does not expose an older capsule). The `fwupdmgr downgrade` fix
+  documented under S-forum-ec-fan-rollback is therefore **not available to ASUS GX10 owners**.
+  **[conjecture]** Recovery for ASUS GX10 requires either an NVIDIA-patched firmware or LVFS
+  exposing an older capsule. Status: `open` — NVIDIA engineering reviewing; no patched
+  fan-curve/SoC firmware confirmed for any SKU.
+- **[conjecture]** **Fan curve table values for ASUS GX10 EC** (S-forum-ec-fan-asus): the
+  recovered 7-step autonomous fan curve targets are **48% @ 85°C, 54% @ 93°C, 68% @ 95°C,
+  100% @ 97°C**. These are the first published fan-curve bytes for a GB10 OEM SKU. The 100%
+  target is reached only at 97°C — consistent with the observed 96–97°C ACPI-zone plateau
+  before throttling bites. Single source (static capsule analysis by one user) → [conjecture];
+  a hardware agent capturing EC telemetry on a throttling unit could confirm the curve is
+  actually being followed vs. ignored.
+- **[conjecture]** **dgx-spark-fieldiag 2.0.4-1 packaging bug — `ofed-scripts` dependency has
+  no installation candidate** (S-forum-ec-fan-asus): the latest Field Diagnostics package
+  visible in the official CUDA APT repo (2.0.4-1) cannot be installed because it depends on
+  `ofed-scripts`, which has no installation candidate in the configured official repositories.
+  The older 1.0.9-1 installs fine. This blocks running the latest field diagnostics on
+  affected units — a tooling gap that impedes triaging the thermal regression (and likely
+  other hardware faults). Single source → [conjecture]. NVIDIA has been asked to either
+  publish `ofed-scripts` or drop the dependency.
+
 ### Batch 22 forum ingest (2026-07-19)
 
-- **[conjecture]** **EC firmware 0x0300xxxx breaks the fan curve on DGX Spark — roll back to
-  0x02004e18 to restore aggressive cooling** (S-forum-ec-fan-rollback, veelacleave):
+- **[reported]** **EC firmware 0x0300xxxx breaks the fan curve on DGX Spark — roll back to
+  0x02004e18 to restore aggressive cooling** (S-forum-ec-fan-rollback, veelacleave;
+  corroborated by S-forum-ec-fan-asus on ASUS GX10 → promoted [conjecture]→[reported]):
   **Symptom:** after a recent EC firmware update, DGX Sparks (Gigabyte + MSI FE variants
   observed) run extremely hot — case temperature difficult to touch, ACPI zones hitting
   96–97°C, fans virtually inaudible under load. The **Embedded Controller (EC) isolates fan
@@ -487,17 +533,22 @@ only after unexplained slow tok/s).
   throttling**, PROCHOT trips ceased. **Warning:** after rolling back, **do not run a blanket
   `sudo fwupdmgr update`** — it will push the broken `0x3` firmware back. JW2026 suggests
   hex-editing the staged version to `0x3` so `fwupdmgr` won't re-offer it until a fixed `0x4+`
-  ships. **Caveat:** single source (one cluster report, though it spans multiple nodes);
-  pending NVIDIA acknowledgement or independent reproduction. Tied to the existing EC
+  ships. **Caveat:** originally single source (one cluster report, though it spans multiple
+  nodes); now corroborated by S-forum-ec-fan-asus on the ASUS GX10 SKU → promoted to
+  [reported]. NVIDIA has escalated internally. Tied to the existing EC
   firmware lineage (cf. S-forum-fw-july2026: EC 0x03000302→0x03000508 is the *newer* branch
   that reportedly *improves* EC stability — the relationship between the broken `0x0300xxxx`
   fan-curve branch and the `0x03000508` "improves EC" update is unresolved; users on the
   broken branch should test the newer `0x03000508` before rolling back, or roll back if it
   doesn't help). Status: `open` — no NVIDIA-patched fan-curve firmware confirmed.
-  - **[conjecture]** This is the first reported case of an EC firmware *regression* (vs. an
+  - **[reported]** This is the first reported case of an EC firmware *regression* (vs. an
     improvement) on Spark, and the first finding that **fan control is EC-isolated and not
     OS-overridable** — `fancontrol`/`pwmconfig`/`nvidia-settings` are dead ends for fan tuning
-    on GB10. Any "fix the fan curve" work must target the EC firmware, not the OS.
+    on GB10. Any "fix the fan curve" work must target the EC firmware (or, per
+    S-forum-ec-fan-asus, the SoC/UEFI layer that drives it), not the OS. Promoted from
+    [conjecture] to [reported] after independent corroboration on the ASUS GX10 SKU
+    (S-forum-ec-fan-asus) — three OEM SKUs (Gigabyte, MSI FE, ASUS GX10) now exhibit the
+    same regression fingerprint.
 
 ### Batch 21 forum ingest (2026-07-18)
 

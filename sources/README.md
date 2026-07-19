@@ -317,6 +317,14 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-nemo-rt | forum | Nemo-RT Community: real-time bilingual ES/EN voice agent (VAD+STT+LLM+TTS) co-located on one GPU, OpenAI Realtime API-compatible; on DGX Spark GB10 ~20 concurrent calls sub-second TTFA; Qwen3-8B-FP8 via vLLM; native FP8 + arm64 build; Apache-2.0 (InfinitoCloud) | https://forums.developer.nvidia.com/t/376248 | 2026-07-09 |
 | S-forum-litellm-orchestrator | forum | harinezumigel-llm-stack: LiteLLM + NVIDIA vLLM Docker orchestrator for managing multiple local models on single DGX Spark — config.yaml + .env, container reuse, single OpenAI-compatible endpoint; multi-model lifecycle tool (HarinezumIgel); thread also surfaces Spark Studio + sparkstation (kshetrajna12/sparkstation) | https://forums.developer.nvidia.com/t/376407 | 2026-07-10 |
 
+## Batch 23 forum sources (2026-07-19 ingest)
+
+| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-sync-locale | forum | NVIDIA Sync / Cluster Assistant fails "Software version" check on non-English locale (German de_DE.utf8) — apt-cache policy parser looks for "Installed:" but localized output says "Installiert:" → false "System Software Update Required"; workaround: sudo update-locale LC_MESSAGES=en_US.utf8; hotfix pending (paul.oesterwitz, aniculescu/NVIDIA) | https://forums.developer.nvidia.com/t/377079 | 2026-07-16 |
+| S-forum-ec-fan-asus | forum | ASUS GX10 thermal throttling after EC 0x02000005 / UEFI 0x03000006 update — corroborates S-forum-ec-fan-rollback on a 3rd OEM SKU; ACPI zones 96.6°C, GPU 85-90°C, SW/HW thermal slowdown counters, fans N/A; EC 0x02000004 vs 0x02000005 fan curve byte-identical (48%@85°C, 54%@93°C, 68%@95°C, 100%@97°C) → root cause may be SoC/UEFI interaction not EC table; no fwupdmgr downgrade available for ASUS GX10; fieldiag 2.0.4-1 packaging bug (ofed-scripts missing); NVIDIA escalated (giunta.francesco, veelacleave, Neill/NVIDIA) | https://forums.developer.nvidia.com/t/377044 | 2026-07-16 |
+| S-forum-inkling | forum | Inkling 975B (41B active) MoE + Inkling-Small 276B (12B active) multimodal model announcement — 1M context, text/image/audio/video; community plans 8× Spark cluster bring-up; no recipe/benchmarks yet (eh17, greg190) | https://forums.developer.nvidia.com/t/377238 | 2026-07-17 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

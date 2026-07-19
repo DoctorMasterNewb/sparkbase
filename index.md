@@ -250,3 +250,25 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   (kshetrajna12/sparkstation); Nemo-RT Community voice agent — VAD+STT+LLM(Qwen3-8B-FP8 via
   vLLM)+TTS on one GPU, OpenAI Realtime API-compatible, ~20 concurrent calls on Spark, native
   FP8 + arm64 build [conjecture]).
+
+## Forum ingest 2026-07-19 (Batch 23)
+- 3 new forum topics found, all technically relevant (NVIDIA Sync locale bug, ASUS GX10 thermal
+  throttling corroborating the EC fan-curve regression, Inkling 975B/276B MoE announcement).
+- 3 new sources registered (Batch 23). 3 topic IDs added to processed_topics.txt (total now 403).
+- **Evidence promotion:** the EC firmware fan-curve regression (S-forum-ec-fan-rollback,
+  originally [conjecture] in Batch 22) is **promoted to [reported]** — independently corroborated
+  on a 3rd OEM SKU (ASUS GX10, S-forum-ec-fan-asus) with the same symptom fingerprint (ACPI zones
+  96.6°C, fans N/A, SW/HW thermal slowdown counters). Three OEM SKUs now agree: Gigabyte, MSI FE,
+  ASUS GX10.
+- Pages touched: platform-gb10 (new Batch 23 section — ASUS GX10 thermal throttling corroborates
+  EC fan-curve regression → [reported]; root-cause narrows from EC table to SoC/UEFI interaction
+  via byte-identical fan-curve comparison 48%@85°C/54%@93°C/68%@95°C/100%@97°C [conjecture];
+  first published GB10 fan-curve bytes [conjecture]; fwupdmgr downgrade unavailable for ASUS GX10
+  [conjecture]; dgx-spark-fieldiag 2.0.4-1 ofed-scripts packaging bug [conjecture]; existing
+  Batch 22 entry promoted [conjecture]→[reported] with corroboration note),
+  multinode-tp-and-networking (NVIDIA Sync / Cluster Assistant fails "Software version" check on
+  non-English locale — apt-cache policy parser breaks on localized "Installiert:"/"Installé :"
+  labels → false "System Software Update Required"; workaround sudo update-locale
+  LC_MESSAGES=en_US.utf8; hotfix pending [conjecture]), roadmap (3 new open problems: Inkling
+  975B/276B MoE bring-up not yet characterized, EC fan-curve root-cause isolation, fieldiag
+  ofed-scripts dependency gap).

@@ -740,3 +740,71 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
      but registered because it exercises the native-FP8 + vLLM + unified-memory path.
 - **Evidence cap:** All three findings capped at [conjecture] — single forum source each,
   no independent corroboration, no hardware verification available.
+
+---
+
+## 2026-07-19 — Scheduled forum ingest (Batch 23)
+
+- **Date:** 2026-07-19
+- **Source count:** 3 new forum topics processed (3 new sources registered: S-forum-sync-locale,
+  S-forum-ec-fan-asus, S-forum-inkling).
+- **Topic IDs processed:** 377079, 377044, 377238 (total processed_topics.txt now 403).
+- **Pages touched:**
+  - **platform-gb10** (new Batch 23 section — ASUS GX10 thermal throttling after EC 0x02000005 /
+    UEFI 0x03000006 update; ACPI zones 96.6°C, GPU 85-90°C, SW thermal slowdown ~23.7s, HW ~4.7s,
+    fans N/A, clocks 2385→2190 MHz, `tviol=1` continuous; corroborates S-forum-ec-fan-rollback on
+    a 3rd OEM SKU → **EC fan-curve regression promoted [conjecture]→[reported]** across Gigabyte +
+    MSI FE + ASUS GX10; root-cause narrows: EC 0x02000004 vs 0x02000005 fan-curve table
+    byte-identical (48%@85°C, 54%@93°C, 68%@95°C, 100%@97°C) → regression likely SoC/UEFI
+    interaction, not curve-table edit [conjecture]; first published GB10 fan-curve bytes
+    [conjecture]; fwupdmgr downgrade unavailable for ASUS GX10 (no LVFS capsule exposed)
+    [conjecture]; dgx-spark-fieldiag 2.0.4-1 packaging bug — ofed-scripts dependency has no
+    installation candidate, blocks latest field diagnostics [conjecture]; existing Batch 22
+    entry + sub-bullet promoted [conjecture]→[reported] with corroboration note; NVIDIA escalated
+    internally, case 260716-000029),
+  - **multinode-tp-and-networking** (NVIDIA Sync / Cluster Assistant fails "Software version"
+    check on non-English locale — root cause: `apt-cache policy dgx-spark-ota-update-meta` parser
+    looks for "Installed:" but localized output says "Installiert:" (de_DE.utf8) / "Installé :"
+    (fr) → false "System Software Update Required" on a fully-up-to-date node; workaround
+    `sudo update-locale LC_MESSAGES=en_US.utf8` (no reboot); suggested upstream fix: `LC_ALL=C`
+    prefix or `dpkg-query -W -f='${Version}'`; hotfix reportedly pending from NVIDIA [conjecture];
+    blocks cluster pairing — the prerequisite for all multi-node TP work — on non-English OEM
+    images),
+  - **roadmap** (3 new open problems: Inkling 975B/276B MoE bring-up not yet characterized —
+    announcement only, 8× Spark cluster underway, no recipe/benchmarks; EC fan-curve root-cause
+    isolation — EC table vs. SoC/UEFI interaction needs firmware-level isolation, would resolve
+    the 0x0300xxxx attribution and tell ASUS GX10 owners if a SoC/UEFI-only rollback is viable;
+    dgx-spark-fieldiag 2.0.4-1 ofed-scripts dependency gap — blocks latest field diagnostics),
+  - **sources/README, index, log.**
+- **Key findings:**
+  1. **EC firmware fan-curve regression promoted [conjecture]→[reported].** The ASUS GX10 report
+     (S-forum-ec-fan-asus) independently corroborates the Gigabyte/MSI FE finding
+     (S-forum-ec-fan-rollback) with the same symptom fingerprint: ACPI zones 96-97°C, fans N/A,
+     SW/HW thermal slowdown counters active under sustained inference. Three OEM SKUs now agree.
+     This is the first [reported]-tier platform finding promoted by cross-SKU corroboration in
+     sparkbase. NVIDIA has escalated internally (Neill, support case 260716-000029).
+  2. **Root-cause narrows from EC table to SoC/UEFI interaction.** A static byte comparison of
+     ASUS EC capsules 0x02000004 vs 0x02000005 shows the 7-step fan curve is byte-identical
+     (targets: 48% @ 85°C, 54% @ 93°C, 68% @ 95°C, 100% @ 97°C). Since the curve table didn't
+     change, the regression trigger is upstream of the curve bytes — a SoC/UEFI interaction, an
+     earlier EC version, or an SKU-specific difference. This refines the original "0x0300xxxx
+     broke the fan profile" attribution. Also: the `fwupdmgr downgrade` workaround is NOT
+     available to ASUS GX10 owners (LVFS exposes no older capsule) — a workaround gap for one
+     OEM SKU that the original finding didn't cover.
+  3. **NVIDIA Sync locale bug blocks cluster pairing on non-English OEM images.** The Cluster
+     Assistant's "Verifying Devices" step runs `apt-cache policy dgx-spark-ota-update-meta` over
+     SSH and parses the human-readable output for an `Installed:` line — which is localized to
+     `Installiert:` / `Installé :` on non-English locales, causing a false "System Software
+     Update Required" error on fully-up-to-date nodes. Workaround: `sudo update-locale
+     LC_MESSAGES=en_US.utf8`. This bites on Spark because OEM Sparks ship in many locales and
+     cluster pairing is the gateway to all multi-node TP work. A hotfix is reportedly pending.
+  4. **Inkling 975B / Inkling-Small 276B MoE announced — 8× Spark cluster bring-up underway.**
+     New multimodal MoE family (975B/41B-active + 276B/12B-active, 1M context, text/image/audio/
+     video). Registered as a roadmap open problem only — no GB10-specific config, quant recipe, or
+     benchmark has been reported yet. Open questions: NVFP4 fit on 2× Spark, 1M context vs.
+     unified-memory ceiling, MoE cudagraph wall, engine selection. Promote to a model page once a
+     real bring-up with flags + tok/s lands.
+- **Evidence cap:** All new findings capped at [conjecture] (single forum source each) except the
+  EC fan-curve regression, which is promoted to [reported] via three independent OEM-SKU sources
+  (Gigabyte, MSI FE, ASUS GX10) exhibiting the same symptom fingerprint — no hardware
+  verification available, so [reported] is the ceiling per the analysis-agent stack.

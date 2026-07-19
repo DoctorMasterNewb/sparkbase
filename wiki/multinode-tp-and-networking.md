@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom
-> **updated:** 2026-07-18
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale
+> **updated:** 2026-07-19
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -154,6 +154,24 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
   avahi conf is **OTA-overwritable** (`nvidia-spark-avahi-conf` package) — keep a backup.
 - **[proven]** **Stock Spark sshd is key-only** (`PasswordAuthentication no`). Tools needing a first-time
   password login (e.g. NVIDIA Sync) need a LAN-scoped `Match Address … PasswordAuthentication yes` block.
+- **[conjecture]** **NVIDIA Sync / Cluster Assistant fails the "Software version" check on non-English
+  locales** (S-forum-sync-locale): during the "Verifying Devices" step of pairing two DGX Sparks, the
+  Cluster Assistant reports a false *"System Software Update Required — update to April 2026 or later"*
+  even when the node is fully up to date (e.g. OTA2607 / July 2026, `nvidia-spark-ota-check` = 100%
+  match). **Root cause:** NVIDIA Sync checks the software level by running
+  `apt-cache policy dgx-spark-ota-update-meta` over SSH and parsing the human-readable output for an
+  `Installed:` line. On a non-English locale (e.g. `LANG=de_DE.utf8`), `apt` localizes the label to
+  `Installiert:` (French: `Installé :`, etc.) → the parser finds no version → generic "update required"
+  error. The error message is misleading: the actual failure is "could not determine version," not
+  "version too old." **Workaround** (keeps all other locale settings, no reboot):
+  `sudo update-locale LC_MESSAGES=en_US.utf8` — new SSH sessions pick it up, then retry in the
+  Cluster Assistant. **Suggested upstream fix:** prefix `LC_ALL=C` to the `apt-cache` invocation, or
+  use machine-readable output: `LC_ALL=C apt-cache policy …` / `dpkg-query -W -f='${Version}' …`.
+  A hotfix is reportedly releasing soon (NVIDIA aniculescu). Environment: 2× DGX Spark, DGX OS 7.5.0,
+  OTA2607, kernel 6.17.0-1026-nvidia, NVIDIA Sync on macOS, CX-7 dual 200 GbE direct connection.
+  Single source → [conjecture]. **Why it bites on Spark:** blocks cluster pairing (the prerequisite
+  for all multi-node TP work on this wiki) on any non-English OEM image — and OEM Sparks ship in many
+  locales. Related to the sshd password-login gotcha above (both are NVIDIA Sync pairing friction).
 - **[proven]** **Don't advertise AAAA/IPv6** if UFW only allows the IPv4 LAN — IPv6 SYNs to :22 get dropped
   and SSH dead-ends.
 
