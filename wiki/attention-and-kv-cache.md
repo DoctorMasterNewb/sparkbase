@@ -3,8 +3,8 @@
 > **area:** attention
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-m3-vision, S-mimo-results, S-mimo-doc, S-sess-jun5, S-sess-jun4, S-dflash-nvfp4, S-forum-mimo-2x-opt, S-forum-dsv4-kvcache
-> **updated:** 2026-07-14
+> **sources:** S-m3-vision, S-mimo-results, S-mimo-doc, S-sess-jun5, S-sess-jun4, S-dflash-nvfp4, S-forum-mimo-2x-opt, S-forum-dsv4-kvcache, S-forum-inkling-nvfp4
+> **updated:** 2026-07-20
 
 Which `--attention-backend` to pass is decided by the model's attention type, not preference. Get it
 wrong and KV-cache init fails or numerics are subtly off.
@@ -93,3 +93,19 @@ wrong and KV-cache init fails or numerics are subtly off.
   `--gpu-memory-utilization 0.9057`. Disable profiling with
   `VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0`. This overhead is on top of the standard
   cudagraph capture memory cost. (S-forum-dsv4-kvcache)
+
+## Forum ingest: tml_fa4 Sm120 path has no paged-KV (2026-07-20)
+
+- **[conjecture]** **The `tml_fa4` Sm120/Sm121 cute FlashAttention path has no paged-KV support**
+  (S-forum-inkling-nvfp4, greg190): vLLM's paged cache cannot feed the `tml_fa4` Sm120 kernel. The
+  Inkling 8× Spark bring-up worked around this by **re-gathering the whole KV history into contiguous
+  buffers every decode step** (patched `fa4_rel_attention` to gather paged KV → contiguous per call).
+  This workaround is O(context) per token → decode caps at ~24 tok/s aggregate at real context
+  regardless of concurrency, producing a steep long-context decode cliff (25 tok/s @ ~100 tok →
+  13.5 tok/s @ 2048, c1). **Why it bites on Spark:** until paged-KV lands natively in the Sm120/Sm121
+  cute FA4 path, any model routing through `tml_fa4` on GB10 will hit this cliff. This is the
+  load-bearing blocker for Inkling (and likely other rel-bias / FA4-arch models) on sm_121a. The OP
+  also notes the Sm80-inherited rel-bias path **discards the relative-position bias** (no bias
+  parameter) → plausible-but-wrong outputs; the **score-mod `vllm_flash_attn/cute` path is the
+  intended sm12x route.** See `[[wiki/models/inkling.md]]`. Single source → [conjecture], but a
+  filed upstream issue (vllm#49049) and public patch set accompany it.

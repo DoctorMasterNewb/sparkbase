@@ -3,7 +3,7 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama, S-forum-glm52-8x, S-forum-6x-cluster
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama, S-forum-glm52-8x, S-forum-6x-cluster, S-forum-inkling-nvfp4
 > **updated:** 2026-07-20
 
 Single-stream decode unless noted. All on the 2× GB10 pair. Numbers anchor the rules on
@@ -373,6 +373,27 @@ All rows below are **[conjecture]** — single-source community-reported numbers
 > consistent with sublinear scaling as interconnect overhead grows with node count. Quant format
 > unspecified by the poster; "b12x" usage and ~30 tok/s range are consistent with the Int4-Int8 mix
 > used in the 8× run. Single source (mclenithan), no benchmarking methodology described.
+
+## Forum-reported benchmarks (2026-07-20 ingest, Batch 25)
+
+All rows below are **[conjecture]** — single-source community-reported numbers, not first-party.
+
+|| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+||---|---|---|---|---|---|---|---||
+|| Inkling (Thinking Machines, 975B/41B-active MoE) | NVFP4 | vLLM (forked, 12 patches) | 8 (TP=8) | 25 (c1, short ~100 tok) | short | cudagraphs ON; MTP k=1 stuck (60% draft accept); LAMPORT_RS_SCONV=0 for RoCE; recipe at blockmos/inkling-sparks-gb10 | S-forum-inkling-nvfp4 ||
+|| Inkling | NVFP4 | vLLM (forked) | 8 (TP=8) | 27 (c1, short, MTP k=2) | short | MTP k=2 adds ~2 tok/s on short context | S-forum-inkling-nvfp4 ||
+|| Inkling | NVFP4 | vLLM (forked) | 8 (TP=8) | 13.5 (c1, 2048 ctx) | 2048 | long-context cliff: paged-KV absent in tml_fa4 Sm120 → O(ctx) KV regather per token | S-forum-inkling-nvfp4 ||
+|| Inkling | NVFP4 | vLLM (forked) | 8 (TP=8) | 80 (c8 total, short) / 193 (c32 total, short) | short | aggregate scales on short context; 24 tok/s aggregate ceiling at real context | S-forum-inkling-nvfp4 ||
+|| Inkling (prefill) | NVFP4 | vLLM (forked) | 8 (TP=8) | ~1,400 (pp2048) / up to 2,711 (throughput cfg) | 2048 | prefill "higher than we ever got M3" | S-forum-inkling-nvfp4 ||
+
+> **[conjecture]** Inkling NVFP4 on 8× Spark shows a steep long-context decode cliff: 25 tok/s
+> (c1, ~100 tok) → 13.5 tok/s (c1, 2048 tok). The cliff is because the `tml_fa4` Sm120/Sm121 cute
+> attention path has no paged-KV — the workaround re-gathers the whole KV history every decode step
+> (O(ctx)/token), capping aggregate at ~24 tok/s at real context regardless of concurrency. NVFP4
+> itself is clean (no dtype fallbacks). MTP stuck at k=1 (60% draft acceptance). Prefill is strong
+> (1,400–2,711 tok/s). Single source (greg190), public repo + 12 patches + filed vllm#49049. The OP
+> parked Inkling in favor of M3 (42 tok/s single-user, scales with concurrency). See
+> `[[wiki/models/inkling.md]]`.
 
 ## Image generation benchmarks (diffusion models on GB10, 2026-07-10)
 

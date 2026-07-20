@@ -27,6 +27,7 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [qwen](wiki/models/qwen.md) — 3.5/3.6/Coder-Next; MoE-A3B NVFP4+MTP ~142 tok/s vs dense ~30; Atlas loader landmines.
 - [nemotron-3](wiki/models/nemotron-3.md) — hybrid Mamba-2 MoE; 120B Q8 via llama.cpp RPC; Nano-Omni vision/omni single-node.
 - [step-3.7](wiki/models/step-3.7.md) — retired; kept for the MTP-needs-cudagraphs finding.
+- [inkling](wiki/models/inkling.md) — Thinking Machines multimodal MoE (975B/41B-active); NVFP4 on 8× Spark, paged-KV cliff, Lamport-on-RoCE escape hatch, kernel bugs filed.
 
 ## Reference
 - [benchmarks](wiki/benchmarks.md) — collated decode tok/s + concurrency table; append rows.

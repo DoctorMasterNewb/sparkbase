@@ -327,9 +327,18 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 
 ## Batch 24 forum sources (2026-07-20 ingest)
 
-|| ID | type | What it is | Reference | Date |
+||| ID | type | What it is | Reference | Date |
 |---|---|---|---|---|
 | S-forum-6x-cluster | forum | 6× GB10 cluster via MikroTik CRS812 (768 GB combined) — b12x backend enables TP=6 on most models; GLM-5.2 ~30 tok/s single-stream; cluster peak 800-1180 W (mclenithan) | https://forums.developer.nvidia.com/t/376585 | 2026-07-11 |
+
+## Batch 25 forum sources (2026-07-20 ingest)
+
+| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-inkling-nvfp4 | forum | Inkling (Thinking Machines) NVFP4 on 8× DGX Spark — full bring-up: NVFP4 clean (no dtype fallbacks), cudagraphs working (boundary bug in Sm120 rel-bias attention kernel root-caused via GPU coredump), paged-KV absent in tml_fa4 Sm120 path (workaround re-gathers KV per decode step), LAMPORT_RS_SCONV=0 escape hatch for RoCE clusters (Lamport collectives require MNNVL/NVLink), vllm#49049 filed; decode 25-27 tok/s short ctx, drops to 13.5 tok/s @ 2048 ctx (c1); prefill 1400-2711 tok/s; MTP k=1 stuck (60% draft acceptance); recipe + 12 patches at blockmos/inkling-sparks-gb10; parked in favor of M3 (greg190, vexus777) | https://forums.developer.nvidia.com/t/377306 | 2026-07-17 |
+| S-forum-kimi-k3-ceiling | forum | Kimi K3 (2.8T) & the practical GB10 cluster ceiling — cluster sizing math: ~115 GB usable/node → 16 nodes for K3 @ 4-bit (~$100k, 2000-3200W); ~50B active → 35-50 tok/s projected; viable 200B-class alternatives list (Step-3.7-Flash, Command-A-Plus, Inkling-Small, Laguna-M.1, Qwen3.5-397B-A17B, Hy3); mashie's switch-less 5-node full-mesh via MST sub-port splitting (break 4x50G → 2x50G per QSFP port, 6 RoCE interfaces for 5 nodes), ~$800 optical transceiver cost vs MikroTik (CosmicRaisins, jwarner, mashie, danielgbates) | https://forums.developer.nvidia.com/t/377091 | 2026-07-16 |
+| S-forum-intern-s2 | forum | internlm/Intern-S2-Preview-397B — 397B model announced as preview (Claude Opus-4.8/GPT-5.5 class benchmarks claimed); no quantization small enough for 2× Spark exists yet; community requests a 4× Spark / autoround recipe; no GB10-specific config or benchmarks (chrm, Sparkdown_Format) | https://forums.developer.nvidia.com/t/377342 | 2026-07-18 |
+| S-forum-pmu-amu | forum | GB10 Spark ARM PMU/AMU counters — Cortex-A725 capped to 1 GHz, Cortex-X925 up to ~1375 MHz; correct PMU event for Spark differs from ARMv8; kernel module for reading PMC counters now available (CyrIng project master branch); A725 factory 2.8 GHz vs X925 scaling anomaly when normalizing PMC reads to max core freq (CyrIng) | https://forums.developer.nvidia.com/t/377280 | 2026-07-17 |
 
 ## Adding a source
 

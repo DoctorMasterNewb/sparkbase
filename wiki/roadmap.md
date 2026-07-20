@@ -3,7 +3,7 @@
 > **area:** roadmap
 > **status:** open-problem
 > **evidence:** mixed
-> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-inkling, S-forum-6x-cluster
+> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-inkling, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-intern-s2, S-forum-pmu-amu
 > **updated:** 2026-07-20
 
 The unsolved stuff. Each item links to the page with the detail. Close an item by moving its finding
@@ -155,21 +155,16 @@ onto the relevant page and deleting it here.
 
 ## Forum-sourced open problems (2026-07-19 ingest)
 
-- **[conjecture]** **Inkling 975B / Inkling-Small 276B MoE on DGX Spark — bring-up not yet
-  characterized** (S-forum-inkling): a new multimodal MoE family was announced — **Inkling 975B
-  (41B active)** and **Inkling-Small 276B (12B active)**, both with **1M-token context**,
-  pretrained on 45T tokens of text/image/audio/video, "native reasoning over text, images, and
-  audio." The OP conjectures Inkling-Small 276B in NVFP4 "should run perfectly on Dual Spark,"
-  and a second user reports an **8× Spark cluster bring-up is underway** (no recipe, flags, or
-  tok/s posted yet). **Why it's on the roadmap, not a model page:** no GB10-specific config,
-  quant recipe, benchmark, or error has been reported — only the announcement and intent. Open
-  questions for a hardware agent: (1) Does Inkling-Small 276B fit on 2× Spark in NVFP4 (~138 GB
-  weights at 4-bit → tight against 242 GB combined but feasible depending on KV/overhead)?
-  (2) Does the 1M context fit given GB10's 121 GB/node unified memory and the proven
-  decode-bandwidth ceiling? (3) Does the MoE expert count hit the sm_121 cudagraph wall
-  (`[[wiki/cudagraphs-and-compile.md]]`)? (4) Which engine (vLLM / SGLang / Atlas / llama.cpp)
-  loads the multimodal arch on arm64 first? Promote to a `wiki/models/inkling.md` page once a
-  real bring-up with flags + tok/s is reported. Single source (announcement) → [conjecture].
+- **[conjecture]** **Inkling-Small 276B MoE on 2× DGX Spark — bring-up not yet characterized**
+  (S-forum-inkling): the **Inkling 975B (41B active)** bring-up on 8× Spark is now characterized
+  (see `[[wiki/models/inkling.md]]`, S-forum-inkling-nvfp4 — NVFP4 clean, long-context decode
+  cliff, parked). The **Inkling-Small 276B (12B active)** variant on 2× Spark remains untested.
+  Open questions for a hardware agent: (1) Does Inkling-Small 276B fit on 2× Spark in NVFP4
+  (~138 GB weights at 4-bit → tight against 242 GB combined but feasible depending on KV/overhead)?
+  (2) Does it hit the same `tml_fa4` paged-KV cliff as the 975B, or does its smaller KV make the
+  per-step regather tolerable? (3) Does `LAMPORT_RS_SCONV=0` suffice on 2× RoCE, or does the
+  2-node case differ? (4) Does MTP get past k=1 on the smaller model? Promote findings to the
+  Inkling model page. Single source (announcement) → [conjecture].
 - **[conjecture]** **EC fan-curve regression root cause: EC table vs. SoC/UEFI interaction —
   needs firmware-level isolation** (S-forum-ec-fan-asus, refines S-forum-ec-fan-rollback): the
   ASUS GX10 EC capsule byte-comparison shows the 7-step fan curve is **byte-identical** between
@@ -218,3 +213,37 @@ onto the relevant page and deleting it here.
   and whether all nodes actively compute or some only hold weights (unanswered in thread).
   No YAML/docker config was shared — the claim is unverifiable from the post alone.
   `[[wiki/multinode-tp-and-networking.md]]`
+
+## Forum-sourced open problems (2026-07-20 ingest, Batch 25)
+
+- **[conjecture]** **Paged-KV support for the `tml_fa4` Sm120/Sm121 cute FlashAttention path —
+  the load-bearing blocker for rel-bias / FA4-arch models on GB10** (S-forum-inkling-nvfp4,
+  greg190): the Inkling 8× Spark bring-up hit a steep long-context decode cliff (25 → 13.5 tok/s
+  at c1 going from ~100 → 2048 ctx) because the `tml_fa4` Sm120 cute kernel has **no paged-KV
+  support** — vLLM's paged cache can't feed it, so the workaround re-gathers the whole KV history
+  into contiguous buffers every decode step (O(ctx)/token). This caps aggregate decode at ~24 tok/s
+  at real context regardless of concurrency. Hardware agent / kernel dev should: (1) implement
+  paged-KV reads natively in the Sm120/Sm121 cute FA4 kernel (the score-mod
+  `vllm_flash_attn/cute` path is the intended sm12x route per the OP); (2) measure whether native
+  paged-KV removes the cliff and recovers linear decode scaling with context; (3) verify the
+  rel-bias q-row index clamp fix (vllm#49049) lands upstream. This would unblock not just Inkling
+  but any rel-position-bias / FA4-arch model on sm_121a. See `[[wiki/attention-and-kv-cache.md]]`
+  and `[[wiki/models/inkling.md]]`.
+- **[conjecture]** **Intern-S2-Preview-397B on 4× DGX Spark — no quantization small enough for
+  2× yet** (S-forum-intern-s2, chrm): `internlm/Intern-S2-Preview-397B` is a 397B preview model
+  (Claude Opus-4.8 / GPT-5.5 class benchmarks claimed). **No quantization small enough for a 2×
+  Spark cluster (242 GB) exists yet** — community requests a 4× Spark / AutoRound recipe. Open
+  questions for a hardware agent: (1) At 4-bit, 397B ≈ ~200 GB weights → fits 4× Spark (484 GB)
+  but not 2×; does an AutoRound NVFP4 quant fit 2× with tight KV? (2) Is the arch supported by
+  vLLM on sm_121a, or does it need custom kernels? (3) What attention mechanism — does it hit the
+  `tml_fa4` paged-KV cliff or the MoE cudagraph wall? No GB10-specific config, flags, or benchmarks
+  reported yet — announcement only. Promote to a model page once a real bring-up with flags + tok/s
+  lands. Single source → [conjecture].
+- **[conjecture]** **MST sub-port splitting for switch-less 5-node GB10 mesh — verify on real
+  hardware** (S-forum-kimi-k3-ceiling, mashie): the claimed technique to build a 5-node switch-less
+  full mesh by splitting each QSFP port's 4×50G into 2×50G sub-ports via MST, yielding 6 RoCE
+  interfaces per node. Hardware agent with 5+ nodes should: (1) confirm MST sub-port splitting
+  works on the CX-7 and produces functional RoCE interfaces; (2) measure whether the half-bandwidth
+  per sub-port (50G vs 100G) impacts TP=5 decode/prefill; (3) compare latency vs a MikroTik CRS812
+  switch path. The OP is "currently working on" it — not yet verified. See
+  `[[wiki/multinode-tp-and-networking.md]]`.

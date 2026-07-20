@@ -3,7 +3,7 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4
 > **updated:** 2026-07-20
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
@@ -280,6 +280,46 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
   enables arbitrary TP, it changes cluster sizing economics (6× CRS812 vs 8× needing CRS804).
   Status: `open` — no YAML/docker shared, no ib_write_bw or NCCL verification, power claim
   unverified. See also `[[wiki/benchmarks.md]]` for the GLM-5.2 6× tok/s data point.
+
+### Batch 25 forum ingest (2026-07-20)
+
+- **[conjecture]** **Switch-less 5-node full mesh via MST sub-port splitting — break 4×50G → 2×50G
+  per QSFP port** (S-forum-kimi-k3-ceiling, mashie): to build a 5-node cluster without a switch, the
+  trick is to split each physical QSFP port that currently runs 4×50G into **sub-ports of 2×50G
+  using MST (Multi-Stream Transport)**. After splitting one port, the node has **6 RoCE interfaces
+  instead of the usual 4** (which is what a 4-node mesh needs); for 5 nodes, split the other port
+  too. This trades bandwidth (half per sub-port) for optimal latency and no switch. Cabling: for
+  4 nodes → 2 regular QSFP56 DAC cables + 4× ~$150 transceivers + ~$200 optical splitter cables
+  ≈ **~$800 optical**. Going 4→5 nodes adds another 6 transceivers + ~$300 cabling. A MikroTik
+  switch + DAC cables is cheaper than a transceiver-based full mesh; a **DAC-based full mesh would be
+  cheaper than a MikroTik for 5 nodes**. The OP is driven by latency (no noisy switch in the office).
+  Commercial 3-headed DACs may make this much cheaper if available. **Why it bites on Spark:** the
+  CX-7 dual-port constraint (2 QSFP ports/node) limits a direct-cable mesh to ~4 nodes without
+  sub-port tricks; MST splitting is the first reported technique to push switch-less mesh to 5 nodes
+  on GB10. Single source, unverified (OP is "currently working on" it) → [conjecture]. Related to
+  the existing 4-node full-mesh finding (S-forum-4node-mesh) and CRS812/CRS804 switch options
+  (S-forum-mikrotik).
+- **[conjecture]** **Practical GB10 cluster ceiling ≈ 4 nodes for Opus-class; 16 nodes for 2–3T
+  frontier models** (S-forum-kimi-k3-ceiling, CosmicRaisins): cluster-sizing math for the new
+  multi-trillion-parameter model class (Kimi K3 2.8T, Minimax M3 Pro ~2.5T): at **~115 GB usable
+  per node**, a 2.8T model at 4-bit needs **~16 nodes** (~$100k, 2000–3200W under inference). With
+  ~50B active params, a 16-node cluster "should" push ~35–50 tok/s decode — but that setup is "out
+  of prosumer reach." The OP's thesis: the **practical ceiling of a sane GB10 cluster is ~4 nodes**
+  (Opus-class), not the frontier — unless going to 2-bit/1-bit quants. A list of viable 200B-class
+  alternatives that fit 4× Spark was surfaced: **Step-3.7-Flash, Command-A-Plus, Inkling-Small,
+  Laguna-M.1, Qwen3.5-397B-A17B, Hy3**. This is opinion + math, not a measured result — tagged
+  [conjecture]. The durable part is the sizing math (~115 GB usable/node × 4-bit → 16 nodes for
+  2.8T) and the viable-model-class list. The "models will keep getting smaller" vs "frontier is
+  growing" debate is out of scope for this KB.
+- **[conjecture]** **Inkling's Lamport collectives require MNNVL (NVLink fabric) — hard-error on
+  RoCE; escape hatch `LAMPORT_RS_SCONV=0`** (S-forum-inkling-nvfp4, greg190): Thinking Machines'
+  Inkling uses Lamport-style collectives that require an **NVLink fabric (MNNVL)** and hard-error on
+  RoCE clusters — which is all GB10 has (ConnectX-7 RoCE, no NVLink between nodes, no GPUDirect —
+  see `[[wiki/platform-gb10.md]]`). TML shipped the escape hatch env var `LAMPORT_RS_SCONV=0` to
+  bypass this. **Why it bites on Spark:** this is a new class of "designed-for-datacenter-NVLink-
+  fabric" model that hard-errors on GB10's RoCE-only interconnect. Any future model adopting
+  Lamport/MNNVL collectives will need this flag (or an equivalent) on Spark. The 8× Spark Inkling
+  bring-up used this to get the cluster running. See `[[wiki/models/inkling.md]]`.
 
 ## See also
 `[[wiki/platform-gb10.md]]` · `[[wiki/cudagraphs-and-compile.md]]` · `[[wiki/llama-cpp-rpc.md]]` · `[[wiki/engines.md]]`

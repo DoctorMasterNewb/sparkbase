@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup, S-forum-hpc-slurm, S-forum-llama32-finetune, S-forum-cx7-hotplug, S-forum-comfyui-optimized, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-usb2-fallback, S-forum-fw-july2026, S-forum-ota-loop, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-machineid, S-forum-cve, S-forum-ec-fan-rollback, S-forum-ec-fan-asus
-> **updated:** 2026-07-19
+> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup, S-forum-hpc-slurm, S-forum-llama32-finetune, S-forum-cx7-hotplug, S-forum-comfyui-optimized, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-usb2-fallback, S-forum-fw-july2026, S-forum-ota-loop, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-machineid, S-forum-cve, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-pmu-amu, S-forum-inkling-nvfp4
+> **updated:** 2026-07-20
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -592,3 +592,26 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
 ## See also
 `[[wiki/quantization-on-gb10.md]]` · `[[wiki/cudagraphs-and-compile.md]]` ·
 `[[wiki/multinode-tp-and-networking.md]]` · `[[wiki/containers-and-tooling.md]]`
+
+### Batch 25 forum ingest (2026-07-20)
+
+- **[conjecture]** **ARM PMU/AMU counters on GB10 Spark — correct PMU event differs from ARMv8;
+  A725 and X925 max clock frequencies** (S-forum-pmu-amu, CyrIng): when building a kernel module
+  to read PMC (Performance Monitor Counters) on the GB10's ARM SoC, the **correct PMU event for the
+  Spark differs from the one for ARMv8** — the standard ARMv8 PMU event codes do not directly map.
+  A community kernel module (CyrIng project, master branch) now implements the correct event
+  selection. Two frequency facts surfaced: the **Cortex-A725 (E-core) is capped to 1 GHz**, while
+  the **Cortex-X925 (P-core) goes up to ~1375 MHz**. This creates a scaling anomaly when normalizing
+  PMC reads to max core frequency: X925 scales to ~5 GHz in the normalized reading while A725 stays
+  at factory 2.8 GHz. Relevant to anyone doing low-level CPU performance profiling on GB10 (e.g.
+  profiling the host-staged NCCL collectives, or the CPU-side preprocessing power budget). This
+  corroborates the existing `[reported]` SoC topology (10× X925 + 10× A725) and the P/E-core
+  asymmetry finding (S-forum-hpc-slurm). Single source → [conjecture].
+- **[conjecture]** **On unified memory, out-of-range GPU indexes usually DON'T crash — they land in
+  another allocation and silently corrupt** (S-forum-inkling-nvfp4, greg190): "looked like a race
+  for days." The absence of discrete VRAM means OOB GPU reads don't fault — they silently hit
+  another UMA allocation, producing corruption that masquerades as a concurrency bug. Diagnose with
+  `compute-sanitizer` (which decoded the invalid read to the exact phantom block), not by waiting
+  for crashes. This is a GB10-specific debugging insight that generalizes to any UMA kernel
+  debugging — corroborates and sharpens the existing `[proven]` "unified-memory OOM = hard reboot /
+  no discrete VRAM to fault on" finding above. See also `[[wiki/models/inkling.md]]` → kernel bugs.

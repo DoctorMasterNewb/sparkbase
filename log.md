@@ -823,3 +823,72 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   arbitrary non-power-of-2 TP on GB10 — 3-node previously required virtual-head padding).
 - **Evidence cap:** [conjecture] — single forum source, no config/flags/NCCL verification shared,
   no benchmarking methodology described. Not promoted past [conjecture].
+
+## 2026-07-20 — Forum ingest: 4 NVIDIA DGX Spark forum topics (Batch 25)
+
+- **Sources:** 4 new forum threads registered in `sources/README.md` (Batch 25):
+  `S-forum-inkling-nvfp4` (377306), `S-forum-kimi-k3-ceiling` (377091),
+  `S-forum-intern-s2` (377342), `S-forum-pmu-amu` (377280). All type `forum` → capped at
+  `[conjecture]` (single source each). No second independent source corroborated any finding,
+  so nothing promoted past `[conjecture]`.
+- **Pages touched:**
+  1. **NEW PAGE: `wiki/models/inkling.md`** — Thinking Machines Inkling (975B/41B-active MoE)
+     NVFP4 bring-up on 8× DGX Spark by greg190. The technically densest topic of the batch: real
+     tok/s tables (25 tok/s c1 short → 13.5 tok/s @ 2048 ctx decode cliff; prefill 1,400–2,711
+     tok/s), public recipe + 12 patches (`blockmos/inkling-sparks-gb10`), filed vllm#49049.
+     Key GB10-specific findings: (a) **`tml_fa4` Sm120/Sm121 cute FA4 path has no paged-KV** →
+     workaround re-gathers whole KV history per decode step (O(ctx)/token) → ~24 tok/s aggregate
+     ceiling at real context — the load-bearing blocker for rel-bias/FA4-arch models on sm_121a;
+     (b) **NVFP4 runs clean** (no dtype fallbacks); (c) **`LAMPORT_RS_SCONV=0`** escape hatch —
+     Inkling's Lamport collectives require MNNVL/NVLink fabric, hard-error on RoCE (all GB10 has);
+     (d) cudagraphs working after root-causing a Sm120 rel-bias boundary bug via GPU coredump;
+     (e) MTP stuck at k=1 (60% draft acceptance); (f) five real sm_121a kernel bugs with one-line
+     fixes (rel-bias q-row index clamp, phantom varlen tiles, fused_qkvr_prep stream race,
+     mDynamicCausal NameError, is_split_kv unassigned); (g) UMA silent-corruption insight
+     (out-of-range indexes don't crash, they land in another allocation); (h) `--gpu-memory-
+     utilization 0.70` max (0.78 wedges), `--compilation-config` mode pin. OP parked Inkling in
+     favor of M3 (42 tok/s single-user). Added to `index.md`.
+  2. **attention-and-kv-cache** — new section: `tml_fa4` Sm120 path has no paged-KV (the
+     load-bearing attention finding from the Inkling bring-up, with the O(ctx) regather
+     workaround and the ~24 tok/s aggregate ceiling). Also notes the Sm80-inherited rel-bias
+     path discards the relative-position bias → wrong outputs; score-mod
+     `vllm_flash_attn/cute` is the intended sm12x route.
+  3. **platform-gb10** — new Batch 25 section: (a) ARM PMU/AMU counters on GB10 — correct PMU
+     event differs from ARMv8; Cortex-A725 capped to 1 GHz, X925 up to ~1375 MHz; community
+     kernel module (CyrIng) implements correct event selection; corroborates P/E-core asymmetry;
+     (b) UMA silent-corruption insight from Inkling bring-up (OOB GPU reads don't fault on UMA,
+     they hit another allocation → diagnose with compute-sanitizer) — sharpens the existing
+     proven "no discrete VRAM to fault on" finding.
+  4. **multinode-tp-and-networking** — new Batch 25 section: (a) switch-less 5-node full mesh
+     via MST sub-port splitting (break 4×50G → 2×50G per QSFP port → 6 RoCE interfaces for 5
+     nodes, ~$800 optical cost vs MikroTik, first reported technique to push switch-less mesh
+     past 4 nodes on GB10); (b) practical GB10 cluster ceiling math (~115 GB usable/node → 16
+     nodes for 2.8T @ 4-bit, ~$100k, 2000-3200W; ~4 nodes for Opus-class; viable 200B-class
+     alternatives list); (c) Inkling's Lamport collectives require MNNVL/NVLink → hard-error on
+     RoCE, `LAMPORT_RS_SCONV=0` escape hatch — a new class of "designed-for-datacenter-fabric"
+     model biting on GB10's RoCE-only interconnect.
+  5. **benchmarks** — 5 new [conjecture] rows: Inkling NVFP4 8× TP=8 decode at short/2048 ctx
+     (c1/c8/c32), prefill (1,400–2,711 tok/s); summary noting the long-context decode cliff and
+     M3 comparison.
+  6. **roadmap** — refined the existing Inkling 975B/276B open problem (975B now characterized on
+     the model page; 276B on 2× Spark remains open); added 3 new open problems: (i) paged-KV
+     support for `tml_fa4` Sm120/Sm121 cute FA4 path (the load-bearing blocker for rel-bias/FA4
+     models on GB10); (ii) Intern-S2-Preview-397B on 4× Spark (no quant small enough for 2× yet,
+     announcement only); (iii) MST sub-port splitting for switch-less 5-node mesh (verify on
+     real hardware).
+  7. **index.md** — added `wiki/models/inkling.md` to the Models section.
+- **Topic 377091 (Kimi K3 ceiling):** mostly social/opinion/buying-advice (out of scope per
+  AGENTS.md), but extracted the 3 durable technical nuggets above (MST 5-node mesh technique,
+  cluster-sizing math, viable-model-class list). The "models will keep getting smaller" vs
+  "frontier is growing" debate was explicitly excluded as out-of-scope opinion.
+- **Topic 377342 (Intern-S2-Preview-397B):** model announcement with no GB10-specific
+  config/recipe/quant — registered source and roadmap open problem only. No model page created
+  (no bring-up data to distill).
+- **Topic 377280 (PMU/AMU counters):** small but durable platform finding (ARM PMU event
+  selection, A725/X925 clock facts) — placed on platform-gb10.
+- **Evidence cap:** All new findings capped at `[conjecture]` (single forum source each). The
+  Inkling bring-up is unusually technically dense (public repo, filed issue, concrete tok/s,
+  GPU-coredump-root-caused bugs) but remains a single source — no independent corroboration, no
+  hardware verification available. Per the analysis-agent stack, `[conjecture]` is the ceiling.
+  The tml_fa4 paged-KV finding and the UMA silent-corruption insight are flagged as high-value
+  verification targets for hardware agents in `roadmap.md`.
