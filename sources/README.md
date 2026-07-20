@@ -325,6 +325,12 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-ec-fan-asus | forum | ASUS GX10 thermal throttling after EC 0x02000005 / UEFI 0x03000006 update — corroborates S-forum-ec-fan-rollback on a 3rd OEM SKU; ACPI zones 96.6°C, GPU 85-90°C, SW/HW thermal slowdown counters, fans N/A; EC 0x02000004 vs 0x02000005 fan curve byte-identical (48%@85°C, 54%@93°C, 68%@95°C, 100%@97°C) → root cause may be SoC/UEFI interaction not EC table; no fwupdmgr downgrade available for ASUS GX10; fieldiag 2.0.4-1 packaging bug (ofed-scripts missing); NVIDIA escalated (giunta.francesco, veelacleave, Neill/NVIDIA) | https://forums.developer.nvidia.com/t/377044 | 2026-07-16 |
 | S-forum-inkling | forum | Inkling 975B (41B active) MoE + Inkling-Small 276B (12B active) multimodal model announcement — 1M context, text/image/audio/video; community plans 8× Spark cluster bring-up; no recipe/benchmarks yet (eh17, greg190) | https://forums.developer.nvidia.com/t/377238 | 2026-07-17 |
 
+## Batch 24 forum sources (2026-07-20 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-6x-cluster | forum | 6× GB10 cluster via MikroTik CRS812 (768 GB combined) — b12x backend enables TP=6 on most models; GLM-5.2 ~30 tok/s single-stream; cluster peak 800-1180 W (mclenithan) | https://forums.developer.nvidia.com/t/376585 | 2026-07-11 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

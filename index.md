@@ -272,3 +272,12 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   LC_MESSAGES=en_US.utf8; hotfix pending [conjecture]), roadmap (3 new open problems: Inkling
   975B/276B MoE bring-up not yet characterized, EC fan-curve root-cause isolation, fieldiag
   ofed-scripts dependency gap).
+
+## Forum ingest 2026-07-20 (Batch 24)
+- 1 new forum topic found, technically relevant (6× GB10 cluster via MikroTik CRS812, b12x TP=6).
+- 1 new source registered (Batch 24). 1 topic ID added to processed_topics.txt (total now 404).
+- Pages touched: multinode-tp-and-networking (6× GB10 cluster via CRS812 — b12x backend enables
+  non-power-of-2 TP=6 on most models; GLM-5.2 ~30 tok/s single-stream; cluster 800-1180 W peak;
+  consistent with sublinear scaling between TP=4 and TP=8 [conjecture]), benchmarks (1 new
+  [conjecture] row: GLM-5.2 6× TP=6 ~30 tok/s), roadmap (new open problem: does b12x enable
+  arbitrary non-power-of-2 TP on GB10 — virtual-head padding previously required for TP=3).

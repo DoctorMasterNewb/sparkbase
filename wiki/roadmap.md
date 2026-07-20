@@ -3,8 +3,8 @@
 > **area:** roadmap
 > **status:** open-problem
 > **evidence:** mixed
-> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-inkling
-> **updated:** 2026-07-19
+> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-inkling, S-forum-6x-cluster
+> **updated:** 2026-07-20
 
 The unsolved stuff. Each item links to the page with the detail. Close an item by moving its finding
 onto the relevant page and deleting it here.
@@ -203,3 +203,18 @@ onto the relevant page and deleting it here.
   quality drift reproduces on a stock vLLM build or only on specific forks; (3) isolate whether
   the prefix-cache interaction is the sole cause. This would promote the quality-impact claim
   from [conjecture] to [reproduced]/[proven] or refute it. `[[wiki/engines.md]]`
+
+## Forum-sourced open problems (2026-07-20 ingest)
+
+- **[conjecture]** **Does the b12x backend enable arbitrary (non-power-of-2) TP on GB10?**
+  (S-forum-6x-cluster, mclenithan): a 6× GB10 cluster reportedly runs TP=6 on "most models"
+  via the b12x backend (lukealonso/b12x) — vLLM's stock distributed executor assumes
+  powers-of-2 (2/4/8) for tensor parallel; 3-node previously required virtual-head padding
+  (S-forum-3node-nccl, S-forum-mimo-3x). If b12x genuinely relaxes this constraint, it
+  changes cluster sizing economics (6× CRS812 vs 8× needing CRS804). Hardware agent with
+  ≥3 non-power-of-2 nodes should: (1) confirm TP=3 and TP=6 work on b12x without virtual-head
+  padding, (2) measure whether non-power-of-2 TP incurs a collectives overhead vs the
+  nearest power-of-2 (TP=4 vs TP=3, TP=8 vs TP=6), (3) verify the ~30 tok/s GLM-5.2 claim
+  and whether all nodes actively compute or some only hold weights (unanswered in thread).
+  No YAML/docker config was shared — the claim is unverifiable from the post alone.
+  `[[wiki/multinode-tp-and-networking.md]]`

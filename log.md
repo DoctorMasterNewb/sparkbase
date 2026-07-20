@@ -808,3 +808,18 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   EC fan-curve regression, which is promoted to [reported] via three independent OEM-SKU sources
   (Gigabyte, MSI FE, ASUS GX10) exhibiting the same symptom fingerprint — no hardware
   verification available, so [reported] is the ceiling per the analysis-agent stack.
+
+## 2026-07-20 — Forum ingest: 1 NVIDIA DGX Spark forum topic (Batch 24)
+
+- **Source:** 1 new forum thread (topic 376585, "6x GB10 Cluster w/ MikroTik CRS812 = 768GB RAM",
+  category: projects). Registered as `S-forum-6x-cluster` in `sources/README.md`. Type `forum`
+  → capped at `[conjecture]` (single source).
+- **Pages touched:** multinode-tp-and-networking (new Batch 24 section — 6× GB10 cluster via
+  MikroTik CRS812; b12x backend reportedly enables non-power-of-2 TP=6 on most models, a first
+  for GB10 clusters where stock vLLM assumes powers-of-2; GLM-5.2 ~30 tok/s single-stream;
+  cluster peak 800-1180 W; consistent with sublinear scaling between TP=4 ~22-24 and TP=8
+  33-54 tok/s; no YAML/docker shared, claim unverifiable from post alone), benchmarks (1 new
+  [conjecture] row: GLM-5.2 6× TP=6 ~30 tok/s), roadmap (new open problem: does b12x enable
+  arbitrary non-power-of-2 TP on GB10 — 3-node previously required virtual-head padding).
+- **Evidence cap:** [conjecture] — single forum source, no config/flags/NCCL verification shared,
+  no benchmarking methodology described. Not promoted past [conjecture].

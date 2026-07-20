@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale
-> **updated:** 2026-07-19
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster
+> **updated:** 2026-07-20
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -258,6 +258,28 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
   prompts with low cache hit rate) maximally stresses both the GPU and the CPU-side
   host-staged NCCL collectives simultaneously — the highest combined SoC power draw
   scenario. See `[[wiki/platform-gb10.md]]` → thermal shutdown for the full finding.
+
+### Batch 24 forum ingest (2026-07-20)
+
+- **[conjecture]** **6× GB10 cluster via MikroTik CRS812 — b12x backend enables non-power-of-2
+  TP=6** (S-forum-6x-cluster, mclenithan): a 6-node DGX Spark cluster (768 GB combined unified
+  memory) networked via a **MikroTik CRS812** switch (2× 200G + 1× 400G port, with breakout on
+  the 400G port) — the same CRS812 option documented for 4-node in S-forum-mikrotik, here pushed
+  to 6 nodes. The **b12x backend** (lukealonso/b12x, the same unified SM120 sparse-MLA + PCIe
+  DCP collectives stack used in the 8× GLM-5.2 run, S-forum-glm52-8x) reportedly enables
+  **TP=6 on most models** — notably, vLLM's stock distributed executor assumes powers-of-2
+  node counts (2/4/8) for tensor parallel; b12x appears to relax this constraint on GB10.
+  **GLM-5.2 runs at ~30 tok/s single-stream** on this 6-node cluster (consistent with the
+  33–54 tok/s range reported on 8× GB10 at TP=8, S-forum-glm52-8x — fewer nodes, slightly lower
+  throughput, same order of magnitude). Cluster peak power draw: **800–1180 W** (~133–197 W/node,
+  consistent with the 140–240 W per-node envelope documented in S-forum-power-spec and
+  S-forum-driver610). Replies ask about virtual-head padding (per S-forum-mimo-3x technique)
+  and whether all 6 nodes actively compute vs some only hold weights — unanswered in the thread.
+  Single source → `[conjecture]`. **Why it bites on Spark:** non-power-of-2 TP has been an open
+  question on GB10 (3-node required virtual-head padding, S-forum-3node-nccl); if b12x genuinely
+  enables arbitrary TP, it changes cluster sizing economics (6× CRS812 vs 8× needing CRS804).
+  Status: `open` — no YAML/docker shared, no ib_write_bw or NCCL verification, power claim
+  unverified. See also `[[wiki/benchmarks.md]]` for the GLM-5.2 6× tok/s data point.
 
 ## See also
 `[[wiki/platform-gb10.md]]` · `[[wiki/cudagraphs-and-compile.md]]` · `[[wiki/llama-cpp-rpc.md]]` · `[[wiki/engines.md]]`
