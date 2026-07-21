@@ -3,7 +3,7 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup, S-forum-hpc-slurm, S-forum-llama32-finetune, S-forum-cx7-hotplug, S-forum-comfyui-optimized, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-usb2-fallback, S-forum-fw-july2026, S-forum-ota-loop, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-machineid, S-forum-cve, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-pmu-amu, S-forum-inkling-nvfp4, S-forum-update-loop
+S-forum-update-loop, S-forum-temps-normal
 > **updated:** 2026-07-21
 
 The hardware facts every model bring-up assumes. Read this first.
@@ -633,3 +633,35 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   clock wedge (S-forum-clock-5min). The new durable bit: `fwupdmgr get-results` as a diagnostic
   to check if a firmware update actually failed, and the specific EC firmware version range
   (0x00000500→0x00000507). Single source → [conjecture].
+
+### Batch 27 forum ingest (2026-07-21)
+
+- **[conjecture]** **sysfs thermal zone layout under load — zones 0/5 are the hot spots**
+  (S-forum-temps-normal, DannyTup): on a Founders Edition Spark under GPU benchmark
+  load (25 °C ambient), the 7 `/sys/class/thermal/thermal_zone*` entries (all generic
+  `acpitz` type) read: **zones 0 & 5 ≈ 94.6 °C**, zones 1–4 ≈ 68–69 °C, zone 6 ≈ 71.6 °C.
+  Temps fluctuated but spent most time between 90–95 °C. The GPU itself runs **~10 °C
+  cooler than the CPU** under the same workload (sjug, corroborating the zone 0/5 = CPU
+  hypothesis). Notably, CPU usage was ~0 % — the load was all GPU, yet the GPU was the
+  "coolest" part. No thermal shutdown occurred overnight at these temps. This is
+  consistent with the EC-fan-regression thermal zone fingerprint (S-forum-ec-fan-asus:
+  zones 0/5 → 96.6 °C), but here the user had a desk fan blowing across the unit and the
+  internal fan was ramping (just not enough). Single source for the exact numbers →
+  [conjecture]; the zone-0/5-are-hottest pattern is now [reported] across 3+ threads.
+- **[conjecture]** **`tegrastats` utility works on DGX Spark** (S-forum-temps-normal,
+  elsaco): the `tegrastats` binary copied from a **Jetson Orin Nano** runs on GB10 and
+  reports RAM, SWAP, per-core CPU freq/util, and 7 `acpitz` temperature readings.
+  Sample idle output: `RAM 1431/124610MB (lfb 91x4MB) SWAP 0/16384MB` + 20 CPU cores
+  at 0 % util, `acpitz@34.8C` … `acpitz@33.8C`. It does **not** reveal which physical
+  sensor each `acpitz` zone maps to — all zones are generic `acpitz` type, so the
+  zone-to-sensor mapping remains undocumented by NVIDIA. Tooling note: `tegrastats`
+  adds nothing over `sysfs` for temps, but its RAM/SWAP/CPU-freq summary is useful as
+  a one-line snapshot. Single source → [conjecture].
+- **[conjecture]** **GPU clock capping as a thermal mitigation** (S-forum-temps-normal,
+  digirho): an external blog (wildpines.ai, "Your DGX Spark Is Cooking Itself")
+  recommends **capping the GPU clock** to reduce temperatures, claiming only a small
+  performance loss. This is a different mitigation path from the EC-firmware rollback
+  (S-forum-ec-fan-rollback) or the 3D-printed cooling cage (S-forum-cooling-cage) — it
+  trades compute headroom for thermal headroom at the OS/driver level. No specific
+  clock value or measured temp delta cited in the thread. Single source referencing
+  a blog → [conjecture]; a hardware agent could measure the tok/s-vs-°C tradeoff.

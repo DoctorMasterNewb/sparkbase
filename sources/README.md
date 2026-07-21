@@ -349,6 +349,12 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-3node-mesh | forum | 3-node Spark mesh networking guide (spark-vllm-docker + sparkrun) — CX-7 full mesh without switch, cross-connect port0↔port1; TP requires power-of-2 (attention head divisibility); 3-node PP slower than 2-node TP=2; LMCache for dedicated KV cache node; NCCL mesh merged to main; Qwen3.5-397B-A17B-int4-AutoRound benchmarks; vLLM PP+MTP not supported; fastsafetensors freeze fix; gpu_memory_utilization 0.8 stable (eugr, dbsci, chunkai721, jameslacroix) | https://forums.developer.nvidia.com/t/365296 | 2026-04-01 |
 | S-forum-update-loop | forum | DGX Dashboard update loop — EC firmware 0x00000500→0x00000507 fails silently; fwupdmgr get-results shows Update State: Failed; power-cycle workaround (unplug USB-C brick, hold power 10s, wait 5 min); 2-3 cycles may be needed (podstawek, jcagle) | https://forums.developer.nvidia.com/t/363464 | 2026-03-14 |
 
+## Batch 27 forum sources (2026-07-21 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-temps-normal | forum | DGX Spark thermal zones under load: 7 sysfs acpitz zones, zones 0/5 hit 94.6°C, GPU ~10°C cooler than CPU; tegrastats (Jetson Orin Nano binary) works on Spark; wildpines.ai clock-capping blog referenced (DannyTup, sjug, elsaco, digirho) | https://forums.developer.nvidia.com/t/377375 | 2026-07-18 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

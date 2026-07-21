@@ -299,3 +299,13 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   benchmarks (2 new [conjecture] rows: Qwen3.5-397B-A17B 3-node PP decode 12–14.4 tok/s + prefill
   912–1242 tok/s), roadmap (2 new open problems: FlashInfer livelock reproduction/fix, 3-node PP
   vs TP=2 overhead measurement).
+
+## Forum ingest 2026-07-21 (Batch 27)
+- 2 new forum topics found (1 technically relevant, 1 skipped as non-technical).
+- 1 new source registered (Batch 27). 2 topic IDs added to processed_topics.txt (total now 410).
+- Pages touched: platform-gb10 (sysfs thermal zone layout under load — zones 0/5 hottest at
+  94.6 °C, GPU ~10 °C cooler than CPU; `tegrastats` Jetson Orin Nano binary works on GB10;
+  GPU clock capping as thermal mitigation per wildpines.ai blog). All [conjecture].
+- Skipped: topic 377428 (AirLLM theoretical parameter-ceiling speculation — no runs, no
+  measurements, replies all jokes; adds nothing beyond known 128 GB unified memory / 4 TB SSD
+  facts already in platform-gb10 and the Colibri expert-streaming approach in engines).

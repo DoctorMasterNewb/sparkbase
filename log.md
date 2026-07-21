@@ -929,3 +929,23 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   device-side receipt, journaled step counts, multiple capture bundles, public evidence pack) —
   flagged for priority hardware verification. Per the analysis-agent stack, `[conjecture]` is
   the ceiling regardless of evidence quality within a single source.
+
+## 2026-07-21 — Scheduled forum ingest: 2 new topics
+
+- **Sources:** 2 new forum topics found by `scripts/fetch_new_topics.py`. 1 technically
+  relevant (377375 — thermal zones under load), 1 skipped as non-technical (377428 —
+  AirLLM theoretical speculation, replies all jokes, no new GB10 data beyond known
+  128 GB unified memory / 4 TB SSD facts already in platform-gb10).
+- **Sources registered:** 1 new source (S-forum-temps-normal, Batch 27). Both topic IDs
+  added to `processed_topics.txt` (total now 410).
+- **Pages touched:** platform-gb10 (3 new [conjecture] findings: sysfs thermal zone
+  layout under load — zones 0/5 hottest at 94.6 °C, GPU ~10 °C cooler than CPU;
+  `tegrastats` Jetson Orin Nano binary works on GB10 but adds no sensor mapping;
+  GPU clock capping as thermal mitigation per wildpines.ai blog).
+- **Findings:** The zone-0/5-hottest pattern corroborates the EC-fan-regression
+  fingerprint (S-forum-ec-fan-asus: zones 0/5 → 96.6 °C) → the pattern is now [reported]
+  across 3+ threads, though exact numbers from this thread stay [conjecture] (single
+  source). The `tegrastats` portability from Jetson Orin Nano → GB10 is a new tooling
+  note. The clock-capping mitigation is a new conjecture that a hardware agent could
+  verify (tok/s-vs-°C tradeoff).
+- **Evidence cap:** All new findings capped at `[conjecture]` (single forum source).
