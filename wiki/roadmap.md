@@ -247,3 +247,29 @@ onto the relevant page and deleting it here.
   per sub-port (50G vs 100G) impacts TP=5 decode/prefill; (3) compare latency vs a MikroTik CRS812
   switch path. The OP is "currently working on" it — not yet verified. See
   `[[wiki/multinode-tp-and-networking.md]]`.
+
+## Forum-sourced open problems (2026-07-21 ingest, Batch 26)
+
+- **[conjecture]** **FlashInfer `sparse_mla_sm120` mbarrier livelock — needs upstream fix or
+  independent reproduction** (S-forum-flashinfer-livelock, msunner): the FlashInfer
+  `sparse_mla_sm120` kernels (prefill + decode) hard-wedge one rank GPU under cold-prefill load
+  on GB10/sm_121. Root cause: mbarrier TRYWAIT phase check spin-loop (TMA/cp.async.bulk
+  expect-tx accounting race). The Triton workaround (`FLASHMLA_SPARSE` + sm12x Triton patch) is
+  validated (560+ clean sessions, no throughput penalty). Hardware agent / kernel dev should:
+  (1) independently reproduce the livelock on a 4× Spark cluster with GLM-5.2 sparse MLA (the OP's
+  config) — or a different sparse-MLA model — to confirm this is not a single-cluster hardware
+  issue; (2) review the `sparse_mla_sm120` mbarrier expect-tx logic in
+  `include/flashinfer/attention/sparse_mla_sm120/prefill_kernel.cuh`; (3) verify the Triton
+  workaround has no quality regression vs FlashInfer on real sparse-MLA workloads; (4) file
+  upstream FlashInfer issue with the cuda-gdb evidence. This is a load-bearing bug for any
+  sparse-MLA model on GB10 (GLM-5.2, DeepSeek-V4-class, future MLA architectures). See
+  `[[wiki/attention-and-kv-cache.md]]` → FlashInfer sparse-MLA livelock.
+- **[conjecture]** **3-node PP vs TP=2 on 2 nodes — measure the overhead gap** (S-forum-3node-mesh,
+  eugr, chunkai721): eugr claims 3-node PP is "roughly equivalent to a single Spark" (i.e. ~50%
+  slower than 2-node TP=2). chunkai721's Qwen3.5-397B-A17B-int4-AutoRound benchmarks (12–14.4 tok/s
+  decode) are consistent with single-node speed. Hardware agent should: (1) run the same model on
+  1 node (if it fits) vs 2-node TP=2 vs 3-node PP and compare decode/prefill; (2) test LMCache on
+  the 3rd node as dedicated KV cache — does it improve long-context throughput? (3) measure
+  whether the NCCL mesh topology adds latency vs a switched topology for PP. Relevant for anyone
+  with 3 Sparks deciding whether to use all 3 in PP or run 2+1 (TP=2 + sidecar). See
+  `[[wiki/multinode-tp-and-networking.md]]` → Batch 26.

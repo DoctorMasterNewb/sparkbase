@@ -340,6 +340,15 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-intern-s2 | forum | internlm/Intern-S2-Preview-397B — 397B model announced as preview (Claude Opus-4.8/GPT-5.5 class benchmarks claimed); no quantization small enough for 2× Spark exists yet; community requests a 4× Spark / autoround recipe; no GB10-specific config or benchmarks (chrm, Sparkdown_Format) | https://forums.developer.nvidia.com/t/377342 | 2026-07-18 |
 | S-forum-pmu-amu | forum | GB10 Spark ARM PMU/AMU counters — Cortex-A725 capped to 1 GHz, Cortex-X925 up to ~1375 MHz; correct PMU event for Spark differs from ARMv8; kernel module for reading PMC counters now available (CyrIng project master branch); A725 factory 2.8 GHz vs X925 scaling anomaly when normalizing PMC reads to max core freq (CyrIng) | https://forums.developer.nvidia.com/t/377280 | 2026-07-17 |
 
+## Batch 26 forum sources (2026-07-21 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-vllm025-nccl | forum | vLLM 0.25.1 + NCCL 2.30.7 not available in standard Spark Docker images — community images ship vLLM 0.23 + old NCCL; latest needed for PP (MiniMax M3) and mesh NCCL; GitHub image with latest found (Hunlx) | https://forums.developer.nvidia.com/t/377417 | 2026-07-19 |
+| S-forum-flashinfer-livelock | forum | FlashInfer sparse_mla_sm120 kernels livelock on GB10/sm_121 under cold-prefill — mbarrier TRYWAIT phase check spin-loop root-caused via cuda-gdb; validated workaround: Triton sparse-MLA (FLASHMLA_SPARSE + sm12x Triton patch); GLM-5.2 TP=4 4× Spark; 560+ clean sessions post-workaround; evidence pack at marksunner/glm52-dgx-spark-deadlock-evidence (msunner) | https://forums.developer.nvidia.com/t/377334 | 2026-07-18 |
+| S-forum-3node-mesh | forum | 3-node Spark mesh networking guide (spark-vllm-docker + sparkrun) — CX-7 full mesh without switch, cross-connect port0↔port1; TP requires power-of-2 (attention head divisibility); 3-node PP slower than 2-node TP=2; LMCache for dedicated KV cache node; NCCL mesh merged to main; Qwen3.5-397B-A17B-int4-AutoRound benchmarks; vLLM PP+MTP not supported; fastsafetensors freeze fix; gpu_memory_utilization 0.8 stable (eugr, dbsci, chunkai721, jameslacroix) | https://forums.developer.nvidia.com/t/365296 | 2026-04-01 |
+| S-forum-update-loop | forum | DGX Dashboard update loop — EC firmware 0x00000500→0x00000507 fails silently; fwupdmgr get-results shows Update State: Failed; power-cycle workaround (unplug USB-C brick, hold power 10s, wait 5 min); 2-3 cycles may be needed (podstawek, jcagle) | https://forums.developer.nvidia.com/t/363464 | 2026-03-14 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

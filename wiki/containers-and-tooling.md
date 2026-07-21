@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-nvfp4, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt
-> **updated:** 2026-07-19
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-nvfp4, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl
+> **updated:** 2026-07-21
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -262,3 +262,15 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   This is a GB10-specific UMA finding that generalizes beyond ComfyUI — any application using
   `cudaMemGetInfo` to make memory decisions will under-report free memory when another CUDA
   process is resident on the same unified device. See `[[wiki/platform-gb10.md]]`.
+
+### Batch 26 forum ingest (2026-07-21)
+
+- **[conjecture]** **Community Spark Docker images lag behind upstream vLLM/NCCL releases**
+  (S-forum-vllm025-nccl, Hunlx): as of 2026-07-19, standard community Spark Docker images (eugr/
+  spark-vllm, sparkrun-vllm-ds4-gb10, vllm/vllm-openai:nightly, etc.) ship **vLLM 0.23** and an
+  **old NCCL**, not the latest vLLM 0.25.1 or NCCL 2.30.7. The latest versions are needed for
+  **pipeline parallel support for MiniMax M3** and **NCCL mesh networking** improvements. A GitHub
+  image with vLLM 0.25.1 + NCCL 2.30.7 was found but not from the standard Spark image ecosystem.
+  This is a known gap in the Spark container ecosystem: community images are built for stability
+  with specific model recipes, not bleeding-edge upstream. Users needing latest vLLM features
+  must either build their own image or find non-standard builds. Single source → [conjecture].

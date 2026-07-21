@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4
-> **updated:** 2026-07-20
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh
+> **updated:** 2026-07-21
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -320,6 +320,61 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
   fabric" model that hard-errors on GB10's RoCE-only interconnect. Any future model adopting
   Lamport/MNNVL collectives will need this flag (or an equivalent) on Spark. The 8× Spark Inkling
   bring-up used this to get the cluster running. See `[[wiki/models/inkling.md]]`.
+
+### Batch 26 forum ingest (2026-07-21)
+
+- **[conjecture]** **3-node full-mesh networking guide for spark-vllm-docker and sparkrun**
+  (S-forum-3node-mesh, eugr + dbsci): a 3-node DGX Spark cluster can be built as a **full mesh
+  without a switch** — each Spark has 2 QSFP ports, and 3 cables connect them in a triangle
+  (Spark1.Port0→Spark2.Port1, Spark2.Port0→Spark3.Port1, Spark3.Port0→Spark1.Port0). **Must
+  cross-connect port0↔port1** (not port0↔port0) or the mesh may not work properly. Each port has
+  two logical partitions (4 RoCE interfaces per machine); each link can burst up to full 200 Gbps
+  when the other is underutilized. This enables **pipeline-parallel** inference workloads across 3
+  nodes. The 3-node mesh NCCL functionality has been **merged into NCCL main** (no special branch
+  needed anymore — earlier builds required a `dgxspark-3node-ring` branch or TF5 container).
+  Community guides: spark-vllm-docker + sparkrun both support 3-node mesh config. Single source
+  (authoritative community contributor) → [conjecture].
+- **[conjecture]** **TP requires power-of-2 node counts (attention head divisibility)**
+  (S-forum-3node-mesh, eugr): tensor parallelism requires the model's attention head count to be
+  divisible by TP value. Since models typically have 64 or 128 heads, TP must be 2/4/8/etc.
+  **Uneven tensor splits (e.g. TP=3) may be possible but no implementations exist yet.** With 3
+  Sparks, you are limited to **pipeline parallel or data parallel**, or TP=2 on 2 nodes + a 3rd
+  node for embedding/reranking/small-fast model. This corroborates the existing `[proven]` finding
+  that powers-of-2 node counts are recommended for vLLM.
+- **[conjecture]** **3-node pipeline-parallel is slower than 2-node TP=2, roughly equivalent to
+  single-node speed** (S-forum-3node-mesh, eugr): TP is only supported on 2/4/8/2^n nodes — using
+  all 3 nodes in pipeline-parallel adds overhead making it "roughly equivalent to a single Spark."
+  If the model fits on one Spark, 3 nodes can run data-parallel to increase concurrent request
+  capacity. You can still run 2-node workflows on a 3-node cluster at full 2-node speed.
+- **[conjecture]** **LMCache for dedicated KV-cache-only node on 3× Spark** (S-forum-3node-mesh,
+  Phaserblast, eugr): with 3 Sparks, one possible architecture is 2 nodes running TP=2 for the
+  model + a 3rd node serving as a dedicated KV cache host via **LMCache** (`vllm-project/vllm`).
+  Not yet tested in practice — eugr notes it "should be possible" but performance impact is
+  unknown. Relevant for long-context workloads where KV cache exceeds available memory after model
+  weights (e.g. Qwen3.5-397B-A17B on 2× Spark leaves few GB for KV).
+- **[conjecture]** **vLLM pipeline-parallel + MTP not supported** (S-forum-3node-mesh,
+  jameslacroix): `--speculative-config` with MTP (`num_speculative_tokens: 2`) throws
+  `NotImplementedError: Pipeline parallelism is not supported on this vLLM version`. MTP is
+  incompatible with PP — relevant for 3-node PP deployments. If MTP is needed, use TP (2/4/8 nodes)
+  instead.
+- **[conjecture]** **fastsafetensors loader freezes at 29% on Xet-downloaded models — use
+  instanttensor** (S-forum-3node-mesh, jameslacroix): on 3-node PP deployments, the fastsafetensors
+  loader hangs at 29% when loading Xet-downloaded model files. Workaround: switch to the
+  instanttensor loader. This corroborates the existing `[proven]` finding about HF Xet hangs.
+- **[conjecture]** **`gpu_memory_utilization: 0.85` causes silent worker death on 3-node PP — use
+  0.8** (S-forum-3node-mesh, jameslacroix): at 0.85 util, workers silently die during inference
+  (SIGTERM, exit code 1) right after NCCL P2P communicator creation between pipeline stages. Gloo
+  metadata transport shows "Connection closed by peer" as a symptom. Reducing to 0.8 is stable.
+  `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` also helps prevent memory fragmentation
+  crashes. Relevant for multi-node PP where per-node memory headroom is tighter.
+- **[conjecture]** **Qwen3.5-397B-A17B-int4-AutoRound on 3-node PP benchmarks** (S-forum-3node-mesh,
+  chunkai721): llama-benchy v0.3.5 results on 3-node PP cluster:
+  - `tg32` (token gen, 32 tokens): ~12–14.4 tok/s across context depths 0–32768 (peak 15.3 tok/s)
+  - `pp2048` (prompt processing, 2048 tokens): ~1070–1242 tok/s, scaling with context depth
+    (912 tok/s @ depth 0, 1242 tok/s @ depth 8192, 1070 tok/s @ depth 32768)
+  - TTFT ranges 2.2–7.6 s depending on depth/batch
+  - These numbers confirm 3-node PP decode is ~single-node speed (consistent with eugr's claim
+    above) and prefill is competitive. Single source → [conjecture].
 
 ## See also
 `[[wiki/platform-gb10.md]]` · `[[wiki/cudagraphs-and-compile.md]]` · `[[wiki/llama-cpp-rpc.md]]` · `[[wiki/engines.md]]`

@@ -892,3 +892,40 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   hardware verification available. Per the analysis-agent stack, `[conjecture]` is the ceiling.
   The tml_fa4 paged-KV finding and the UMA silent-corruption insight are flagged as high-value
   verification targets for hardware agents in `roadmap.md`.
+
+## 2026-07-21 — Forum ingest: 4 new topics (Batch 26)
+
+- **Sources:** 4 new forum threads from forums.developer.nvidia.com. Registered as `S-forum-*`
+  in `sources/README.md` (Batch 26). All type `forum` → capped at `[conjecture]`.
+- **Pages touched:** attention-and-kv-cache (FlashInfer sparse_mla_sm120 mbarrier livelock on
+  GB10 — root cause via cuda-gdb, Triton workaround validated 560+ sessions),
+  multinode-tp-and-networking (3-node full-mesh guide, TP power-of-2 requirement, PP+MTP
+  incompatible, LMCache for KV-cache node, fastsafetensors freeze, gpu_memory_utilization 0.8
+  for PP, NCCL mesh merged to main, Qwen3.5-397B-A17B 3-node PP benchmarks),
+  containers-and-tooling (community Spark Docker images lag upstream vLLM 0.25.1/NCCL 2.30.7),
+  platform-gb10 (EC firmware 0x00000500→0x00000507 silent update failure, fwupdmgr get-results
+  diagnostic), benchmarks (2 new [conjecture] rows: Qwen3.5-397B-A17B 3-node PP decode + prefill),
+  roadmap (2 new open problems: FlashInfer livelock upstream fix/reproduction, 3-node PP vs
+  TP=2 overhead measurement).
+- **Topic 377417 (vLLM 0.25.1 + NCCL 2.30.7):** community Docker images lag upstream. Durable
+  container ecosystem data point — users needing latest PP/mesh features must build or find
+  non-standard images.
+- **Topic 377334 (FlashInfer sparse-MLA livelock):** **the highest-value finding this batch.**
+  Exceptionally well-evidenced single-source report: cuda-gdb device-side receipt showing
+  mbarrier TRYWAIT spin-loop, journaled 30,000+ engine steps/rank, 8/8 reproduction at ≥60K
+  cold-prefill, validated Triton workaround with 560+ clean sessions at no throughput cost.
+  Placed on attention-and-kv-cache as a major GB10 kernel bug. Tagged [conjecture] (single
+  source, no hardware verification) but flagged in roadmap as high-priority verification target.
+- **Topic 365296 (3-node mesh):** comprehensive 3-node guide by eugr+dbsci with benchmarks by
+  chunkai721 and field-report issues by jameslacroix. Multiple durable findings: TP requires
+  power-of-2 (attention head divisibility), 3-node PP ~single-node speed, PP+MTP not supported,
+  NCCL mesh merged to main, fastsafetensors loader freeze, gpu_memory_utilization 0.8 for PP
+  stability, LMCache for dedicated KV-cache node (untested).
+- **Topic 363464 (update loop):** EC firmware 0x00000500→0x00000507 fails silently —
+  `fwupdmgr get-results` diagnostic shows the failure state. Overlaps with existing OTA loop
+  findings; the new durable bit is the fwupdmgr diagnostic and specific firmware version range.
+- **Evidence cap:** All new findings capped at `[conjecture]` (single forum source each). The
+  FlashInfer livelock report is the most evidence-rich single source ingested to date (cuda-gdb
+  device-side receipt, journaled step counts, multiple capture bundles, public evidence pack) —
+  flagged for priority hardware verification. Per the analysis-agent stack, `[conjecture]` is
+  the ceiling regardless of evidence quality within a single source.

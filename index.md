@@ -282,3 +282,20 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   consistent with sublinear scaling between TP=4 and TP=8 [conjecture]), benchmarks (1 new
   [conjecture] row: GLM-5.2 6× TP=6 ~30 tok/s), roadmap (new open problem: does b12x enable
   arbitrary non-power-of-2 TP on GB10 — virtual-head padding previously required for TP=3).
+
+## Forum ingest 2026-07-21 (Batch 26)
+- 4 new forum topics found, all technically relevant.
+- 4 new sources registered (Batch 26). 4 topic IDs added to processed_topics.txt (total now 408).
+- **Headline finding:** FlashInfer `sparse_mla_sm120` mbarrier livelock on GB10/sm_121 — root-caused
+  via cuda-gdb (mbarrier TRYWAIT spin-loop under cold-prefill), validated Triton workaround
+  (FLASHMLA_SPARSE + sm12x patch, 560+ clean sessions, no throughput penalty). Major kernel bug
+  for any sparse-MLA model on GB10. Flagged for priority hardware verification in roadmap.
+- Pages touched: attention-and-kv-cache (FlashInfer livelock + Triton workaround),
+  multinode-tp-and-networking (3-node full-mesh guide — CX-7 triangle, cross-connect port0↔port1,
+  TP requires power-of-2, 3-node PP ~single-node speed, PP+MTP not supported, LMCache for KV
+  node, NCCL mesh merged to main, fastsafetensors freeze, gpu_memory_utilization 0.8 for PP),
+  containers-and-tooling (community images lag upstream vLLM 0.25.1/NCCL 2.30.7),
+  platform-gb10 (EC firmware 0x00000500→0x00000507 silent failure, fwupdmgr get-results diagnostic),
+  benchmarks (2 new [conjecture] rows: Qwen3.5-397B-A17B 3-node PP decode 12–14.4 tok/s + prefill
+  912–1242 tok/s), roadmap (2 new open problems: FlashInfer livelock reproduction/fix, 3-node PP
+  vs TP=2 overhead measurement).

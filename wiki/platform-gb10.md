@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup, S-forum-hpc-slurm, S-forum-llama32-finetune, S-forum-cx7-hotplug, S-forum-comfyui-optimized, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-usb2-fallback, S-forum-fw-july2026, S-forum-ota-loop, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-machineid, S-forum-cve, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-pmu-amu, S-forum-inkling-nvfp4
-> **updated:** 2026-07-20
+> **sources:** S-xnode-cudagraph, S-m3-vision, S-nemotron-rpc, S-networking, S-spark-powercap, S-dgxspark-report, S-forum-clock721, S-forum-power-crash, S-forum-15w-loop, S-forum-60w-cap, S-forum-power-spec, S-forum-tma, S-forum-thermal, S-forum-cooling-cage, S-forum-gsp-timeout, S-forum-driver610, S-forum-headless-boot, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-device-hang, S-forum-fwupd-mismatch, S-forum-gb10-baseline, S-forum-qwen-tts-arm64, S-forum-qwen35-lora-uma, S-forum-opal-uefi, S-forum-sunshine-rdp, S-forum-wan2gp-onnx, S-forum-thermal-shutdown, S-forum-nsight-remote, S-forum-onboarding, S-forum-clock-5min, S-forum-reboot-powercycle, S-forum-cx7-dual-setup, S-forum-hpc-slurm, S-forum-llama32-finetune, S-forum-cx7-hotplug, S-forum-comfyui-optimized, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-usb2-fallback, S-forum-fw-july2026, S-forum-ota-loop, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-machineid, S-forum-cve, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-pmu-amu, S-forum-inkling-nvfp4, S-forum-update-loop
+> **updated:** 2026-07-21
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -615,3 +615,21 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   for crashes. This is a GB10-specific debugging insight that generalizes to any UMA kernel
   debugging — corroborates and sharpens the existing `[proven]` "unified-memory OOM = hard reboot /
   no discrete VRAM to fault on" finding above. See also `[[wiki/models/inkling.md]]` → kernel bugs.
+
+### Batch 26 forum ingest (2026-07-21)
+
+- **[conjecture]** **EC firmware update 0x00000500→0x00000507 fails silently — DGX Dashboard
+  offers updates indefinitely** (S-forum-update-loop, podstawek): the DGX Dashboard repeatedly
+  offers firmware updates even after multiple reboot cycles and manual `apt dist-upgrade`. The
+  root cause is a **silent EC firmware update failure**: `sudo fwupdmgr get-results` shows the
+  UEFI Device Firmware update (0x00000500→0x00000507) in `Update State: Failed` with error
+  `failed to run update on reboot: expected 0x00000507 and got 0x00000500` — the capsule update
+  didn't apply. `apt dist-upgrade` reports nothing to do (0 upgraded, 0 newly installed), so the
+  package-level update is complete but the firmware capsule never installs. **Workaround**:
+  full power-cycle — shutdown, unplug USB-C power adapter from the Spark, unplug from wall,
+  press and hold power button for 10 seconds, wait 5 minutes, reconnect and power on. May need
+  2–3 cycles. This is related to the existing `[conjecture]` OTA loop findings
+  (S-forum-ota-loop, S-forum-fw-july2026) and the power-cycle workarounds documented for the GPU
+  clock wedge (S-forum-clock-5min). The new durable bit: `fwupdmgr get-results` as a diagnostic
+  to check if a firmware update actually failed, and the specific EC firmware version range
+  (0x00000500→0x00000507). Single source → [conjecture].

@@ -3,8 +3,8 @@
 > **area:** attention
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-m3-vision, S-mimo-results, S-mimo-doc, S-sess-jun5, S-sess-jun4, S-dflash-nvfp4, S-forum-mimo-2x-opt, S-forum-dsv4-kvcache, S-forum-inkling-nvfp4
-> **updated:** 2026-07-20
+> **sources:** S-m3-vision, S-mimo-results, S-mimo-doc, S-sess-jun5, S-sess-jun4, S-dflash-nvfp4, S-forum-mimo-2x-opt, S-forum-dsv4-kvcache, S-forum-inkling-nvfp4, S-forum-flashinfer-livelock
+> **updated:** 2026-07-21
 
 Which `--attention-backend` to pass is decided by the model's attention type, not preference. Get it
 wrong and KV-cache init fails or numerics are subtly off.
@@ -109,3 +109,58 @@ wrong and KV-cache init fails or numerics are subtly off.
   parameter) → plausible-but-wrong outputs; the **score-mod `vllm_flash_attn/cute` path is the
   intended sm12x route.** See `[[wiki/models/inkling.md]]`. Single source → [conjecture], but a
   filed upstream issue (vllm#49049) and public patch set accompany it.
+
+## Forum ingest: FlashInfer sparse-MLA mbarrier livelock on GB10 (2026-07-21)
+
+> **[conjecture]** **Symptom → Root cause → Workaround → Status: `open` (upstream)** — A major
+> kernel bug on GB10. The FlashInfer `sparse_mla_sm120` prefill/decode kernels hard-wedge one rank
+> GPU under cold-prefill load. The workaround (Triton sparse-MLA) is validated in production.
+
+- **[conjecture]** **FlashInfer `sparse_mla_sm120` kernels livelock in mbarrier TRYWAIT on GB10/sm_121
+  under cold-prefill load** (S-forum-flashinfer-livelock, msunner): on a 4-node DGX Spark (GB10,
+  NVRM 580.159.03, kernel 6.17.0-1026-nvidia, vLLM 0.23.1rc1.dev893, flashinfer JIT `sparse_mla_sm120`
+  kernels), serving GLM-5.2 (DeepSeek-V4-class sparse MLA, `fp8_ds_mla` cache, TP=4), any
+  cold-prefill-heavy request probabilistically **hard-wedges one rank GPU**: the device spins forever
+  inside a sparse-MLA kernel, the host launch queue fills, and every host thread ends blocked in
+  `cuLaunchKernel`.
+  - **Probability scales with cold-prefill size**: ≥60K-token cold prefills wedged ~always (8/8
+    observed over one day, two served-context configs 200K and 120K); 120-token cold prefills (no
+    prefix-cache hit) wedged occasionally (1/3); per-step decode work (M≤24 tokens/step) **never
+    wedged** (>120,000 rank-steps fleet-wide across boots). Prefix-cache-warm prefills (small
+    computed suffix) never wedged.
+  - **Root cause (cuda-gdb attach on live wedge, rank 0)**: a single resident block spin-looping on
+    an mbarrier phase check (`SYNCS.PHASECHK.TRANS64.TRYWAIT`) whose expected phase never arrives —
+    consistent with a TMA/cp.async.bulk expect-tx accounting race or a producer warp/block that
+    already exited. The spinning block shows 96% GPU utilization, 0% memory utilization, ~18 W,
+    clocks P0/2535 MHz — a spin loop, not compute. All host threads blocked in `cuLaunchKernel`
+    (queue full behind the spinning kernel). NCCL RAS collective counts freeze (pending TP
+    all-reduce never launches). RoCE exonerated: all hardware counters zero during wedge.
+  - **Independent of**: free UMA (wedges with 5–7 GB and ~1 GB avail), `max_num_batched_tokens`
+    (8192 and 2048), served ceiling (200K and 120K), `max_num_seqs` (6 and 3), victim rank
+    (rank-agnostic), drafter-gate instrumentation. A second wedge occurred through the FP8 decode
+    kernel of the same family (mixed-batch mode) — the race is not exclusive to the BF16 prefill
+    kernel.
+  - **Workaround (validated in production)**: route the main model's attention to the **portable
+    Triton sparse-MLA implementations** (`--attention-backend FLASHMLA_SPARSE` + the sm12x Triton
+    drop-in patch stack from the jasl/vllm `deepseek_v4` path). The Triton kernels have **no
+    inter-block mbarrier/TMA dependencies** — each program is self-contained — so this livelock
+    class has no mechanism there. **560+ context-ceiling sessions clean** post-workaround (including
+    500 consecutive at seq 119,997–120,000, plus a ~15 h unattended overnight), plus a clean cold
+    staged climb to 199,872 tokens and boundary completion at exactly 200,000 tokens — the same
+    cold-prefill workload that wedged 8/8 on flashinfer completes routinely on Triton, at **no
+    decode-throughput cost** (~25–27 tok/s at 120K boundary, ~26 tok/s at 200K, vs ~23 tok/s
+    flashinfer baseline).
+  - **Asks**: review `sparse_mla_sm120` prefill/decode mbarrier expect-tx logic for sm_121/GB10
+    (source: `data/csrc/sparse_mla_sm120*.cu`,
+    `include/flashinfer/attention/sparse_mla_sm120/prefill_kernel.cuh`). A separately-filed GB10
+    0x51 UMA memdesc leak remains unfixed and independent. Evidence pack at
+    `marksunner/glm52-dgx-spark-deadlock-evidence` (public excerpts).
+  - Single source, but exceptionally well-evidenced: cuda-gdb device-side receipt, journaled
+    per-rank engine-step totals (~30,000+ steps/rank), multiple capture bundles, sanitized
+    excerpts. → **[conjecture]** (no hardware verification in sparkbase), but the evidence quality
+    is close to what would justify `[reported]` if a second independent source confirms.
+  - **Why it bites on Spark**: this is a GB10-specific kernel livelock in the `sparse_mla_sm120`
+    path (the sm_121 JIT-compiled FlashInfer kernel for sparse/MLA attention). Any model using
+    sparse MLA on GB10 through FlashInfer (GLM-5.2, DeepSeek-V4-class, future MLA models) under
+    cold-prefill workloads is at risk. The Triton workaround is drop-in and has no throughput
+    penalty, making it the recommended path until the upstream mbarrier bug is fixed.
