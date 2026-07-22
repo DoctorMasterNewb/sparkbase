@@ -355,6 +355,15 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 |---|---|---|---|---|
 | S-forum-temps-normal | forum | DGX Spark thermal zones under load: 7 sysfs acpitz zones, zones 0/5 hit 94.6°C, GPU ~10°C cooler than CPU; tegrastats (Jetson Orin Nano binary) works on Spark; wildpines.ai clock-capping blog referenced (DannyTup, sjug, elsaco, digirho) | https://forums.developer.nvidia.com/t/377375 | 2026-07-18 |
 
+## Batch 28 forum sources (2026-07-22 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-uvm-livelock | forum | Spark abrupt shutdown under sustained load (Qwen 3.5 122B, 35B+27B co-loaded) — UVM page-migration livelock: weights + KV cache + CUDA workspace share 128 GB pool, over-commitment causes hard-lock with no OOM-killer, no log; fix: --gpu-memory-utilization 0.85–0.92, don't co-load large models, leave ~10–15 GB free; platform firmware (BIOS/BMC) update; nvidia-smi -pm 1 + -pl power cap; nvidia-smi -lgc clock lock; PSU overheating on carpet (stuart.trusty, mbnshahrzad, oddjobsandservices, aniculescu) | https://forums.developer.nvidia.com/t/377478 | 2026-07-20 |
+| S-forum-sway-scanout | forum | NV_ERR_NO_MEMORY in Sway compositor on GB10 — memmgrAllocScanoutCarveoutRegionResources_GB10B fails allocating scanout carveout from UMA pool; 6144×3456@60Hz = ~121 MB/buffer, multiple buffers need several hundred MB contiguous; UMA fragmentation at boot causes failure with <4 GB/122 GB used; WLR_SCENE_DISABLE_DIRECT_SCANOUT=1 doesn't fix; driver 580.142, CUDA 13.0 (dlludllu, parallelArchitect) | https://forums.developer.nvidia.com/t/370458 | 2026-05-18 |
+| S-forum-sparkdash-mia | forum | sparkDash by MiaAI-Lab — open-source multi-DGX Spark monitoring dashboard: live GPU/CPU/unified memory/storage/network, local LLM status (llama.cpp, vLLM, sglang) with tok/s, SSH power controls + Wake-on-LAN, worker-node flag; trusted LAN (no built-in auth) (MiaAI_Lab) | https://forums.developer.nvidia.com/t/377550 | 2026-07-20 |
+| S-forum-realsense-d435 | forum | RealSense D435 USB disconnect on Dell GB10 (DGX Spark) — kernel disconnects, unplug/replug doesn't fix, rmmod/modprobe doesn't fix, only reboot; librealsense2 v2.56.5/v2.57.4 RSUSB; fixed by July 2026 firmware update (qobi, aniculescu) | https://forums.developer.nvidia.com/t/351088 | 2025-11-11 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

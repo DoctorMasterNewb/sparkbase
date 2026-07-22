@@ -309,3 +309,18 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - Skipped: topic 377428 (AirLLM theoretical parameter-ceiling speculation — no runs, no
   measurements, replies all jokes; adds nothing beyond known 128 GB unified memory / 4 TB SSD
   facts already in platform-gb10 and the Colibri expert-streaming approach in engines).
+
+## Forum ingest 2026-07-22 (Batch 28)
+- 10 new forum topics found (4 technically relevant, 5 skipped as social/buying/speculation,
+  1 already covered by existing source).
+- 4 new sources registered (Batch 28). 10 topic IDs added to processed_topics.txt (total now 420).
+- Pages touched: platform-gb10 (UVM page-migration livelock — hard shutdown under sustained load,
+  --gpu-memory-utilization 0.85-0.92 fix, platform firmware update, power cap, clock lock;
+  GB10B scanout carveout allocation failure in Sway at 6K resolution; RealSense D435 USB
+  disconnect fixed by July firmware), containers-and-tooling (sparkDash by MiaAI-Lab — second
+  independent multi-Spark monitoring dashboard). All [conjecture].
+- Skipped: 377602 (Motif-3-Beta model announcement, no GB10 specifics), 377626 (best model for
+  3-node, pointer to existing M3 TP=3 docs), 372722 (buy vs rent, buying advice), 364493
+  (Windows 11 ARM installation, not LLM inference), 377396 (Qwen 3.8 launch speculation).
+- 376643 (Sparkrun webui by brainchillz) already covered by existing S-forum-sparkdash — same
+  repo (brainchillz/sparkdash), just a different forum post. Marked processed, no new source.

@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-nvfp4, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl
-> **updated:** 2026-07-21
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-nvfp4, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia
+> **updated:** 2026-07-22
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -274,3 +274,17 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   This is a known gap in the Spark container ecosystem: community images are built for stability
   with specific model recipes, not bleeding-edge upstream. Users needing latest vLLM features
   must either build their own image or find non-standard builds. Single source → [conjecture].
+
+### Batch 28 forum ingest (2026-07-22)
+
+- **[conjecture]** **sparkDash (MiaAI-Lab) — open-source multi-DGX Spark monitoring dashboard**
+  (S-forum-sparkdash-mia, MiaAI_Lab): a second independent community dashboard (distinct from
+  the earlier sparkdash by brainchillz, S-forum-sparkdash). Features: live overview of multiple
+  Sparks in one browser tab (GPU/CPU/unified memory/storage/network), local LLM status for
+  llama.cpp/vLLM/sglang with tok/s when a server is up, add/edit/remove Sparks from the UI (local
+  + remote over SSH), power controls (graceful shutdown over SSH + Wake-on-LAN with
+  auto-detected MAC), optional "Worker node" flag to hide local LLM panels for distributed-only
+  workers. Intended for trusted LAN (no built-in auth — put behind your own proxy). GitHub:
+  `MiaAI-Lab/sparkDash`. Single source → [conjecture]. Reinforces the existing pattern of
+  community-built multi-Spark dashboards (cf. S-forum-sparkdash, S-forum-cluster-dashboard,
+  S-forum-spark-studio).

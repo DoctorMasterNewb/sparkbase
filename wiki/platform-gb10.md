@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-S-forum-update-loop, S-forum-temps-normal
-> **updated:** 2026-07-21
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435
+> **updated:** 2026-07-22
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -633,6 +633,50 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   clock wedge (S-forum-clock-5min). The new durable bit: `fwupdmgr get-results` as a diagnostic
   to check if a firmware update actually failed, and the specific EC firmware version range
   (0x00000500→0x00000507). Single source → [conjecture].
+
+### Batch 28 forum ingest (2026-07-22)
+
+- **[conjecture]** **UVM page-migration livelock causes hard shutdown under sustained load — the
+  "128 GB unified-memory cliff"** (S-forum-uvm-livelock, stuart.trusty): when weights + KV cache +
+  CUDA workspace together creep past the 128 GB UMA pool, the GB10 does **not** get a clean OOM —
+  it enters a **UVM page-migration livelock** that hard-locks the entire box with no warning, no
+  log, and the OOM-killer never fires. Loading two big models (e.g. Qwen 3.5 35B + 27B) or the 122B
+  alone leaves almost no headroom; a busy run tips it over. **Fingerprint:** model-agnostic, dies
+  only when doing real work (never just loading), worse with multiple models co-loaded. **Fix
+  (reported working by the forum user):** (1) cap `--gpu-memory-utilization` to **0.85–0.92**
+  (not 0.94+), don't co-load multiple large models, leave **~10–15 GB free**; (2) update platform
+  firmware (BIOS/BMC, not just OS — "everything's updated" almost always means OS+driver, the
+  Spark's system firmware is separate); (3) `sudo nvidia-smi -pm 1` (persistence mode) +
+  `sudo nvidia-smi -pl <watts>` (cap a few watts under max); (4) `sudo nvidia-smi -lgc <min>,<max>`
+  (lock clocks to kill power transients). The memory cap (#1) was the big one. Single source
+  (one detailed forum reply) → [conjecture], but the mechanism is consistent with the [proven]
+  "unified-memory OOM = hard reboot" finding above. Also: a second user (oddjobsandservices)
+  reports the same abrupt-shutdown symptom caused by **PSU overheating** — the PSU was laying
+  flat on a carpeted floor, underside extremely hot; standing it on its edge fixed it. The machine
+  has great cooling but the PSU does not. NVIDIA staff (aniculescu) recommends running DGX Spark
+  Field Diag to rule out hardware faults.
+- **[conjecture]** **GB10B scanout carveout allocation failure with Sway compositor at high
+  resolution** (S-forum-sway-scanout, dlludllu, parallelArchitect): `NV_ERR_NO_MEMORY` (error
+  0x51) from `memmgrAllocScanoutCarveoutRegionResources_GB10B` — a GB10B-specific display
+  allocation path, not normal CUDA or system memory allocation. At 6144×3456@60Hz / 32bpp, each
+  scanout buffer is ~121 MB; multiple buffers need several hundred MB of **physically contiguous**
+  carveout from the UMA pool. The UMA pool can be fragmented enough at boot that this fails **even
+  with <4 GB used out of 122 GB** (nvidia-smi confirms only lightweight display compositor
+  processes: Sway 104 MB, Alacritty 83–184 MB each, Firefox ~375 MB — well under 2 GB total GPU
+  memory). `WLR_SCENE_DISABLE_DIRECT_SCANOUT=1` does not fix it. Driver 580.142, CUDA 13.0,
+  kernel 6.17.0-1018-nvidia. Suggested isolation: drop to 3840×2160 and check whether errors stop
+  (tests whether 6K resolution is the trigger). Single source → [conjecture]. GB10-specific
+  because the scanout carveout path (`memmgrAllocScanoutCarveoutRegionResources_GB10B`) is
+  unique to the GB10B display controller and doesn't exist on discrete GPUs.
+- **[conjecture]** **RealSense D435 USB disconnect on Dell GB10 — fixed by July 2026 firmware**
+  (S-forum-realsense-d435, qobi): RealSense D435 (idVendor=8086, idProduct=0b07) connected to Dell
+  GB10 running librealsense2 v2.56.5/v2.57.4 (RSUSB build) sometimes disconnects; unplug/replug
+  does not fix, `rmmod`/`modprobe` of uvcvideo and related modules does not fix, only a reboot
+  restores the device. dmesg shows repeated "Found UVC 1.50 device" entries. NVIDIA staff
+  (aniculescu) confirmed the issue should be fixed with the July 2026 firmware update. This is
+  related to the existing [reported] USB2 fallback finding (S-forum-usb2-fallback) and the
+  XHCI "HC Died" finding (S-forum-xhci) — all point to USB subsystem fragility on GB10 that
+  firmware updates address. Single source → [conjecture].
 
 ### Batch 27 forum ingest (2026-07-21)
 

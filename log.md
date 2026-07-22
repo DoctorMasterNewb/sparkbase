@@ -949,3 +949,51 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   note. The clock-capping mitigation is a new conjecture that a hardware agent could
   verify (tok/s-vs-°C tradeoff).
 - **Evidence cap:** All new findings capped at `[conjecture]` (single forum source).
+
+## 2026-07-22 — Scheduled forum ingest: 10 new topics (Batch 28)
+
+- **Date:** 2026-07-22
+- **Source count:** 10 new forum topics found by `scripts/fetch_new_topics.py`. 4 technically
+  relevant, 5 skipped (social/buying/speculation/OS install), 1 already covered by existing
+  source (376643 = same repo as S-forum-sparkdash, different forum post).
+- **Sources registered:** 4 new `S-forum-*` sources (Batch 28): S-forum-uvm-livelock (377478),
+  S-forum-sway-scanout (370458), S-forum-sparkdash-mia (377550), S-forum-realsense-d435 (351088).
+  10 topic IDs added to `processed_topics.txt` (total now 420).
+- **Pages touched:**
+  - **platform-gb10** (new Batch 28 section — 3 findings: UVM page-migration livelock causing
+    hard shutdown under sustained load, the "128 GB unified-memory cliff" — weights + KV cache +
+    CUDA workspace share one pool, over-commitment causes hard-lock with no OOM-killer/no log;
+    fix: `--gpu-memory-utilization` 0.85-0.92, don't co-load large models, leave ~10-15 GB free,
+    platform firmware (BIOS/BMC) update, `nvidia-smi -pm 1` + `-pl` power cap, `-lgc` clock lock;
+    PSU overheating variant; GB10B scanout carveout allocation failure (`memmgrAllocScanoutCarveout-
+    RegionResources_GB10B`) in Sway compositor at 6K resolution — fails with <4 GB/122 GB used
+    because UMA pool fragmentation prevents contiguous carveout; RealSense D435 USB disconnect
+    on Dell GB10 — fixed by July 2026 firmware update),
+  - **containers-and-tooling** (new Batch 28 section — sparkDash by MiaAI-Lab: second independent
+    multi-Spark monitoring dashboard with LLM tok/s, SSH power controls, WoL, worker-node flag),
+  - **sources/README**, **index**, **log**.
+- **Key findings:**
+  1. **UVM page-migration livelock is a distinct failure mode from OOM.** When weights + KV cache
+     + CUDA workspace exceed the 128 GB UMA pool, the GB10 doesn't cleanly OOM — it hard-locks
+     with no warning, no log, and the OOM-killer never fires. This is consistent with the existing
+     [proven] "unified-memory OOM = hard reboot" finding but adds a specific mechanism (UVM
+     page-migration livelock) and a practical mitigation (`--gpu-memory-utilization` 0.85-0.92,
+     don't co-load, leave 10-15 GB free). The fingerprint (model-agnostic, dies only under work,
+     worse with co-loaded models) is a useful diagnostic. → [conjecture] (single source, but
+     mechanism is consistent with proven findings).
+  2. **GB10B has a scanout carveout allocation path that can fail with abundant free memory.**
+     `memmgrAllocScanoutCarveoutRegionResources_GB10B` allocates physically contiguous carveout
+     from the UMA pool for display scanout buffers. At 6K resolution, multiple ~121 MB buffers
+     need several hundred MB contiguous — UMA fragmentation at boot can prevent this even with
+     <4 GB used. This is GB10B-specific (no equivalent on discrete GPUs where VRAM is separate
+     from system RAM). → [conjecture] (single source, well-analyzed by parallelArchitect).
+  3. **RealSense D435 USB disconnect on Dell GB10 is fixed by July 2026 firmware.** NVIDIA staff
+     confirmed. Adds to the pattern of USB subsystem fragility on GB10 (USB2 fallback, XHCI HC
+     died) that firmware updates address. → [conjecture].
+  4. **sparkDash (MiaAI-Lab) is a second independent multi-Spark monitoring dashboard.** Distinct
+     from the earlier sparkdash by brainchillz. Reinforces the pattern of community-built dashboards
+     for multi-Spark ops. → [conjecture].
+- **Evidence cap:** All new findings capped at `[conjecture]` (single forum source each). The UVM
+  livelock finding is consistent with the [proven] "unified-memory OOM = hard reboot" finding but
+  the specific mechanism (page-migration livelock vs. plain OOM) and the mitigation thresholds
+  (0.85-0.92, 10-15 GB free) are single-source and not independently corroborated.
