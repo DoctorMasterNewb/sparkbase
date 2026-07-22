@@ -997,3 +997,40 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   livelock finding is consistent with the [proven] "unified-memory OOM = hard reboot" finding but
   the specific mechanism (page-migration livelock vs. plain OOM) and the mitigation thresholds
   (0.85-0.92, 10-15 GB free) are single-source and not independently corroborated.
+
+## 2026-07-22 — Scheduled forum ingest: Batch 29 — 4 new topics processed
+
+- **Sources:** 4 new forum threads from forums.developer.nvidia.com (DGX Spark / GB10 category).
+  Registered as `S-forum-6x-ring-rdma`, `S-forum-uefi-fw-fail`, `S-forum-serial-console`,
+  `S-forum-sleep-disabled` in `sources/README.md` (Batch 29). All type `forum` → capped at
+  `[conjecture]` (single source each). 4 topic IDs added to `processed_topics.txt` (total now 428).
+- **Pages touched:** multinode-tp-and-networking (7 new [conjecture] findings from 6-node ring
+  topology thread — RoCE L2-adjacency requirement, NCCL_IB_MERGE_NICS=0 + SUBNET_AWARE_ROUTING
+  fix, NCCL channel→HCA round-robin topology-unawareness, GID table asymmetry, TCP fallback
+  as stable workaround, nvidia-peermem modprobe failure + GDAKI/GPUNetIO hypothesis, Hunlx's
+  3-node env recipe), platform-gb10 (3 new [conjecture] findings — UEFI firmware update
+  stepping-stone requirement + dmidecode -t 45 diagnostic, serial console not supported,
+  sleep/suspend disabled by default), benchmarks (2 new [conjecture] rows — Qwen3.6-35B-A3B
+  NVFP4 6-node PP=6 TCP vs RDMA).
+- **Headline finding:** 6-node DGX Spark ring topology thread (S-forum-6x-ring-rdma) is the
+  most technically dense multinode thread in weeks. Three major findings:
+  1. **RoCE RC QPs require L2 adjacency** — routed (L3) RDMA fails at the ibv_modify_qp verbs
+     layer for non-adjacent ring node pairs. This is a fundamental RoCE protocol constraint,
+     not NCCL-specific, and explains why official topologies stop at 3-node full-mesh.
+  2. **NCCL_IB_MERGE_NICS=0 + NCCL_IB_SUBNET_AWARE_ROUTING=1 (patched NCCL) together fix
+     6-node ring RDMA** — stock NCCL's round-robin channel→HCA assignment is not topology-
+     aware and silently routes channels onto ports cabled to a different neighbor. Both
+     flags are required together (merge stops virtual 400G bonding, subnet-aware routing
+     picks the correct physical port per peer via GID/subnet lookup).
+  3. **GPUDirect RDMA unavailable — nvidia-peermem refuses to insert** — `modprobe
+     nvidia-peermem` fails with "Invalid argument" on kernel 6.17.0-1021-nvidia, zero
+     dmesg diagnostic. NCCL logs "GPU Direct RDMA Disabled" for all HCAs. GIN_IB_GDAKI
+     plugin suggests DOCA GPUNetIO/GDAKI may be the intended Grace-Blackwell GPU-NIC path.
+     This directly explains why RDMA vs TCP is only ~7% faster (both host-staged without
+     GPUDirect). First quantified RDMA-vs-TCP comparison on GB10.
+- **Evidence cap:** All new findings capped at `[conjecture]` (single forum source each).
+  The nvidia-peermem modprobe failure corroborates the existing [proven] "No GPUDirect RDMA"
+  finding on platform-gb10.md but adds the specific failure mode and GDAKI hypothesis.
+- **Skipped:** None — all 4 topics had at least marginal GB10 relevance. Topics 369350
+  (serial console) and 377582 (sleep/suspend) are thin but definitive NVIDIA-staff-answered
+  platform facts; registered for provenance and added as minor [conjecture] entries.

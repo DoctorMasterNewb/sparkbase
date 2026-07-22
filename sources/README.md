@@ -364,6 +364,15 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-sparkdash-mia | forum | sparkDash by MiaAI-Lab — open-source multi-DGX Spark monitoring dashboard: live GPU/CPU/unified memory/storage/network, local LLM status (llama.cpp, vLLM, sglang) with tok/s, SSH power controls + Wake-on-LAN, worker-node flag; trusted LAN (no built-in auth) (MiaAI_Lab) | https://forums.developer.nvidia.com/t/377550 | 2026-07-20 |
 | S-forum-realsense-d435 | forum | RealSense D435 USB disconnect on Dell GB10 (DGX Spark) — kernel disconnects, unplug/replug doesn't fix, rmmod/modprobe doesn't fix, only reboot; librealsense2 v2.56.5/v2.57.4 RSUSB; fixed by July 2026 firmware update (qobi, aniculescu) | https://forums.developer.nvidia.com/t/351088 | 2025-11-11 |
 
+## Batch 29 forum sources (2026-07-22 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-6x-ring-rdma | forum | 6-node DGX Spark ring topology NCCL — RoCE L2-adjacency requirement, NCCL_IB_MERGE_NICS=0 + NCCL_IB_SUBNET_AWARE_ROUTING=1 fix, nvidia-peermem refuses to load (no GPUDirect), Qwen3.6-35B-A3B-NVFP4 PP=6 ~21 tok/s/request, RDMA vs TCP only ~7% gain (alpaslan.erdag, Hunlx, mashie) | https://forums.developer.nvidia.com/t/377435 | 2026-07-19 |
+| S-forum-uefi-fw-fail | forum | UEFI firmware update failing — fwupdmgr reports bad PD firmware version 0x00000001, installed version can't bridge to current; stepping-stone firmware needed; dmidecode -t 45 diagnostic (dmaynor, aniculescu/NVIDIA, lewdenlw) | https://forums.developer.nvidia.com/t/365116 | 2026-03-30 |
+| S-forum-serial-console | forum | DGX Spark serial console — NVIDIA confirms not supported, removed from Porting Guide (ragge, aniculescu/NVIDIA) | https://forums.developer.nvidia.com/t/369350 | 2026-05-07 |
+| S-forum-sleep-disabled | forum | Sleep/suspend disabled by default on DGX OS — NVIDIA staff confirms, overrideable (allanmac, aniculescu/NVIDIA) | https://forums.developer.nvidia.com/t/377582 | 2026-07-20 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

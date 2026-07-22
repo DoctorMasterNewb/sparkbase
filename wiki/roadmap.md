@@ -3,8 +3,8 @@
 > **area:** roadmap
 > **status:** open-problem
 > **evidence:** mixed
-> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-inkling, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-intern-s2, S-forum-pmu-amu
-> **updated:** 2026-07-20
+> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-inkling, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-intern-s2, S-forum-pmu-amu, S-forum-6x-ring-rdma
+> **updated:** 2026-07-22
 
 The unsolved stuff. Each item links to the page with the detail. Close an item by moving its finding
 onto the relevant page and deleting it here.
@@ -273,3 +273,28 @@ onto the relevant page and deleting it here.
   whether the NCCL mesh topology adds latency vs a switched topology for PP. Relevant for anyone
   with 3 Sparks deciding whether to use all 3 in PP or run 2+1 (TP=2 + sidecar). See
   `[[wiki/multinode-tp-and-networking.md]]` → Batch 26.
+
+## Forum-sourced open problems (2026-07-22 ingest, Batch 29)
+
+- **[conjecture]** **`nvidia-peermem` refuses to load on GB10 — is GPUDirect RDMA permanently
+  unavailable, and is DOCA GPUNetIO/GDAKI the intended path?** (S-forum-6x-ring-rdma,
+  alpaslan.erdag): `modprobe nvidia-peermem` fails with "Invalid argument" on kernel
+  6.17.0-1021-nvidia with zero dmesg output; the .ko matches vermagic exactly. NCCL logs
+  "GPU Direct RDMA Disabled" for all HCAs. NCCL loads `GIN_IB_GDAKI type 3` — suggesting
+  DOCA GPUNetIO/GDAKI (GPU-initiated async via NVLink-C2C) may be the intended Grace-Blackwell
+  GPU-NIC path, not classical PCIe P2P peermem. Hardware agent should: (1) confirm
+  `nvidia-peermem` modprobe failure on their Spark (and check if a different kernel version
+  or driver version changes it); (2) investigate whether DOCA GPUNetIO/GDAKI is available and
+  functional on GB10 — is there a `gdaki` plugin or DOCA package to install? (3) if GDAKI works,
+  measure whether it enables true GPU-NIC zero-copy and whether it changes the RDMA-vs-TCP
+  gap from ~7% to something larger. This is the root question behind the proven "no GPUDirect"
+  finding — *why* is it unavailable, and is there an alternative path? See
+  `[[wiki/multinode-tp-and-networking.md]]` → Batch 29, `[[wiki/platform-gb10.md]]` → No GPUDirect RDMA.
+- **[conjecture]** **NCCL_IB_SUBNET_AWARE_ROUTING availability — is it in NCCL main or only
+  a fork?** (S-forum-6x-ring-rdma, alpaslan.erdag): the 6-node ring RDMA fix requires
+  `NCCL_IB_SUBNET_AWARE_ROUTING=1`, which was used with a patched NCCL (not stock 2.28.9).
+  Hardware agent should: (1) check if this flag exists in NCCL main / a recent release (≥2.30.4?);
+  (2) if not, identify the fork/patch source and whether it's on track for upstream merge;
+  (3) test on a 3+ node switchless topology to confirm it solves the channel→HCA round-robin
+  topology-unawareness problem. This is the key blocker for >3-node switchless GB10 deployments
+  using all 4 RoCE ports. See `[[wiki/multinode-tp-and-networking.md]]` → Batch 29.

@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh
-> **updated:** 2026-07-21
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma
+> **updated:** 2026-07-22
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -375,6 +375,116 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
   - TTFT ranges 2.2–7.6 s depending on depth/batch
   - These numbers confirm 3-node PP decode is ~single-node speed (consistent with eugr's claim
     above) and prefill is competitive. Single source → [conjecture].
+
+### Batch 29 forum ingest (2026-07-22)
+
+- **[conjecture]** **RoCE RC queue pairs require L2 adjacency — routed (L3) RDMA fails on
+  non-adjacent node pairs in a switchless ring** (S-forum-6x-ring-rdma, alpaslan.erdag):
+  in a 6-node DGX Spark ring topology (each node has 2 ConnectX-7 cards = 4 RoCE ports,
+  connected to exactly 2 physical neighbors via dual-rail 200G links, L3 /31 per link +
+  OSPF/FRR routing), `ib_write_bw` works perfectly between direct neighbors but **fails
+  for any non-adjacent pair** requiring IP-routed (multi-hop) RDMA. The failure is at the
+  raw verbs layer, not NCCL-specific: `ibv_modify_qp ... Connection timed out, curr state
+  INIT, next state RTR` — the RC queue pair handshake cannot traverse L3 hops. Root cause:
+  **RoCE's RC QP setup requires L2 adjacency** (real or bridged); IP forwarding re-routes
+  the packet rather than transparently bridging the Ethernet frame. This explains why
+  officially-documented topologies stop at 3-node full-mesh (every node is a direct L2
+  neighbor) and require a switch beyond that. Mashie confirms: "RoCE needs directly
+  connected interfaces from a layer 2 point of view. If you do bridging through the
+  intermediate nodes it should work." Single source for the isolation; consistent with
+  RoCEv2 protocol semantics. **Why it bites on Spark:** the CX-7 dual-port constraint
+  (2 QSPP ports/node) limits direct-cable L2 mesh to ~3–4 nodes; ring topologies that
+  try to scale beyond this with L3 routing hit this verbs-layer wall at every non-adjacent
+  pair. See also the existing 4-node full-mesh (S-forum-4node-mesh) and 5-node MST
+  sub-port splitting (S-forum-kimi-k3-ceiling) techniques that stay at L2.
+
+- **[conjecture]** **NCCL_IB_MERGE_NICS=0 + NCCL_IB_SUBNET_AWARE_ROUTING=1 (patched NCCL)
+  together fix 6-node ring RDMA** (S-forum-6x-ring-rdma, alpaslan.erdag): two env vars,
+  **both required together**, enable correct NCCL RDMA across a 6-node switchless ring:
+  - `NCCL_IB_MERGE_NICS=0` — stops NCCL from bonding 2 physical ports per CX-7 card into
+    one virtual 400Gbps device (confirmed in logs: "Skipping makeVDevice"). With merge
+    left ON, the merged virtual device tries to open QPs on both underlying physical ports
+    for a single logical peer; since each port goes to a *different* ring neighbor (dual-rail
+    to different peers, not both rails to the same peer), the second QP always times out.
+  - `NCCL_IB_SUBNET_AWARE_ROUTING=1` — (requires a patched NCCL) selects the correct
+    physical port per peer via GID/subnet lookup. Without this, NCCL's round-robin
+    channel→device assignment (channel0→dev0, channel1→dev1, …) picks ports cabled to
+    a different neighbor entirely — silently routing channels onto hardware not wired
+    to the peer. Neither `NCCL_ALGO=Ring`, `NCCL_SKIP_TREE_CONNECT=1`, nor
+    `NCCL_IB_MERGE_NICS=0` alone is topology-aware at the NIC-selection level.
+  With both set: `ncclCommInitRank` completes cleanly, "Connected all rings", no
+  `ibv_modify_qp` timeouts, full 6-node PP=6 pipeline loads and serves. Single source →
+  [conjecture]. The `NCCL_IB_SUBNET_AWARE_ROUTING` flag requires a patched NCCL (not stock
+  2.28.9) — may be in newer NCCL main. Related to the existing [conjecture]
+  NCCL_IB_MERGE_NICS finding from the 3-node mesh (S-forum-3node-mesh, Hunlx's env
+  recipe uses both flags).
+
+- **[conjecture]** **NCCL channel→HCA round-robin assignment is not topology-aware —
+  fails in switchless multi-port ring** (S-forum-6x-ring-rdma, alpaslan.erdag): each DGX
+  Spark has 4 physical RoCE ports but only 2 physical neighbors in a ring. NCCL assigns
+  its 16 logical channels to HCAs by round-robin (channel0→dev0, channel1→dev1, …,
+  channel4→dev0, …), assuming any port can reach any peer (true in a switched fabric, false
+  in a switchless ring). In a ring, 2 of 4 ports are cabled to a *different* neighbor —
+  so a subset of channels get silently routed onto hardware not wired to the peer.
+  `NCCL_ALGO=Ring`, `NCCL_SKIP_TREE_CONNECT=1`, and `NCCL_IB_MERGE_NICS=0` do not change
+  this assignment. The only fix is `NCCL_IB_SUBNET_AWARE_ROUTING=1` (patched NCCL, see
+  above). **Why it bites on Spark:** this is a switchless-topology-specific failure mode
+  — switched fabrics don't hit it because all ports can reach all peers. Relevant for
+  any >3-node switchless GB10 deployment using all 4 RoCE ports.
+
+- **[conjecture]** **GID table asymmetry between two ConnectX-7 cards — disable IPv6 on
+  ring interfaces + force consistent NCCL_IB_GID_INDEX** (S-forum-6x-ring-rdma,
+  alpaslan.erdag): the two CX-7 cards on a Spark have asymmetric GID tables — extra
+  privacy-extension IPv6 addresses shift the IPv4-mapped RoCEv2 GID index between cards.
+  Fix: disable IPv6 on all ring interfaces and force a consistent `NCCL_IB_GID_INDEX`
+  across all nodes. This corroborates the existing [proven] per-NIC GID finding
+  (different GID indices on NIC0 vs NIC1) from the 2-node bring-up, generalized to
+  the multi-card ring case. Hunlx's 3-node recipe uses `NCCL_IB_GID_INDEX=3` with a
+  per-node `NCCL_IB_HCA` mapping (see S-forum-3node-mesh Batch 26).
+
+- **[conjecture]** **NCCL_IB_DISABLE=1 (TCP/Socket fallback) is a stable workaround for
+  6-node PP — ~326 tok/s aggregate, ~7% slower than RDMA** (S-forum-6x-ring-rdma,
+  alpaslan.erdag): when RDMA setup proved too complex (before the MERGE_NICS=0 +
+  SUBNET_AWARE_ROUTING fix), `NCCL_IB_DISABLE=1` forces NCCL onto TCP/Socket transport.
+  Combined with a stable per-node identity address (dummy0 interface, to work around
+  Gloo/NCCL special-casing of `lo`), Ray + vLLM init cleanly across all 6 nodes and
+  PP=6 inference works end-to-end. Qwen3.6-35B-A3B-NVFP4 on 6-node PP=6: **~21 tok/s
+  per request** (20 concurrent, 326 tok/s aggregate TCP, 349 tok/s aggregate RDMA).
+  The ~7% gain from RDMA vs TCP is surprisingly small — see the GPUDirect finding below.
+  Single source for the throughput numbers → [conjecture]. See also
+  [[wiki/benchmarks.md]] for the data point.
+
+- **[conjecture]** **GPUDirect RDMA unavailable on GB10 — `nvidia-peermem` module
+  refuses to insert with "Invalid argument"** (S-forum-6x-ring-rdma, alpaslan.erdag):
+  NCCL logs `GPU Direct RDMA Disabled for HCA 0/1/2/3` for every RoCE interface on every
+  run, regardless of settings. Attempting `sudo modprobe nvidia-peermem` fails with
+  `modprobe: ERROR: could not insert 'nvidia_peermem': Invalid argument` — zero dmesg
+  output, `ib_core` loaded, `nvidia-peermem.ko` matches the running kernel's vermagic
+  (6.17.0-1021-nvidia) exactly, so it's not a version mismatch. The module just refuses
+  to insert with no diagnostic. NCCL also loads a GIN plugin: `GIN/Plugin: Assigned
+  plugin GIN_IB_GDAKI type 3` — suggesting **DOCA GPUNetIO / GDAKI** (GPU-initiated async,
+  leveraging NVLink-C2C coherent CPU-GPU memory) may be the intended GPU-NIC data path
+  on Grace-Blackwell, not the classical PCIe P2P `nvidia_peermem` path. This corroborates
+  the existing [proven] "No GPUDirect RDMA" finding on the platform page — the new bit is
+  the specific `modprobe` failure mode and the GDAKI/GPUNetIO hypothesis for the
+  *intended* path. **Why the RDMA vs TCP gain is only ~7%:** without GPUDirect, both
+  RDMA and TCP transport are host-staged (GPU↔CPU↔NIC, not GPU↔NIC directly) — the CPU
+  bounce is the bottleneck either way, so switching from TCP to RDMA saves only the
+  TCP protocol overhead, not the host-staging cost. This is the first quantified
+  RDMA-vs-TCP comparison on GB10 and directly explains the proven "cross-node is slow"
+  finding. Single source → [conjecture]. See [[wiki/platform-gb10.md]] → No GPUDirect RDMA.
+
+- **[conjecture]** **Hunlx's 3-node switchless env recipe — per-node NCCL_IB_HCA mapping
+  + subnet-aware routing** (S-forum-6x-ring-rdma, Hunlx): a working 3-node switchless
+  mesh env config from the same thread. Key elements: `NCCL_IB_MERGE_NICS=0`,
+  `NCCL_IB_SUBNET_AWARE_ROUTING=1`, `NCCL_IB_GID_INDEX=3` (forces RoCEv2 IPv4),
+  `NCCL_P2P=1` (prevents cross-node P2P ring init deadlocks), `NCCL_CROSS_NIC=1`,
+  `NCCL_IB_RETRY_CNT=7`, `NCCL_IB_TIMEOUT=22`, `VLLM_SKIP_CUSTOM_ALLREDUCE=1`, plus a
+  per-node `NCCL_IB_HCA` mapping via a `case "$VLLM_HOST_IP"` switch (inverted interface
+  order on one node to match physical cabling). Uses `UCX_NET_DEVICES` and
+  `GLOO_SOCKET_IFNAME` on the management interface. This corroborates the existing
+  [conjecture] 3-node mesh findings (S-forum-3node-mesh) and adds the specific env var
+  recipe. Single source → [conjecture].
 
 ## See also
 `[[wiki/platform-gb10.md]]` · `[[wiki/cudagraphs-and-compile.md]]` · `[[wiki/llama-cpp-rpc.md]]` · `[[wiki/engines.md]]`

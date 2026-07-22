@@ -3,7 +3,7 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled
 > **updated:** 2026-07-22
 
 The hardware facts every model bring-up assumes. Read this first.
@@ -575,6 +575,51 @@ only after unexplained slow tok/s).
   postinst-style "if machine_id in (known-bad list): reset()" guard has been suggested
   but not shipped. Note: this is *not* a GB10 hardware defect — it's an OEM imaging
   defect that happens to affect the DGX Spark OEM SKUs (MSI EdgeXpert, ASUS GX10).
+
+### Batch 29 forum ingest (2026-07-22)
+
+- **[conjecture]** **UEFI firmware update fails when installed version can't bridge to current —
+  stepping-stone firmware needed** (S-forum-uefi-fw-fail, dmaynor, lewdenlw): a DGX Spark's UEFI
+  firmware update repeatedly fails during the capsule-on-disk boot flow (blue error box after a
+  few minutes). `fwupdmgr get-history` shows the UEFI Device Firmware update `Update State: Success`
+  for the SoC update but a separate UEFI device (PD firmware) reports a bad version `0x00000001`
+  — lower than the minimum `0x00000400`. The root cause per community diagnosis (lewdenlw): the
+  installed firmware version is too old to bridge directly to the target version; the capsule
+  update path requires a **stepping-stone intermediate firmware** (e.g. manually download and
+  flash version 0x0304 first, then update to current). A clean OS reimage from an updated image
+  also avoids the issue. NVIDIA staff (aniculescu) diagnosed via `fwupdmgr get-devices` +
+  `dmidecode -t 45` — the latter reveals the *actual* firmware versions vs what `fwupdmgr`
+  reports: `dmidecode -t 45 | egrep -A4 "EC|PD|UEFI|FLASH"` shows separate entries for FLASH,
+  UEFI, EC Firmware, and PD Firmware (PD0 FW1/FW2: 5.7, PD1 FW1/FW2: 0.0 — secondary PD
+  controller unpopulated). The DGX Spark Field Diagnostic passes despite the firmware update
+  failure (all tests OK: GpuStress, C2CStress, CpuStress, PowerStress, ThermalStress, FioSSD,
+  MemStress). Single source → [conjecture]. **Why it bites on Spark:** this is a firmware
+  update path gap that can leave a Spark stuck on an old UEFI/EC version — relevant to the
+  existing EC firmware fan-curve regression (S-forum-ec-fan-rollback) and the USB2 fallback
+  (S-forum-usb2-fallback), both of which need firmware updates to fix. Related to the existing
+  [conjecture] fwupd/libfwupd mismatch (S-forum-fwupd-mismatch) and OTA loop
+  (S-forum-ota-loop, S-forum-update-loop). The durable diagnostic is `dmidecode -t 45` to
+  see actual firmware versions when `fwupdmgr` reports inconsistent state.
+
+- **[conjecture]** **DGX Spark serial console not supported — removed from Porting Guide**
+  (S-forum-serial-console, ragge, aniculescu/NVIDIA): the DGX Spark Porting Guide previously
+  listed "Serial console support for flashing and remote management" under Remote Management,
+  but NVIDIA staff confirmed this is **not supported and has been removed from the guide**.
+  No serial console access is available from outside the machine (no network serial, no
+  physical serial port exposed). Single source (NVIDIA staff confirmation) → [conjecture]
+  for the platform capability claim; the removal from the guide is a documented fact. Relevant
+  for headless/remote management planning — the only remote management paths are SSH over
+  network and the DGX Dashboard.
+
+- **[conjecture]** **Sleep/suspend is disabled by default on DGX OS — overrideable**
+  (S-forum-sleep-disabled, allanmac, aniculescu/NVIDIA): sleep/suspend mode
+  (`AllowSuspend`) is **disabled by default** on DGX OS installations. NVIDIA staff
+  (aniculescu) confirmed this is by design and is **overrideable** if desired. The OP noted
+  their MSI install had it disabled (and intended to re-enable). Single source (NVIDIA
+  staff confirmation) → [conjecture] for the default-config claim. Relevant for 24/7
+  inference deployments — the default disabled-suspend is correct for serving workloads,
+  but users who intentionally want suspend (e.g. desktop use) need to know it's a deliberate
+  default, not a bug.
 
 ## Reference cluster
 

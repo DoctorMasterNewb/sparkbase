@@ -324,3 +324,22 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   (Windows 11 ARM installation, not LLM inference), 377396 (Qwen 3.8 launch speculation).
 - 376643 (Sparkrun webui by brainchillz) already covered by existing S-forum-sparkdash — same
   repo (brainchillz/sparkdash), just a different forum post. Marked processed, no new source.
+
+## Forum ingest 2026-07-22 (Batch 29)
+- 4 new forum topics found, all with at least marginal GB10 relevance.
+- 4 new sources registered (Batch 29). 4 topic IDs added to processed_topics.txt (total now 428).
+- **Headline finding:** 6-node DGX Spark ring topology (S-forum-6x-ring-rdma) — the most
+  technically dense multinode thread in weeks. Three major findings: (1) RoCE RC QPs require
+  L2 adjacency — routed L3 RDMA fails at the ibv_modify_qp verbs layer for non-adjacent ring
+  pairs, explaining why official topologies stop at 3-node full-mesh; (2) NCCL_IB_MERGE_NICS=0
+  + NCCL_IB_SUBNET_AWARE_ROUTING=1 (patched NCCL) together fix 6-node ring RDMA — stock NCCL's
+  round-robin channel→HCA assignment is not topology-aware; (3) nvidia-peermem refuses to
+  insert ("Invalid argument") on GB10 — GPUDirect RDMA unavailable, DOCA GPUNetIO/GDAKI may be
+  the intended path. First quantified RDMA-vs-TCP comparison: only ~7% gain (both host-staged).
+- Pages touched: multinode-tp-and-networking (7 new [conjecture] findings — RoCE L2-adjacency,
+  MERGE_NICS=0+SUBNET_AWARE_ROUTING fix, NCCL channel topology-unawareness, GID asymmetry, TCP
+  fallback workaround, nvidia-peermem modprobe failure + GDAKI hypothesis, Hunlx 3-node env
+  recipe), platform-gb10 (3 new [conjecture] — UEFI firmware update stepping-stone requirement,
+  serial console not supported, sleep/suspend disabled by default), benchmarks (2 new
+  [conjecture] rows — Qwen3.6-35B-A3B NVFP4 6-node PP=6 TCP 326 / RDMA 349 tok/s aggregate).
+- All [conjecture] — single forum source each. No new wiki pages created.
