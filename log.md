@@ -1099,3 +1099,29 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
      only physical DAC ejection brings temps down. [conjecture]
   7. Qwen3.6-35B-A3B-FP8 on 2× Spark TP=2: 75-80 tok/s output, cold TTFT 0.68s (5K) / 8.49s
      (81K), prefix cache kicks in hard on 2nd runs. [conjecture]
+
+## 2026-07-23 — Forum ingest: Batch 31 — 2 new topics
+
+- **Sources:** 2 new forum topics found by fetch_new_topics.py. 1 technically relevant, 1
+  skipped (model announcement, no GB10 specifics). 1 new source registered as `S-forum-*`
+  in `sources/README.md` (Batch 31 section). 2 topic IDs added to
+  `sources/processed_topics.txt` (total now 433).
+- **Topics:**
+  - 376722 (Spark-vllm-docker: Force rebuild) — 3-post Q&A thread about spark-vllm-docker
+    build flags. Durable findings: `--rebuild-vllm` forces local rebuild (vs pulling
+    pre-built image); `--use-wheels` uses prebuilt wheels instead of compiling from source;
+    repo always builds from `main` (no pinned vLLM version). Single source → [conjecture].
+  - 377762 (New Motif-3 Beta Release) — model announcement, no GB10-specific content (no
+    flags, env vars, tok/s on Spark, quant formats). Skipped. Same model already skipped
+    in Batch 28 (topic 377602).
+- **Pages touched:** wiki/containers-and-tooling.md (spark-vllm-docker build flags
+  [conjecture], sources + updated date), wiki/models/mistral-small-4.md (build flags
+  detail added to existing spark-vllm-docker section [conjecture], sources), sources/README.md,
+  index.md, log.md.
+- **Key findings:**
+  1. `--rebuild-vllm` flag forces local vLLM image rebuild in eugr's spark-vllm-docker
+     instead of pulling pre-built. [conjecture]
+  2. `--use-wheels` flag uses prebuilt wheels instead of compiling vLLM from source.
+     [conjecture]
+  3. spark-vllm-docker repo always builds from `main` — no pinned vLLM version tag, so
+     images track vLLM HEAD at build time. [conjecture]

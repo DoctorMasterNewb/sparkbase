@@ -381,6 +381,12 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-qwen36-fp8-2x | forum | Qwen3.6-35B-A3B-FP8 on 2× Spark TP=2 — 75-80 tok/s output via spark-vllm-docker run-recipe.sh; FlashInfer, FP8 KV, 262K ctx, prefix caching, no-ray; cold TTFT 0.68s (5K ctx) / 8.49s (81K ctx); prefix cache kicks in hard on 2nd runs (gary100) | https://forums.developer.nvidia.com/t/373995 | 2026-06-21 |
 | S-forum-cx7-dac-power | forum | CX7 DAC power/thermal — 6°C higher temps with DAC plugged in even after mlx5_core unbind + PCI remove; only physical DAC removal brings temps down; dgx-spark-mlnx-hotplug package manages CX7 via udev rules + MTKP0001 ACPI hotplug driver (meanaverage, raphael.amorim) | https://forums.developer.nvidia.com/t/366858 | 2026-04-17 |
 
+## Batch 31 forum sources (2026-07-23 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+|| S-forum-spark-vllm-rebuild | forum | spark-vllm-docker build flags: --rebuild-vllm forces local image rebuild (vs pulling pre-built); --use-wheels uses prebuilt wheels instead of compiling vLLM from source; repo always builds from main (no pinned vLLM version) (elvis.dowson, eugr) | https://forums.developer.nvidia.com/t/376722 | 2026-07-13 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

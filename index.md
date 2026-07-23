@@ -360,3 +360,13 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   serial console not supported, sleep/suspend disabled by default), benchmarks (2 new
   [conjecture] rows — Qwen3.6-35B-A3B NVFP4 6-node PP=6 TCP 326 / RDMA 349 tok/s aggregate).
 - All [conjecture] — single forum source each. No new wiki pages created.
+
+## Forum ingest 2026-07-23 (Batch 31)
+- 2 new forum topics found (1 technically relevant, 1 skipped as model announcement).
+- 1 new source registered (Batch 31). 2 topic IDs added to processed_topics.txt (total now 433).
+- Pages touched: containers-and-tooling (spark-vllm-docker build flags — `--rebuild-vllm`
+  forces local rebuild, `--use-wheels` uses prebuilt wheels, repo builds from `main` with no
+  pinned vLLM version — all [conjecture]), models/mistral-small-4 (build flags detail added
+  to existing spark-vllm-docker section [conjecture]), sources/README, index, log.
+- Skipped: 377762 (Motif-3 Beta model announcement, no GB10 specifics — same model already
+  skipped in Batch 28 as topic 377602).

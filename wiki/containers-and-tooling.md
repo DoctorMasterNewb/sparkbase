@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-nvfp4, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia
-> **updated:** 2026-07-22
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-nvfp4, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild
+> **updated:** 2026-07-23
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -288,3 +288,14 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   `MiaAI-Lab/sparkDash`. Single source → [conjecture]. Reinforces the existing pattern of
   community-built multi-Spark dashboards (cf. S-forum-sparkdash, S-forum-cluster-dashboard,
   S-forum-spark-studio).
+
+### Batch 31 forum ingest (2026-07-23)
+
+- **[conjecture]** **spark-vllm-docker build flags** (S-forum-spark-vllm-rebuild,
+  elvis.dowson/eugr): `./build-and-copy.sh --rebuild-vllm` forces a local vLLM rebuild
+  instead of pulling the pre-built Docker image; `--use-wheels` uses prebuilt wheels
+  instead of compiling vLLM from source. The repo always builds from `main` — there is
+  no pinned vLLM version tag, so images track vLLM HEAD at build time. Useful for users
+  who need to force a fresh build or avoid source compilation. Single source →
+  [conjecture]. See also `[[wiki/models/mistral-small-4.md]]` for the spark-vllm-docker
+  base image description.

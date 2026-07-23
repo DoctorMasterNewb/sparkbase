@@ -3,7 +3,7 @@
 > **area:** model
 > **status:** evolving
 > **evidence:** reported
-> **sources:** S-forum-mistral-s4-119b, S-forum-mistral-s4-nvfp4
+> **sources:** S-forum-mistral-s4-119b, S-forum-mistral-s4-nvfp4, S-forum-spark-vllm-rebuild
 > **updated:** 2026-07-23
 
 Mistral Small 4 (119B, released 2026-03-16) uses **Multi-head Latent Attention (MLA)** with
@@ -126,6 +126,11 @@ obstacle: standard vLLM MLA backends reject `head_size=320` on sm_121.
 - **[reported]** **eugr/spark-vllm-docker** — the foundational base (S-forum-mistral-s4-119b,
   eugr, chuckchambersdev): precompiled SM121 wheels, nightly vLLM, FlashInfer. Build:
   `./build-and-copy.sh` (~10 min on single Spark). Supports `--apply-vllm-pr <N>` to layer PRs.
+- **[conjecture]** **Build flags** (S-forum-spark-vllm-rebuild, elvis.dowson/eugr):
+  `--rebuild-vllm` forces a local vLLM rebuild instead of pulling the pre-built image;
+  `--use-wheels` uses prebuilt wheels instead of compiling vLLM from source. The repo
+  always builds from `main` — there is no pinned vLLM version tag, so the resulting image
+  tracks vLLM's current HEAD.
 - **[reported]** **androiddrew/mistral4-vllm-spark:26-04-14** (S-forum-mistral-s4-119b, drew22):
   eugr's base + PR #39217 + Triton MLA decode fix + reasoning_effort fix. Working tool-calling
   on GB10.
