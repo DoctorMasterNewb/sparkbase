@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled
-> **updated:** 2026-07-22
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power
+> **updated:** 2026-07-23
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -754,3 +754,24 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   trades compute headroom for thermal headroom at the OS/driver level. No specific
   clock value or measured temp delta cited in the thread. Single source referencing
   a blog → [conjecture]; a hardware agent could measure the tok/s-vs-°C tradeoff.
+
+### Batch 30 forum ingest (2026-07-23)
+
+- **[conjecture]** **CX7 DAC thermal penalty — 6°C higher even after software disable**
+  (S-forum-cx7-dac-power, meanaverage): with a QSFP DAC cable plugged in, Spark temperatures
+  run ~6°C higher and power usage increases. This persists **even after** unbinding the mlx5_core
+  driver (`echo "$dev" | sudo tee /sys/bus/pci/drivers/mlx5_core/unbind`) and removing the PCI
+  devices (`echo 1 | sudo tee /sys/bus/pci/devices/$dev/remove`) for all four CX7 BDFs
+  (0000:01:00.0, 0000:01:00.1, 0002:01:00.0, 0002:01:00.1). **Only physical DAC ejection** brings
+  temperatures down. This means the CX7 PHY/serdes draws power whenever a cable is physically
+  inserted, independent of driver state — software unbind is insufficient. Relevant for users running
+  long hot jobs who don't need 200GbE (and have 10GbE redundant paths). Single source → [conjecture].
+  Corroborates existing [conjecture] that CX7 idle power nearly doubles when a cable is connected
+  (S-forum-cx7-hotplug, mashie).
+- **[conjecture]** **dgx-spark-mlnx-hotplug package manages CX7 via udev + ACPI hotplug driver**
+  (S-forum-cx7-dac-power, raphael.amorim): the `dgx-spark-mlnx-hotplug` package installs udev rules
+  (`/lib/udev/rules.d/90-mtk-hotplug.rules`) and a handler script
+  (`/opt/nvidia/dgx-spark-mlnx-hotplug/mtk-hotplug-handler.sh`) that manage CX7 hotplug events via
+  the `MTKP0001` ACPI platform driver (`cx7-pcie-hotplug`). The udev rules trigger on `ACTION=="add"`
+  and `HOTPLUG_STATE=="plugin"` events. This is the software mechanism behind the CX7 hot-pluggable
+  behavior documented in Batch 15 (S-forum-cx7-hotplug). Single source → [conjecture].

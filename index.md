@@ -26,7 +26,9 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [diffusiongemma](wiki/models/diffusiongemma.md) — 26B-A4B block-diffusion LLM; native in vllm-node; NVFP4 MoE needs VLLM_TEST_FORCE_FP8_MARLIN; bf16 deployed, NVFP4 retired.
 - [qwen](wiki/models/qwen.md) — 3.5/3.6/Coder-Next; MoE-A3B NVFP4+MTP ~142 tok/s vs dense ~30; Atlas loader landmines.
 - [nemotron-3](wiki/models/nemotron-3.md) — hybrid Mamba-2 MoE; 120B Q8 via llama.cpp RPC; Nano-Omni vision/omni single-node.
+- [mistral-small-4](wiki/models/mistral-small-4.md) — 119B NVFP4 MLA; TRITON_MLA resolves head_size=320 on SM121; ~28-33 tok/s [reported]; Eagle/MTP not working; --shm-size 16g kernel crash.
 - [step-3.7](wiki/models/step-3.7.md) — retired; kept for the MTP-needs-cudagraphs finding.
+- [laguna-s-2.1](wiki/models/laguna-s-2.1.md) — 117.6B MoE NVFP4 single-node; DFlash spec=7; 22.6 tok/s decode, flat across depths; **retired** — output quality below MiMo/DeepSeek, no speed advantage over Qwen3.6.
 - [inkling](wiki/models/inkling.md) — Thinking Machines multimodal MoE (975B/41B-active); NVFP4 on 8× Spark, paged-KV cliff, Lamport-on-RoCE escape hatch, kernel bugs filed.
 
 ## Reference
@@ -324,6 +326,21 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   (Windows 11 ARM installation, not LLM inference), 377396 (Qwen 3.8 launch speculation).
 - 376643 (Sparkrun webui by brainchillz) already covered by existing S-forum-sparkdash — same
   repo (brainchillz/sparkdash), just a different forum post. Marked processed, no new source.
+
+## Forum ingest 2026-07-23 (Batch 30)
+- 3 new forum topics found, all technically relevant.
+- 3 new sources registered (Batch 30). 3 topic IDs added to processed_topics.txt (total now 431).
+- **Headline finding:** Mistral Small 4 119B NVFP4 on DGX Spark — 67-post thread with working recipe.
+  MLA head_size=320 rejected by all stock backends on SM121; TRITON_MLA (via eugr's spark-vllm-docker)
+  resolves it. ~28-33 tok/s decode corroborated by 5 independent forum users → [reported]. Known
+  issues: reasoning_effort bug (vLLM 0.17.2rc1), tool-calling leaks (PR #39217), Eagle/MTP not
+  working, --shm-size 16g causes kernel crash (must use 4g). vLLM 0.25.1 now publishes native arm64
+  images — no custom build needed for base vLLM.
+- Pages touched: models/mistral-small-4 (NEW — full model page), models/qwen (Qwen3.6-35B-A3B FP8
+  2× recipe 75-80 tok/s [conjecture]), platform-gb10 (CX7 DAC thermal penalty 6°C even after
+  software disable — only physical removal works; dgx-spark-mlnx-hotplug udev/ACPI mechanism
+  [conjecture]), benchmarks (6 new forum-reported rows: 5 Mistral Small 4 + 1 Qwen3.6 FP8),
+  sources/README, index, log.
 
 ## Forum ingest 2026-07-22 (Batch 29)
 - 4 new forum topics found, all with at least marginal GB10 relevance.

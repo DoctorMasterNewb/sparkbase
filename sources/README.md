@@ -373,8 +373,23 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-serial-console | forum | DGX Spark serial console — NVIDIA confirms not supported, removed from Porting Guide (ragge, aniculescu/NVIDIA) | https://forums.developer.nvidia.com/t/369350 | 2026-05-07 |
 | S-forum-sleep-disabled | forum | Sleep/suspend disabled by default on DGX OS — NVIDIA staff confirms, overrideable (allanmac, aniculescu/NVIDIA) | https://forums.developer.nvidia.com/t/377582 | 2026-07-20 |
 
+## Batch 30 forum sources (2026-07-23 ingest)
+
+||| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-mistral-s4-119b | forum | Mistral Small 4 119B NVFP4 on DGX Spark (GB10) — 67-post thread; MLA head_size=320 rejected by all backends initially, TRITON_MLA resolves it; working recipe TRITON_MLA + NVFP4 + FLASHINFER_CUTLASS MoE + fp8 KV; 28-33 tok/s decode (5 independent reporters); reasoning_effort bug, tool-calling PR #39217, Eagle/MTP not working, --shm-size 16g kernel crash, vLLM 0.25.1 native arm64 images (chuckchambersdev, mrDragonFox, cosinus, tenari, 0rand, drew22) | https://forums.developer.nvidia.com/t/363863 | 2026-03-17 |
+| S-forum-qwen36-fp8-2x | forum | Qwen3.6-35B-A3B-FP8 on 2× Spark TP=2 — 75-80 tok/s output via spark-vllm-docker run-recipe.sh; FlashInfer, FP8 KV, 262K ctx, prefix caching, no-ray; cold TTFT 0.68s (5K ctx) / 8.49s (81K ctx); prefix cache kicks in hard on 2nd runs (gary100) | https://forums.developer.nvidia.com/t/373995 | 2026-06-21 |
+| S-forum-cx7-dac-power | forum | CX7 DAC power/thermal — 6°C higher temps with DAC plugged in even after mlx5_core unbind + PCI remove; only physical DAC removal brings temps down; dgx-spark-mlnx-hotplug package manages CX7 via udev rules + MTKP0001 ACPI hotplug driver (meanaverage, raphael.amorim) | https://forums.developer.nvidia.com/t/366858 | 2026-04-17 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and
 [`../agents/ingest.md`](../agents/ingest.md). Forum/repo/report sources cite a URL; first-party
 sources cite the experiment (what/config/when), never a private path.
+
+## First-party sources (2026-07-22)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-laguna-v251-bench | first-party | Laguna-S-2.1-NVFP4 single-node TP=1 on vLLM 0.25.1 + FlashInfer nightly 0.6.15.dev20260712, DFlash spec=7; llama-benchy pp2048/tg128 depth sweep (d0/4096/8192/16384, 3 runs); decode 20-23 tok/s, prefill 3.2-3.9K tok/s, cold start ~15 min | first-party: single-node DGX Spark, 2026-07-22 | 2026-07-22 |
+| S-forum-laguna-dflash | forum | Laguna-S-2.1-NVFP4 + DFlash on DGX Spark: decode 20-36 tok/s single-node, 40-50 tok/s with spec=7; DFlash acceptance 18-40% (7 tokens, structured/agentic), 2-3% (15 tokens); max_num_seqs=4 (default crashes); vLLM 0.25.0+ required (vr8vr8) | https://forums.developer.nvidia.com/t/377663 | 2026-07-19 |

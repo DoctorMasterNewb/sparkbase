@@ -1034,3 +1034,68 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
 - **Skipped:** None — all 4 topics had at least marginal GB10 relevance. Topics 369350
   (serial console) and 377582 (sleep/suspend) are thin but definitive NVIDIA-staff-answered
   platform facts; registered for provenance and added as minor [conjecture] entries.
+
+## 2026-07-22 — Laguna-S-2.1-NVFP4 first-party benchmark
+
+- **Sources:** S-laguna-v251-bench (first-party), S-forum-laguna-dflash (forum)
+- **Pages touched:** wiki/models/laguna-s-2.1.md (created), wiki/benchmarks.md (Laguna row added
+  to main table), index.md (Laguna page listed), sources/README.md (two new sources registered)
+- **What changed:** Created model page for Laguna-S-2.1-NVFP4 with full working config, boot
+  timeline, and llama-benchy depth sweep results. Laguna-S-2.1 is a 117.6B MoE (8.5B active,
+  256 experts, 48 SWA+global layers) running single-node TP=1 on vLLM 0.25.1 + FlashInfer nightly.
+  Decode 22.6 tok/s (peak 32.7) with DFlash spec=7 — flat across 0–16K depth (SWA architecture
+  prevents attention degradation). Prefill 3.2K–3.9K tok/s. DFlash acceptance low on prose
+  (mean 22.6 vs peak 32.7), consistent with forum reports. Cold start ~15 min. PIECEWISE
+  cudagraph only (DFlash + FlashInfer limitation). Registered as S-laguna-v251-bench [proven]
+  and S-forum-laguna-dflash [reported].
+
+## 2026-07-22 — Laguna-S-2.1-NVFP4 retired
+
+- **Sources:** S-laguna-v251-bench (first-party)
+- **Pages touched:** wiki/models/laguna-s-2.1.md (status → retired, quality assessment added),
+  index.md (retirement noted)
+- **What changed:** User subjective testing found Laguna-S-2.1 output quality on par with
+  Qwen3.6-35B-A3B for prose and chart work — accurate long-context chart processing but lower
+  writing quality than MiMo-V2.5 or DeepSeek-V4-Flash. At 22.6 tok/s with 69.3 GiB footprint it
+  offers no advantage over Qwen3.6 TP=2 (67 tok/s, 23.4 GiB). Weights deleted (136 GB reclaimed),
+  Docker image removed, recipe artifacts removed, coordinator registration deleted, sibling
+  Conflicts= cleaned. No swapper recipe retained. Model page kept for reference with [proven]
+  benchmark data and retirement rationale.
+
+## 2026-07-23 — Forum ingest: Batch 30 — 3 new topics
+
+- **Sources:** 3 new forum topics found by fetch_new_topics.py. All 3 technically relevant.
+  3 new sources registered as `S-forum-*` in `sources/README.md` (Batch 30 section). 3 topic IDs
+  added to `sources/processed_topics.txt` (total now 431).
+- **Topics:**
+  - 363863 (Mistral Small 4 119B NVFP4 on DGX Spark) — 67-post thread, highly technical. First
+    confirmed working config for this model on GB10. Central finding: MLA head_size=320 rejected
+    by all stock backends on SM121; TRITON_MLA (via eugr's spark-vllm-docker) resolves it.
+  - 373995 (80 t/s with Qwen3.6-35B-A3B-FP8) — 2-post thread with a working 2× Spark TP=2 recipe
+    via spark-vllm-docker run-recipe.sh, 75-80 tok/s output, detailed TTFT/prefill numbers.
+  - 366858 (How to disable CX7 equivalent way to removing DAC?) — 2-post thread on CX7 DAC
+    thermal/power penalty; software disable insufficient, only physical DAC removal brings
+    temps down; dgx-spark-mlnx-hotplug package mechanism documented.
+- **New wiki page:** `wiki/models/mistral-small-4.md` — full model page with MLA head_size=320
+  wall, working recipe, benchmarks (5 independent reporters → [reported]), known issues
+  (reasoning_effort bug, tool-calling PR #39217, Eagle/MTP not working, --shm-size 16g kernel
+  crash), community Docker images, quality assessment.
+- **Pages touched:** wiki/models/mistral-small-4.md (NEW), wiki/models/qwen.md (Qwen3.6-35B-A3B
+  FP8 2× recipe [conjecture]), wiki/platform-gb10.md (CX7 DAC thermal penalty [conjecture],
+  dgx-spark-mlnx-hotplug udev/ACPI mechanism [conjecture]), wiki/benchmarks.md (6 new
+  forum-reported rows), sources/README.md, index.md, log.md.
+- **Key findings:**
+  1. TRITON_MLA resolves the MLA head_size=320 wall on SM121 for Mistral Small 4 — no
+     VLLM_MLA_DISABLE=1 needed. [reported] via 5 independent forum users.
+  2. Mistral Small 4 119B NVFP4 runs at ~28-33 tok/s single-stream on GB10, fits on a single
+     node (~60 GB). [reported]
+  3. --shm-size 16g causes a kernel crash on GB10 (independent of gpu-memory-utilization);
+     must use 4g with max-num-batched-tokens 4096. [reported]
+  4. vLLM 0.25.1 publishes native linux/arm64 images — no custom Avarok/eugr build needed for
+     base vLLM on Spark anymore. [reported]
+  5. Eagle/MTP speculative decoding does not work for Mistral Small 4 on GB10 as of vLLM 0.21.
+     [conjecture]
+  6. CX7 DAC cable causes ~6°C higher temps even after software mlx5_core unbind + PCI remove —
+     only physical DAC ejection brings temps down. [conjecture]
+  7. Qwen3.6-35B-A3B-FP8 on 2× Spark TP=2: 75-80 tok/s output, cold TTFT 0.68s (5K) / 8.49s
+     (81K), prefix cache kicks in hard on 2nd runs. [conjecture]

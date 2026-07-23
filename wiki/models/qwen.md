@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b
-> **updated:** 2026-07-17
+> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x
+> **updated:** 2026-07-23
 
 The best-supported family on GB10 — both Atlas (AOT kernels for the MoE variants) and vLLM serve it.
 The recurring lesson: **MoE-A3B NVFP4 + MTP is the fastest regime on Spark; the dense variant of the
@@ -165,6 +165,26 @@ claiming 2.5× speedup on B200. On GB10 the reality is different:
     does not natively support 1-bit/ternary — would need a custom Triton or CUTLASS kernel), and
     whether the ~94% quality claim holds on agentic/tool-calling workloads. Queue for hardware
     agent verification.
+
+## Qwen3.6-35B-A3B FP8 on 2× Spark (2026-07-23 forum ingest)
+
+> **evidence:** conjecture (single forum source)
+> **sources:** S-forum-qwen36-fp8-2x
+
+- **[conjecture]** **75-80 tok/s output via spark-vllm-docker run-recipe.sh** (S-forum-qwen36-fp8-2x,
+  gary100): `Qwen/Qwen3.6-35B-A3B-FP8` through vLLM with TP=2 across two GX10 nodes, no-ray,
+  FlashInfer attention, FP8 KV cache, 262K max model len, prefix caching enabled, qwen3_xml tool
+  parser. Results via direct vLLM API:
+  - Small context (5,098 prompt tokens): cold TTFT 0.68s, cold input speed ~7,487 tok/s, output
+    ~79.9 tok/s
+  - Medium context (40,474 tokens): cold TTFT 5.23s, input ~7,740 tok/s, output ~78.5 tok/s
+  - Large context (80,890 tokens): cold TTFT 8.49s, input ~9,522 tok/s, output ~75.3 tok/s
+  - Prefix cache: 2nd-run TTFT drops to 0.47s (medium) / 0.99s (large)
+  - Hardware: 2× ASUS GX10 4TB, ~258 GB combined unified memory, 200GbE RoCE direct link, MTU 9000
+  - Recipe: `./run-recipe.sh qwen3.6-35b-a3b-fp8 --no-ray`
+  This is an FP8 (not NVFP4) checkpoint — native FP8 compute on GB10. The 75-80 tok/s decode is
+  notably lower than the 142 tok/s proven on Atlas with NVFP4+MTP (different engine, different
+  quant, different serving stack). Single source → [conjecture].
 
 ## See also
 `[[wiki/engines.md]]` · `[[wiki/quantization-on-gb10.md]]` · `[[wiki/models/holo-3.1.md]]` (Qwen3.5 VL MoE)

@@ -3,10 +3,11 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama, S-forum-glm52-8x, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma
-> **updated:** 2026-07-22
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama, S-forum-glm52-8x, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-laguna-v251-bench, S-forum-mistral-s4-119b, S-forum-qwen36-fp8-2x
+> **updated:** 2026-07-23
 
-Single-stream decode unless noted. All on the 2× GB10 pair. Numbers anchor the rules on
+Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
+anchor the rules on
 `[[wiki/platform-gb10.md]]` (bandwidth-bound) and `[[wiki/quantization-on-gb10.md]]` (MoE-NVFP4 wins).
 Append rows as new models are benched; cite the source.
 
@@ -31,6 +32,7 @@ Append rows as new models are benched; cite the source.
 | MiniMax-M3 + EAGLE3 + compile (fp8) | AutoRound + draft, fp8 KV, inductor | vLLM dev537 | 2 | ~13 prose / 16.3 code (peak ~20) (prefill 321) | 102k | 90.7 GiB | image :compile; slightly faster, less ctx |
 | MiniMax-M3 + EAGLE3 (eager) | AutoRound-3.2bit + Inferact draft, **fp8 KV** | vLLM dev537 | 2 (TP=2 EP=2) | **13.3 prose / 15.3 code (peak 20)** (prefill 310; 340 @ 68k depth) | **102k** (pool 244k tok) | 90.7 GiB | 2026-07-03; vision + tools working; nst=3, util 0.90, mnbt 4096, video-mm off; 68k needle PASS; nst=5/draft_tp=1 WORSE (9.6/12.9); reasoning-parser OFF (−30% streaming); stack `minimax-m3-eagle3` |
 | **MiniMax-M3-W4A16-GPTQ (b12x)** | GPTQ W4A16 + nvfp4 KV + EAGLE3 | vLLM b12x (a3refaat) | 2 (TP=2) | **36.3 tg32 / 34.7 tg128 (peak 41)** (pp2048 **1028**) | 32k (desktop-head; 196k headless) | ~104 GiB | 2026-07-05; forum 375595 reproduced EXACTLY (35.5 — [reported] origin); **VISION WORKS** (drop --language-model-only: 32.9 tg32 w/ ViT, exact OCR, 113k pool); needs healthy GPU clocks (wedge→20) + warm triton cache both nodes |
+| Laguna-S-2.1-NVFP4 | NVFP4 (W4A4) + DFlash spec=7 | vLLM 0.25.1 + FlashInfer nightly | 1 | **22.6** (peak 32.7) | 256k | 69.3 GiB | 117.6B MoE, 8.5B active, SWA; decode flat across depths; DFlash low accept on prose | S-laguna-v251-bench |
 | Nemotron-3-Super-120B-A12B | Q8_0 GGUF | llama.cpp RPC | 2 | ~10.5 | 1M | ~61 GB | 128 GB model, fits neither node alone |
 
 ## Swapper menu — full sweep (2026-06-30, post power-cycle + cross-node fixes)
@@ -423,6 +425,28 @@ All rows below are **[conjecture]** — single-source community-reported numbers
 > The ~7% RDMA-vs-TCP gain is attributed to GPUDirect RDMA being unavailable on GB10 —
 > both transports are host-staged, so RDMA saves only TCP protocol overhead. See
 > `[[wiki/multinode-tp-and-networking.md]]` → Batch 29 for the full topology findings.
+
+## Forum-reported benchmarks (2026-07-23 ingest, Batch 30)
+
+All rows below are **[conjecture]** — single-source community-reported numbers, not first-party.
+
+||| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+|---|---|---|---|---|---|---|---|---|
+|| Mistral-Small-4-119B | NVFP4 + fp8 KV | vLLM 0.17.2rc1 (spark-vllm-docker) | 1 | 33.2 (2K ctx) / 31.7 (32K) / 17.7 (60K) | 65536 | TRITON_MLA, FLASHINFER_CUTLASS MoE; 10 concurrent → 100.3 tok/s agg | S-forum-mistral-s4-119b ||
+|| Mistral-Small-4-119B | NVFP4 + fp8 KV | vLLM 0.21.0 (native arm64) | 1 | 28.76 (peak 30.0) | 256K | --shm-size 4g (16g crashes); max-num-seqs 4; bench serve c=1 | S-forum-mistral-s4-119b ||
+|| Mistral-Small-4-119B | NVFP4 + fp8 KV | vLLM (patched) | 1 | 28.0 sustained | — | MLA enabled, no VLLM_MLA_DISABLE; reasoning_effort patched | S-forum-mistral-s4-119b ||
+|| Mistral-Small-4-119B | NVFP4 + fp8 KV | vLLM (llama-benchy tg32) | 1 | 30.18 (d0) / 24.12 (d16384) | — | cosinus; prefill 3188→2560 tok/s across depths | S-forum-mistral-s4-119b ||
+|| Mistral-Small-4-119B | NVFP4 + fp8 KV | vLLM (llama-benchy tg32) | 1 | 28.84 (d0) / 16.65 (d32768) | — | tenari; ctx_pp 3922-6195 tok/s; prefill degrades with depth | S-forum-mistral-s4-119b ||
+|| Qwen3.6-35B-A3B | FP8 + fp8 KV | vLLM (spark-vllm-docker, no-ray) | 2 (TP=2) | 75-80 | 262K | Cold TTFT 0.68s (5K) / 8.49s (81K); prefix cache 2nd-run TTFT 0.47s/0.99s; 200GbE RoCE MTU 9000 | S-forum-qwen36-fp8-2x ||
+
+> **[reported]** Mistral Small 4 119B NVFP4 decode at ~28-33 tok/s is corroborated by 5 independent
+> forum users (mrDragonFox, cosinus, tenari, 0rand, chuckchambersdev) across different vLLM versions
+> (0.17.2rc1, 0.21.0) and benchmark tools (vLLM bench serve, llama-benchy). The model fits on a
+> single Spark (~60 GB NVFP4). Eagle/MTP does not work. See `[[wiki/models/mistral-small-4.md]]`.
+>
+> **[conjecture]** Qwen3.6-35B-A3B-FP8 on 2× Spark (gary100) — 75-80 tok/s output, native FP8 (not
+> NVFP4). Lower than the 142 tok/s proven on Atlas with NVFP4+MTP (different engine/quant/stack).
+> Single source → [conjecture].
 
 ## Image generation benchmarks (diffusion models on GB10, 2026-07-10)
 
