@@ -402,6 +402,12 @@ Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`]
 [`../agents/ingest.md`](../agents/ingest.md). Forum/repo/report sources cite a URL; first-party
 sources cite the experiment (what/config/when), never a private path.
 
+## Batch 33 forum sources (2026-07-24 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-qwen3tts-ggml | forum | Qwen3-TTS on DGX Spark: GGML CUDA crash `ggml_cuda_kernel_can_use_pdl` (PDL capability check) — root cause is CUDA 12.8/sm_120 build, not sm_121a; fix: force torch backend (CUDA graphs, no GGML); TTFA 2.65s, steady-state RTF ~1.7; PDL oddness on GB10 corroborated (swann.schilling, Drew_the_AI_Guy) | https://forums.developer.nvidia.com/t/377743 | 2026-07-22 |
+
 ## First-party sources (2026-07-22)
 
 || ID | type | What it is | Reference | Date |

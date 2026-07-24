@@ -389,3 +389,19 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   corroboration — good for reasoning+tools, fails generative tasks [conjecture]), benchmarks
   (Solar-Open2-250B INT4 on 2× Spark ~15 tok/s [conjecture]), sources/README, index, log.
 - Skipped: 377689 (community extinction — social), 377733 (RMA prep), 374727 (entitlement).
+
+## Forum ingest 2026-07-24 (Batch 33)
+- 2 new forum topics found (1 technically relevant, 1 skipped as social/meta).
+- 1 new source registered (Batch 33). 2 topic IDs added to processed_topics.txt (total now 442).
+- **Headline finding:** Qwen3-TTS GGML backend crashes on GB10 — `ggml_cuda_kernel_can_use_pdl`
+  `CUDA error: unspecified launch failure` on first inference. Root cause: qwentts-cpp-python
+  PyPI wheels built against CUDA 12.8 / sm_120, not sm_121a. Memory ops work, compute kernels
+  fail on dispatch. PDL error is a red herring (async CUDA errors are sticky). Fix: force
+  `torch` backend (drop `[ggml]` extra, set `--qwen3_tts_backend torch`); CUDA graphs work,
+  TTFA 2.65s, steady-state RTF ~1.7. Same sm_120-vs-sm_121a mismatch class as vLLM FP4 CUTLASS
+  and Triton ptxas — now in a 3rd ecosystem component (GGML/qwentts.cpp). All [conjecture].
+- Pages touched: platform-gb10 (GGML PDL crash root cause + sm_121a targeting gap
+  [conjecture]), containers-and-tooling (Qwen3-TTS torch backend workaround + UMA audio
+  tensor pinning tip [conjecture]), sources/README, index, log.
+- Skipped: 377793 (PSA about using Discourse MCP to follow the forum — social/meta; replies
+  reference already-sourced DSV4-Flash-DSpark and Laguna-S-2.1 recipes, no new findings).

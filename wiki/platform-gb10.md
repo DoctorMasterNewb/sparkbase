@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power
-> **updated:** 2026-07-23
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml
+> **updated:** 2026-07-24
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -775,3 +775,28 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   the `MTKP0001` ACPI platform driver (`cx7-pcie-hotplug`). The udev rules trigger on `ACTION=="add"`
   and `HOTPLUG_STATE=="plugin"` events. This is the software mechanism behind the CX7 hot-pluggable
   behavior documented in Batch 15 (S-forum-cx7-hotplug). Single source → [conjecture].
+
+### Batch 33 forum ingest (2026-07-24)
+
+- **[conjecture]** **GGML CUDA PDL crash on GB10 — kernels built against CUDA 12.8 / sm_120
+  produce invalid kernels on dispatch** (S-forum-qwen3tts-ggml, swann.schilling): when running
+  Qwen3-TTS with the GGML backend (`faster-qwen3-tts[ggml]` → `qwentts-cpp-python` from PyPI),
+  model loading succeeds but the very first inference dies with:
+  `CUDA error: unspecified launch failure` in `ggml_cuda_kernel_can_use_pdl` at
+  `ggml/src/ggml-cuda/common.cuh:1602` (`cudaFuncGetAttributes(&attr, kernel)`). The PDL
+  (Programmatic Dependent Launch) capability check is **not** the actual failing kernel — CUDA
+  errors are asynchronous and sticky, so the next CUDA API call surfaces the error regardless of
+  what it does. The real issue is a **CUDA architecture mismatch specific to GB10**: the default
+  `qwentts-cpp-python` wheel is built against **CUDA 12.8** targeting generic **sm_120**, not
+  GB10's **sm_121a**. Builds against 12.8 / sm_120 can load and copy weights (memory ops work)
+  but produce **invalid kernels the instant they're dispatched**. This is consistent with the
+  existing [reported] finding that Triton's bundled ptxas 12.8 lacks sm_121a
+  (S-forum-nvfp4-ray) and that GB10 wants CUDA 13.0 with explicit sm_121/sm_121a targeting.
+  A second user (Drew_the_AI_Guy) corroborates: the GGML kernel was likely compiled for an SM
+  version the GB10 driver doesn't expose, or PDL metadata is incompatible with Blackwell.
+  Separately, NVIDIA's forum has an open thread noting PDL behaves oddly on GB10 specifically.
+  **Fix:** force the `torch` backend instead of `ggml` (CUDA-graph-accelerated PyTorch, no GGML
+  path). See `[[wiki/containers-and-tooling.md]]` for the Qwen3-TTS workaround details. Single
+  detailed source + one corroborating reply → [conjecture] (would be [reported] with another
+  independent confirmation). GB10-specific because it's the sm_121a targeting gap, not a generic
+  GGML bug.

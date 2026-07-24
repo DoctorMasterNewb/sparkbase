@@ -1167,3 +1167,25 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
      decode. [conjecture]
   6. Solar-Open2-250B (250B-A15B MoE) INT4 on 2× Spark: ~15 tok/s decode, ~2227 tok/s
      prefill, flat across depths to 32K. New Korean government-backed model. [conjecture]
+
+## 2026-07-24 — Forum ingest: 2 new topics (Batch 33)
+
+- **Sources:** 2 new forum topics found. 1 technically relevant (Qwen3-TTS GGML crash +
+  torch backend fix), 1 skipped (PSA about Discourse MCP — social/meta, replies reference
+  already-sourced DSV4-Flash and Laguna-S recipes).
+- 1 new source registered (Batch 33): S-forum-qwen3tts-ggml. 2 topic IDs added to
+  processed_topics.txt (total now 442).
+- **Pages touched:** platform-gb10 (GGML CUDA PDL crash on GB10 — kernels built against
+  CUDA 12.8 / sm_120 produce invalid kernels on dispatch; PDL capability check is a red
+  herring due to async CUDA errors; consistent with existing sm_121a targeting gap
+  [conjecture]), containers-and-tooling (Qwen3-TTS torch backend workaround — drop [ggml]
+  extra, force --qwen3_tts_backend torch, CUDA graphs work, TTFA 2.65s, steady-state
+  RTF ~1.7; UMA audio tensor pinning tip [conjecture]), sources/README, index, log.
+- **Key finding:** Qwen3-TTS GGML backend crashes on GB10 because qwentts-cpp-python
+  wheels target CUDA 12.8 / sm_120, not sm_121a. Memory ops work, compute kernels fail
+  on dispatch. The PDL (Programmatic Dependent Launch) error is a downstream symptom,
+  not the root cause. Fix: force the torch backend (CUDA-graph-accelerated PyTorch, no
+  GGML). This is the same CUDA 12.8-vs-13.0 / sm_120-vs-sm_121a architecture mismatch
+  class already documented for vLLM FP4 CUTLASS and Triton ptxas, now confirmed in a
+  third ecosystem component (GGML/qwentts.cpp). All [conjecture] — single detailed
+  source + one corroborating reply. No new wiki pages created. No index changes needed.

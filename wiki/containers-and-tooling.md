@@ -3,7 +3,7 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml
 > **updated:** 2026-07-24
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
@@ -314,3 +314,23 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   eugr): confirmed that GB10 (V)RAM cannot be upgraded — it's soldered. Only the SSD can be
   replaced. Relevant for users asking about hardware upgrades for larger models. [conjecture]
   (single forum source, but consistent with known GB10 hardware specs).
+
+### Batch 33 forum ingest (2026-07-24)
+
+- **[conjecture]** **Qwen3-TTS on DGX Spark — force `torch` backend to bypass GGML CUDA crash**
+  (S-forum-qwen3tts-ggml, swann.schilling): the default GGML backend in `faster-qwen3-tts[ggml]`
+  crashes on first inference on GB10 due to CUDA 12.8 / sm_120 kernel mismatch (see
+  `[[wiki/platform-gb10.md]]` for the root-cause analysis). The fix is to use the `torch` backend:
+  (1) drop the `[ggml]` extra in `pyproject.toml` (`"faster-qwen3-tts>=0.3.2"` instead of
+  `"faster-qwen3-tts[ggml]>=0.3.2"`); (2) force the backend in docker-compose:
+  `--qwen3_tts_backend torch`; (3) rebuild. The torch backend uses CUDA-graph-accelerated
+  PyTorch (no GGML, no Flash Attention), same approach proven working in
+  `martinb78/faster-qwen3-tts-dgx-spark`. Confirmed working: CUDA graph capture succeeds,
+  **TTFA 2.65s**, first request RTF 0.54 (includes one-time graph capture), **steady-state
+  RTF ~1.7** (faster than real-time). Additional tip (Drew_the_AI_Guy): on GB10 watch CPU-GPU
+  migration for audio tensors — UMA helps but Qwen3-TTS chunks can end up CPU-bound if the torch
+  backend doesn't pin input buffers; `torch.cuda.synchronize()` and `non_blocking=True` on
+  tensor moves matter. This complements the existing torchaudio ARM64 gap
+  (S-forum-qwen-tts-arm64) — both are GB10 audio-stack issues, but the GGML crash is a
+  different failure mode (kernel dispatch, not wheel availability). Single source + one
+  corroborating reply → [conjecture].
