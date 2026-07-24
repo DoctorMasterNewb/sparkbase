@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma
-> **updated:** 2026-07-22
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3
+> **updated:** 2026-07-24
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -485,6 +485,48 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
   `GLOO_SOCKET_IFNAME` on the management interface. This corroborates the existing
   [conjecture] 3-node mesh findings (S-forum-3node-mesh) and adds the specific env var
   recipe. Single source → [conjecture].
+
+### Batch 32 forum ingest (2026-07-24)
+
+- **[conjecture]** **Baked `LD_PRELOAD` NCCL shim beats `LD_LIBRARY_PATH` and symlinks**
+  (S-forum-m3-tp3, tonyd615): a vLLM container had a baked `LD_PRELOAD` pointing at an older NCCL
+  "local-inference" 2.30.4 shim. The baked `LD_PRELOAD` silently overrode both a symlink swap and
+  an `LD_LIBRARY_PATH` prepend — the NCCL banner read 2.30.4 even with 2.30u1 installed. The old
+  shim lacked the subnet-aware override needed for 3-node switchless mesh, causing
+  `ibv_modify_qp err 110`. **Fix:** force `LD_PRELOAD` to the 2.30u1 lib and unset the shim env
+  vars. **Why it bites on Spark:** community Docker images may bake NCCL shims that silently
+  override user-installed NCCL builds — always check `LD_PRELOAD` in the container env, not just
+  `LD_LIBRARY_PATH`. Related to the existing [proven] NCCL 2.30.4 mandatory finding
+  (S-forum-ds4f-4x-vllm) and [conjecture] vLLM 0.25.1/NCCL 2.30.7 image lag (S-forum-vllm025-nccl).
+
+- **[conjecture]** **Cold power-drain fixes stuck `ib_write_bw` on healthy CX-7 hardware**
+  (S-forum-m3-tp3, tonyd615, mashie): `ib_write_bw` stuck at ~12.8 Gb/s on healthy Gen5 x4 / 200G
+  hardware (did not scale with queue pairs: q=4 and q=16 both landed at 12.8). A **full cold
+  power-drain** (power off, unplug bricks ~90s, power back on) cleared it to **111.85 Gb/s** —
+  matching eugr's documented number. A warm reboot did **not** fix it. This is the same class of
+  cold-power-cycle fix documented for the GPU clock wedge (S-forum-clock721, S-forum-clock-5min)
+  and CX-7 `SlotPowerLimit 0W` throttle (S-forum-cx7-13gbps) — the CX-7 NIC or its PCIe link
+  gets into a throttled state that only a full power-cycle clears. **Why it bites on Spark:**
+  before debugging NCCL/RoCE config, verify raw `ib_write_bw` — if it's stuck at ~13 Gb/s, no
+  amount of NCCL env tuning will help; power-cycle first.
+
+- **[conjecture]** **TP=3 bandwidth fix increases concurrency, not single-stream tok/s**
+  (S-forum-m3-tp3, tonyd615): after fixing the RoCE link from 12→100 Gb/s, single-stream tok/s
+  did not change — **concurrency increased instead**. This is consistent with the proven finding
+  that cross-node TP is latency-bound (host-staged all-reduces) for single-stream decode, not
+  bandwidth-bound. More link bandwidth helps when multiple concurrent requests saturate the
+  collective pipeline, not for a single request's ~120 sequential all-reduces/token.
+
+- **[conjecture]** **Ray object store + memory monitor cause false OOM on unified memory**
+  (S-forum-m3-tp3, tonyd615): two Ray-specific OOM traps on GB10 unified memory: (1) Ray reserves
+  ~30% of RAM (~36 GB/node) for a plasma object store that vLLM TP never uses — on the head, this
+  + 84 GB shard + KV overcommits the 121 GB box → `NVRM: Out of memory` during weight load. Fix:
+  `--object-store-memory 1073741824` (cap to 1 GB, frees ~35 GB/node). (2) After warmup, the head
+  sits at ~96% RAM (normal on UMA) — Ray's 95% memory monitor false-kills rank-0
+  (`NODE_OUT_OF_MEMORY`) with no real OOM. Fix: `RAY_memory_monitor_refresh_ms=0`. **Why it bites
+  on Spark:** Ray's memory assumptions (discrete CPU RAM vs GPU VRAM) don't hold on unified memory
+  — high utilization is normal, not a leak. Related to the existing [proven] Ray V2 hangs finding
+  and the [conjecture] UVM livelock finding (S-forum-uvm-livelock).
 
 ## See also
 `[[wiki/platform-gb10.md]]` · `[[wiki/cudagraphs-and-compile.md]]` · `[[wiki/llama-cpp-rpc.md]]` · `[[wiki/engines.md]]`

@@ -1125,3 +1125,45 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
      [conjecture]
   3. spark-vllm-docker repo always builds from `main` — no pinned vLLM version tag, so
      images track vLLM HEAD at build time. [conjecture]
+
+## 2026-07-24 — Forum ingest: Batch 32 — 7 new topics (4 processed, 3 skipped)
+
+- **Sources:** 4 new forum sources registered (Batch 32) in `sources/README.md`:
+  S-forum-m3-tp3, S-forum-vllm-containers, S-forum-laguna-quality, S-forum-solar-open2.
+  7 topic IDs added to `processed_topics.txt` (total now 440).
+- **Topics found:** 7 new topics. 4 technically relevant, 3 skipped:
+  - 377689 (community extinction) — social. Skipped.
+  - 377733 (Prep for RMA?) — RMA complaint. Skipped.
+  - 374727 (Permanent entitlement) — entitlement. Skipped.
+- **Pages touched:**
+  - models/minimax (M3 NVFP4 TP=3 on 3× Spark — chthonic vLLM+b12x virtual sharding,
+    3 head-node OOM fixes, NCCL LD_PRELOAD shim trap, cold power-drain bandwidth fix,
+    EAGLE3 bf16-vs-NVFP4 dead-end, 200K ctx over RoCE — all [conjecture]),
+  - multinode-tp-and-networking (baked LD_PRELOAD beats LD_LIBRARY_PATH, cold power-drain
+    fixes stuck ib_write_bw 12.8→111.85 Gb/s, TP=3 bandwidth→concurrency not tok/s,
+    Ray object store + memory monitor false OOM on UMA — all [conjecture]),
+  - containers-and-tooling (NGC lags 2 versions, nightly wheel regression pipeline,
+    --vllm-ref, --name multi-container, VRAM soldered — all [conjecture]),
+  - models/laguna-s-2.1 (quality corroboration — good for reasoning+tools, fails
+    generative tasks, ~20-30 tps [conjecture]),
+  - benchmarks (Solar-Open2-250B INT4 on 2× Spark ~15 tok/s, pp2048 ~2227 tok/s
+    [conjecture]),
+  - sources/README, index, log.
+- **Key findings:**
+  1. MiniMax-M3 NVFP4 TP=3 works on 3× DGX Spark via Luke Alonso's chthonic vLLM+b12x
+     virtual sharding commit (fb63c9a) — 64 attn / 4 KV heads made divisible by 3
+     automatically. First reported TP=3 recipe for M3. [conjecture]
+  2. Three undocumented head-node OOM fixes for Ray on UMA: --load-format safetensors
+     (no GDS), --object-store-memory 1073741824 (Ray reserves 30% for unused plasma),
+     RAY_memory_monitor_refresh_ms=0 (96% RAM is normal on UMA, not a leak). [conjecture]
+  3. Baked LD_PRELOAD NCCL shim in community Docker silently overrides user-installed
+     NCCL — beats both symlink swap and LD_LIBRARY_PATH. Always check LD_PRELOAD in
+     container env. [conjecture]
+  4. Cold power-drain (unplug bricks ~90s) fixes stuck ib_write_bw 12.8→111.85 Gb/s —
+     warm reboot does NOT work. Same class as GPU clock wedge and CX-7 SlotPowerLimit
+     throttle. Power-cycle first before debugging NCCL config. [conjecture]
+  5. Going from 12→100 Gb/s link speed on TP=3 did not change single-stream tok/s —
+     concurrency increased instead. Consistent with proven latency-bound cross-node
+     decode. [conjecture]
+  6. Solar-Open2-250B (250B-A15B MoE) INT4 on 2× Spark: ~15 tok/s decode, ~2227 tok/s
+     prefill, flat across depths to 32K. New Korean government-backed model. [conjecture]

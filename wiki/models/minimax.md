@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-m3-vision, S-m3-20tps, S-sess-jun11, S-minimax-sweeps, S-forum-m3-nvfp4-4x, S-forum-m3-awq-4x, S-forum-m3-llamacpp-2x, S-forum-m3-quad, S-forum-m3-w4a16-gptq, S-forum-m25-sglang-4x, S-forum-m27-recipe, S-forum-4node-crs504
-> **updated:** 2026-07-13
+> **sources:** S-m3-vision, S-m3-20tps, S-sess-jun11, S-minimax-sweeps, S-forum-m3-nvfp4-4x, S-forum-m3-awq-4x, S-forum-m3-llamacpp-2x, S-forum-m3-quad, S-forum-m3-w4a16-gptq, S-forum-m25-sglang-4x, S-forum-m27-recipe, S-forum-4node-crs504, S-forum-m3-tp3
+> **updated:** 2026-07-24
 
 Two very different MiniMax stories on GB10: **M2.7 AWQ** = the fast, durable daily-driver default;
 **M3** = a 428B research/long-context/vision endpoint that's structurally slow here.
@@ -171,7 +171,65 @@ tradeoff is context (b12x-vision ~113k vs our 262k). Both are viable; b12x-visio
   launch otherwise).
 
 ## See also
-`[[wiki/cudagraphs-and-compile.md]]` · `[[wiki/attention-and-kv-cache.md]]` · `[[wiki/benchmarks.md]]` · `[[wiki/platform-gb10.md]]`
+`[[wiki/cudagraphs-and-compile.md]]` · `[[wiki/attention-and-kv-cache.md]]` · `[[wiki/benchmarks.md]]` · `[[wiki/platform-gb10.md]]` · `[[wiki/multinode-tp-and-networking.md]]`
+
+## Forum ingest: M3 NVFP4 TP=3 on 3× DGX Spark (2026-07-24, forum 373387)
+
+**[conjecture]** MiniMax-M3 NVFP4 (`lukealonso/MiniMax-M3-NVFP4`, ~243 GB) serving at **real TP=3**
+across 3 DGX Sparks (GB10/sm_121), no 4th node. Uses Luke Alonso's chthonic vLLM fork + b12x backend;
+his commit `fb63c9a` "Support MiniMax M3 TP3 virtual sharding" makes the 64 attention / 4 KV heads
+divisible by 3 automatically at `--tensor-parallel-size 3`. (S-forum-m3-tp3, tonyd615)
+
+### Head-node OOM fixes (3, all undocumented)
+**[conjecture]** Three fixes that cost the most time during bring-up (all Ray-specific, S-forum-m3-tp3):
+
+1. **`--load-format safetensors`** — instanttensor's GDS `open()` throws under torch 2.12 on Spark
+   (no GPUDirect Storage). Use plain safetensors loader instead.
+2. **`--object-store-memory 1073741824`** on every `ray start` — Ray reserves ~30% of RAM
+   (~36 GB/node) for a plasma object store that vLLM TP never uses (tensors go over NCCL). On the head,
+   that reserve + 84 GB shard + KV overcommits the 121 GB box → `NVRM: Out of memory` during weight
+   load. Capping to 1 GB freed ~35 GB/node.
+3. **`RAY_memory_monitor_refresh_ms=0`** — after successful warmup the head sits at ~96% RAM (normal
+   on unified memory). Ray's 95% memory monitor then false-kills rank-0 (`NODE_OUT_OF_MEMORY`) even
+   though there is no real OOM (~4.4 GB free, no NVRM, no Linux kill). Disable the monitor; the kernel
+   and driver stay the real backstop.
+
+### NCCL LD_PRELOAD shim trap
+**[conjecture]** The vLLM container had a **baked `LD_PRELOAD`** pointing at an older NCCL
+"local-inference" 2.30.4 shim. A baked `LD_PRELOAD` beats both a symlink swap and an
+`LD_LIBRARY_PATH` prepend, so it silently kept loading 2.30.4 (the NCCL banner read 2.30.4 even with
+2.30u1 installed). That shim lacked the working subnet-aware override, causing `ibv_modify_qp err 110`
+on the switchless mesh. **Fix:** force `LD_PRELOAD` to the 2.30u1 lib and unset the shim env vars.
+(S-forum-m3-tp3, tonyd615)
+
+### Cold power-drain fixes stuck RoCE bandwidth
+**[conjecture]** Raw `ib_write_bw` was stuck at ~12.8 Gb/s and did not scale with queue pairs
+(q=4 and q=16 both landed at 12.8), on healthy Gen5 x4 / 200G hardware. A **full cold power-drain**
+(power off, unplug bricks ~90s, power back on) cleared it to **111.85 Gb/s** — matching eugr's
+documented number. A warm reboot did **not** fix it. This corroborates the existing power-cycle
+findings on `[[wiki/platform-gb10.md]]` (GPU clock wedge, CX-7 bandwidth) — a cold power-cycle
+resets state that warm reboots don't. (S-forum-m3-tp3, tonyd615, mashie)
+
+### NCCL 2.30u1 for 3-node switchless mesh
+**[conjecture]** 3-node switchless RoCE mesh requires **NCCL 2.30u1 built from source for sm_121**,
+with per-leg `/30` subnets, RoCEv2 GID index 3, `NCCL_IB_SUBNET_AWARE_ROUTING=1`, and
+`NCCL_IB_MERGE_NICS=0` (per eugr's `spark-vllm-docker/docs/NETWORKING.md`). OOB communication on
+the 10G management NIC, RoCE HCAs pinned via `NCCL_IB_HCA` for data. This corroborates the existing
+[conjecture] 3-node mesh findings (S-forum-3node-mesh, S-forum-6x-ring-rdma). (S-forum-m3-tp3,
+tonyd615, eugr_nv)
+
+### Performance and EAGLE3 status
+- **[conjecture]** Single-stream ~6 tok/s when NCCL was running over the 1GbE management NIC (TP=3
+  does ~120 cross-node all-reduces/token). After RoCE fix: serving clean at **200K context**. Going
+  from 12 Gb/s to 100 Gb/s link speed did not change single-stream tok/s — **concurrency increased
+  instead** (consistent with the proven finding that cross-node is latency-bound, not bandwidth-bound,
+  for single-stream decode). (S-forum-m3-tp3, tonyd615)
+- **[conjecture]** EAGLE3 spec-decode: the chthonic M3 class implements `SupportsEagle3` and
+  `Inferact/MiniMax-M3-EAGLE3` loads, but **bf16 draft against NVFP4 target dead-ends** in vLLM's
+  draft-quant path. OP later reports "I think I got Eagle to work" but no follow-up details posted
+  yet. (S-forum-m3-tp3, tonyd615)
+- **[conjecture]** `bullerwins/MiniMax-M3-4bit-W4A16-v0` (~227 GB on disk) may fit on 2× Spark
+  (queried by corbett_korbett, unanswered in thread). (S-forum-m3-tp3)
 
 ## Forum ingest: 4× Spark recipes, llama.cpp RPC, AWQ-INT4 (2026-07-08)
 

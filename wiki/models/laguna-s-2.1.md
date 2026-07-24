@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** retired
 > **evidence:** proven
-> **sources:** S-laguna-v251-bench, S-forum-laguna-dflash
-> **updated:** 2026-07-22
+> **sources:** S-laguna-v251-bench, S-forum-laguna-dflash, S-forum-laguna-quality
+> **updated:** 2026-07-24
 
 Laguna-S-2.1 — 117.6B MoE, 8.5B active, 256 experts (top-10 + 1 shared), 48 layers (36 SWA +
 12 global), `sliding_window=512`, 256K context. NVFP4 W4A4 ~67 GB. Custom architecture
@@ -79,6 +79,12 @@ Key findings:
 - **[conjecture]** The gap between our 22.6 tok/s mean and forum's 40-50 tok/s is likely workload
   dependent. Structured/agentic prompts get higher DFlash acceptance (18-40%) than prose. Running
   a coding/JSON benchmark would likely close this gap. (S-forum-laguna-dflash)
+- **[conjecture]** Forum 377674 (alperen.duru17): Laguna-S-2.1 on single Spark gets ~20-30 tps for
+  reasoning — quality "as good as DeepSeek V4 Flash over two Sparks" for document reasoning with
+  tool calls, but **fails single-shot generation tasks** (HTML game/simulation). This corroborates
+  the first-party retirement finding: Laguna matches Qwen3.6-class quality for structured tasks but
+  underperforms on generative tasks. The ~20-30 tps figure is consistent with the first-party 22.6
+  tok/s decode measurement. (S-forum-laguna-quality)
 
 ## Operational notes
 

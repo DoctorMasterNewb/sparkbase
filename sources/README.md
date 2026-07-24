@@ -387,6 +387,15 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 |---|---|---|---|---|
 || S-forum-spark-vllm-rebuild | forum | spark-vllm-docker build flags: --rebuild-vllm forces local image rebuild (vs pulling pre-built); --use-wheels uses prebuilt wheels instead of compiling vLLM from source; repo always builds from main (no pinned vLLM version) (elvis.dowson, eugr) | https://forums.developer.nvidia.com/t/376722 | 2026-07-13 |
 
+## Batch 32 forum sources (2026-07-24 ingest)
+
+|| ID | type | What it is | Reference | Date |
+||---|---|---|---|---|
+|| S-forum-m3-tp3 | forum | MiniMax-M3 NVFP4 TP=3 on 3× DGX Spark — Luke Alonso chthonic vLLM+b12x virtual sharding (fb63c9a), 3 head-node OOM fixes (safetensors load, Ray object-store cap, Ray memory monitor disable), NCCL 2.30u1 baked LD_PRELOAD shim trap, cold power-drain fixes stuck ib_write_bw 12.8→111.85 Gb/s, 200K ctx over RoCE, ~6 tok/s over 1GbE (tonyd615, mashie, eugr_nv) | https://forums.developer.nvidia.com/t/373387 | 2026-07-23 |
+|| S-forum-vllm-containers | forum | vLLM containers thread — NGC lags ~2 versions behind community; spark-vllm-docker nightly pre-built wheel pipeline with regression testing; --vllm-ref builds from source even without --rebuild-vllm; multi-container via --name (eugr, joshua.dale.warner, WillLee) | https://forums.developer.nvidia.com/t/362721 | 2026-07-22 |
+|| S-forum-laguna-quality | forum | Laguna-S-2.1 on single Spark ~20-30 tps reasoning — quality as good as DSV4-Flash (2× Spark) for document reasoning+tools; fails single-shot HTML/simulation generation (alperen.duru17) | https://forums.developer.nvidia.com/t/377674 | 2026-07-22 |
+|| S-forum-solar-open2 | forum | Solar-Open2-250B (250B-A15B MoE) INT4 on 2× Spark — ~15 tok/s decode (tg32), ~2227 tok/s prefill (pp2048), flat across depths to 32K; no MTP tested (FoRWiS) | https://forums.developer.nvidia.com/t/377765 | 2026-07-22 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and

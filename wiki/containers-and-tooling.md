@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-nvfp4, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild
-> **updated:** 2026-07-23
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers
+> **updated:** 2026-07-24
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -299,3 +299,18 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   who need to force a fresh build or avoid source compilation. Single source →
   [conjecture]. See also `[[wiki/models/mistral-small-4.md]]` for the spark-vllm-docker
   base image description.
+
+- **[conjecture]** **NGC vs community vLLM containers on Spark** (S-forum-vllm-containers,
+  eugr, joshua.dale.warner): the NVIDIA NGC container lags ~2 versions behind the community
+  spark-vllm-docker. Since Spark-specific optimizations (FlashInfer, CUTLASS MoE, Marlin)
+  are not yet fully merged in mainline vLLM, the NGC container won't run as well as the
+  community version. The community docker downloads pre-built FlashInfer and vLLM wheels by
+  default (built nightly on a Spark cluster, run through regression testing — if degradation
+  detected, the build fails). `--vllm-ref <ref>` builds from source using the specified ref
+  even without `--rebuild-vllm`. For multi-container co-hosting, use `--name <container_name>`
+  to avoid container name conflicts. Single source → [conjecture].
+
+- **[conjecture]** **VRAM is soldered, only SSD is replaceable** (S-forum-vllm-containers,
+  eugr): confirmed that GB10 (V)RAM cannot be upgraded — it's soldered. Only the SSD can be
+  replaced. Relevant for users asking about hardware upgrades for larger models. [conjecture]
+  (single forum source, but consistent with known GB10 hardware specs).

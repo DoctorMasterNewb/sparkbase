@@ -370,3 +370,22 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   to existing spark-vllm-docker section [conjecture]), sources/README, index, log.
 - Skipped: 377762 (Motif-3 Beta model announcement, no GB10 specifics — same model already
   skipped in Batch 28 as topic 377602).
+
+## Forum ingest 2026-07-24 (Batch 32)
+- 7 new forum topics found (4 technically relevant, 3 skipped: social, RMA, entitlement).
+- 4 new sources registered (Batch 32). 7 topic IDs added to processed_topics.txt (total now 440).
+- **Headline finding:** MiniMax-M3 NVFP4 TP=3 on 3× DGX Spark (S-forum-m3-tp3, tonyd615) —
+  first working TP=3 recipe via Luke Alonso's chthonic vLLM+b12x virtual sharding commit.
+  Three undocumented head-node OOM fixes (safetensors load format, Ray object-store cap,
+  Ray memory monitor disable). NCCL LD_PRELOAD shim trap — baked container shim silently
+  overrides user-installed NCCL 2.30u1. Cold power-drain fixes stuck ib_write_bw (12.8→111.85
+  Gb/s). TP=3 bandwidth fix increases concurrency, not single-stream tok/s (consistent with
+  proven latency-bound cross-node decode). EAGLE3 bf16-draft-vs-NVFP4-target dead-ends.
+- Pages touched: models/minimax (TP=3 recipe, OOM fixes, NCCL shim, cold power-drain, EAGLE3
+  status — all [conjecture]), multinode-tp-and-networking (LD_PRELOAD shim trap, cold
+  power-drain bandwidth fix, bandwidth-vs-concurrency, Ray UMA false OOM — all [conjecture]),
+  containers-and-tooling (NGC vs community container gap, nightly wheel pipeline, --vllm-ref,
+  --name multi-container, VRAM soldered — all [conjecture]), models/laguna-s-2.1 (quality
+  corroboration — good for reasoning+tools, fails generative tasks [conjecture]), benchmarks
+  (Solar-Open2-250B INT4 on 2× Spark ~15 tok/s [conjecture]), sources/README, index, log.
+- Skipped: 377689 (community extinction — social), 377733 (RMA prep), 374727 (entitlement).
