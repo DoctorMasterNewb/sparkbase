@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3
-> **updated:** 2026-07-24
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3, S-forum-mikrotik-cr804-042, S-forum-nfs-modelshare
+> **updated:** 2026-07-25
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -760,3 +760,42 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
   352948) this is a NetworkManager message, not a real connectivity error — this finding
   adds the full diagnosis chain and the exact commands. Related to the existing
   NetworkManager fabric config finding (S-forum-cx7-dual-setup).
+
+## Forum ingest: CRS804 + DAC first-use, NFS model cache (2026-07-25)
+
+- **[conjecture]** **CRS804-4DDQ + FS breakout cable: link healthy, NCCL stuck at ~0.5 GB/s until
+  cold power-drain** (S-forum-mikrotik-cr804-042, Thom.S): 2× Spark via a MikroTik CRS804-4DDQ
+  with an FS `QDD-400G-2QPC02` 400G→2×200G breakout cable. Link negotiates 200 Gb/s; ping/TCP/
+  NCCL all *functionally* work (zero `wrong` count), but RDMA throughput is stuck at **~0.5 GB/s**
+  where the cluster baseline is 16–23 GB/s. `ib_write_bw` ~0.5–0.7 Gb/s while `ib_write_lat` is a
+  healthy ~7.5 µs; HW counters show `packet_seq_err` + `rp_cnp_handled` climbing on every
+  transfer (DCQCN throttling) despite zero fabric drops. **Fix (mashie, elsaco):** full AC
+  power-drain — power off, unplug from wall ~60s, power back on. The CX-7 needs a full power
+  drain after first detecting cables before the correct firmware settings are applied; "pretty
+  much everyone runs into this on first use after DAC cables are plugged in." Warm reboot does
+  NOT work. **Alternative without physical access (elsaco):** the
+  `/opt/nvidia/dgx-spark-mlnx-hotplug/mtk-hotplug-handler.sh` script can removal + plug-in the
+  CX-7 to reset the interface without a full power-cycle — but mashie reports only the power
+  drain actually updates the firmware settings. This is the **same class** as the proven
+  cold-power-drain fix for stuck `ib_write_bw` (S-forum-ibwrite-false, Batch 28) and the GPU
+  clock wedge (S-forum-clock721). Power-cycle first before debugging NCCL config.
+- **[conjecture]** **MikroTik auto-negotiate may need explicit bandwidth for ~20-24 GB/s on 4×
+  clusters** (S-forum-mikrotik-cr804-042, joe.24x7): on a 4× cluster, MikroTik interfaces
+  default to auto-negotiate but had to be explicitly set to the link bandwidth to reach
+  ~20-24 GB/s. Corroborates the S-forum-mikrotik CRS804 finding that the switch works for TP=4
+  but adds a configuration caveat. Single source.
+- **[conjecture]** **NFS-share HuggingFace cache across cluster nodes** (S-forum-nfs-modelshare,
+  Hunlx): pattern for deduplicating the multi-hundred-GB model cache on a cluster — export
+  `/home/<user>/.cache/huggingface` from the head node via `/etc/exports` (use the **ConnectX-7
+  interface IPs**, not WiFi/Ethernet, for speed), mount on workers via `/etc/fstab` with
+  `nfs defaults,_netdev,noauto,x-systemd.automount` (lazy mount — only mounts when vLLM/llama.cpp
+  actually reads from it). Reported load speed **~7 Gbit/s** over CX-7, peaks ~20 Gbit/s when
+  already RAM-cached — vs the DRAM-less 2242 NVMe on the worker being the actual bottleneck.
+  For Docker images: `docker save <img> | ssh -c aes128-gcm@openssh.com -o Compression=no
+  <worker-CX7-IP> "docker load"` (no compression — the model is already entropy-dense; CPU
+  AES-GCM is cheaper than gzip on these hosts). **GB10-specific angle:** with only 1 TB NVMe
+  per node and models routinely 40-80 GB each, the cache dedup matters more than on a
+  datacenter node. Community pattern (dbsci): **sparkrun** (Spark Arena) already supports
+  an NFS cache directory natively + container drift detection, automating this. External-NAS
+  variant (FlossingEnthusiast): 4×4TB NVMe RAID5 NAS over 10 GbE (~1.1 GB/s) keeps the
+  internal NVMe as scratch and avoids the 4TB NVMe cooling concerns on-Spark.

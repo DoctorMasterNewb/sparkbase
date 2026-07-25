@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless
-> **updated:** 2026-07-18
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook
+> **updated:** 2026-07-25
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -286,3 +286,26 @@ Three engines run on the Spark pair; pick by arch support and quant.
   throughput, not quality. The disagreement is unresolved in-thread; the observed
   quality deltas (above) suggest at least some serving stacks are not enforcing strict
   verification. Flagged for hardware-agent verification (see roadmap).
+
+## Forum ingest: WoolyAI multi-agent stack, PrismaQuant GridBook plugin (2026-07-25)
+
+- **[conjecture]** **WoolyAI Private Multi-agent Inference Stack** (S-forum-woolyai, manisha5):
+  a closed-source inference server for 2× DGX Spark clusters targeting **multi-model agentic
+  workflows** — multiple models of different specializations/sizes resident and swappable behind
+  one endpoint. The scheduler batches each request burst, coordinates both ranks, and changes the
+  resident model only at a safe boundary (model-activation-wait 2-16s depending on model size).
+  Benchmarks via LlamaBenchy, unquantized, no speculative decoding: DSV4-Flash 21.15 tok/s (C1),
+  Gemma-4-26B-A4B 30.22, Nemotron-3-Nano-Omni-30B-NVFP4 39.42. No launch command, no source code,
+  no repro recipe shared — only a PDF report and a product URL. **GB10 relevance:** the
+  multi-model-swap-with-scheduler pattern is a genuine use-case shape that vLLM/SGLang don't natively
+  serve (they assume one resident model per engine instance), but the performance claims are
+  unverified and community-skeptic (mrDragonFox: "at C1 its slower then llama.cpp"; entrpi: the
+  community DSpark fork is "far more performant"). Treat as a vendor announcement, not a reference
+  build. See `[[wiki/benchmarks.md]]` for the numbers.
+- **[conjecture]** **PrismaQuant GridBook vLLM plugin** (S-forum-gridbook, tenari/RobTand): a vLLM
+  plugin (GitHub `RobTand/gridbook`) exposing 41 codebook quant formats (1.781–6 bit) with native
+  FP8/NVFP4-grid dequant via tensor-core table lookup. Not a standalone engine — it's a quant plugin
+  for vLLM, extending PrismaQuant (the bit-allocator, S-forum-prismaquant). Released checkpoints:
+  Qwen3.6-27B 5.5-bit (KL 0.0049), Hy3-295B-A21B 2.9-bit. Reported overhead ~10% decode / 30%
+  prefill vs. native NVFP4. See `[[wiki/quantization-on-gb10.md]]` for the full mechanism and
+  findings. Single source; no independent benchmark yet.

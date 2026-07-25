@@ -3,8 +3,8 @@
 > **area:** quantization
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x
-> **updated:** 2026-07-17
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook
+> **updated:** 2026-07-25
 
 GB10 has **no native FP4 compute and no native FP8 block-scale**. That one fact decides which quant
 to pick. Decode is **bandwidth-bound** (`[[wiki/platform-gb10.md]]`), so the winning quant is usually
@@ -300,3 +300,47 @@ decompress, because at low batch you're memory-bound, not compute-bound.
   clean result. Focusing on distilled / ≤30B models for eval workflow. Single source; no working
   conversion numbers reported. Corroborates existing finding that NVFP4 quant on Spark is
   CPU-bound and can fail silently (S-forum-nvfp4-quant-gp10).
+
+## Forum ingest: PrismaQuant GridBook codebook quant (2026-07-25)
+
+- **[conjecture]** **GridBook — codebook quant with native-GB10 dequant via tensor-core lookup**
+  (S-forum-gridbook, tenari/RobTand): a vLLM plugin exposing a **ladder of 41 codebook quant formats**
+  spanning **1.781 to 6 bits** (quarter-bit increments + a few signed-bit experimental formats).
+  Builds on PrismaQuant (the bit-allocator, S-forum-prismaquant) by adding a much finer format menu
+  than the original {NVFP4, MXFP8, FP8, BF16} set. **Mechanism:** like IQ codebooks, weight vectors of
+  8 consecutive weights are clustered into a small dictionary (tens of thousands of 8-d entries,
+  shared per layer, effectively free); each group costs one index. The twist that makes it fast on
+  GB10: **every dictionary entry is constrained to lie exactly on the FP8 or NVFP4 grid the matrix
+  hardware natively understands**, so "decompression" is a plain table lookup that emits a standard
+  FP8/NVFP4 tensor — the multiply then runs at **full tensor-core speed** (Marlin path), not a
+  general-purpose gather. Reported overhead: **~10% decode, ~30% prefill**. Targets the gap below
+  NVFP4 (4.5 bit floor) for 300B-class models on a single Spark. Single source; no independent
+  benchmark yet. Queued for hardware verification (see roadmap).
+- **[conjecture]** **Qwen3.6-27B PrismaQuant-GridBook 5.5-bit** (S-forum-gridbook): released HF
+  checkpoint `rdtand/Qwen3.6-27B-prismaquant-codebook-5.5bit-vllm`. Claims **KL 0.0049 — 77% lower
+  than PrismaAura at the same 5.5-bit rate** (AURA was itself strong). Uses K12–K24 (NVFP4) and
+  K28–K48 (FP8) codebooks + plain NVFP4/FP8/BF16; no signed-bit formats yet. ToolEvalBench "not
+  quite as high as AURA, still super strong." ~15% smaller than the prior 5.5-bit release.
+- **[conjecture]** **Hy3-295B-A21B PrismaQuant-GridBook 2.9-bit** (S-forum-gridbook): released HF
+  checkpoint `rdtand/Hy3-295B-A21B-prismaquant-codebook-2.9bit-vllm` — a 295B MoE on a single Spark
+  via sub-NVFP4 codebook rates. OP notes it doesn't yet leverage all 41 formats; an improved version
+  expected "within a few days." No tok/s reported. Corroborates the directional thesis that
+  sub-4.5-bit codebook formats unlock single-Spark serving of 300B-class MoE (see also
+  `[[wiki/models/laguna-s-2.1.md]]` retirement note: output quality below MiMo/DeepSeek at low
+  rates — quality-vs-density tradeoff is the open question for codebook quants).
+- **[conjecture]** **MTP-head quant optimizer** (S-forum-gridbook): a new PrismaQuant component that
+  picks the optimal format for the MTP head specifically (vs. quantizing it like the rest of the
+  model). BF16 MTP heads are most accurate but heavy; the optimizer can select any of the 41 gridbook
+  formats to balance speed and accuracy of the speculative-decoding driver. Relevant to the
+  documented MTP-needs-cudagraphs and MTP-OOM findings (`[[wiki/cudagraphs-and-compile.md]]`).
+- **[conjecture]** **GGUF IQ formats on vLLM found lacking on GB10** (S-forum-gridbook, tenari):
+  tried GGUF IQ formats inside PrismaQuant/vLLM; prefill is "just terrible" because the formats are
+  platform-agnostic with no native-performance path. Consistent with the existing finding that GGUF
+  is a llama.cpp path, not a vLLM fast path on GB10 (`[[wiki/llama-cpp-rpc.md]]`). MXFP8 also
+  abandoned from PrismaQuant's menu ("just awful unless you're doing initial training") — replaced
+  with FP8 + NVFP4 + BF16 + gridbook codebooks.
+- **[conjecture]** **REAP expert pruning ineffective on modern MoE** (S-forum-gridbook, tenari):
+  attempted REAP pruning but "the experts coming out of the labs are SO optimized that it's hard to
+  find redundant weights to prune." Abandoned. Relevant to the documented 15% expert-prune finding
+  for GLM-5.2 (S-forum-glm52-4x) — that worked on a specific model; the general claim that pruning
+  is a reliable lever is weakened.

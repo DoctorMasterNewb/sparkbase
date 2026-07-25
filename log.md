@@ -1209,3 +1209,52 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
 - Skipped: 378009 (NVIDIA Sync SSH config parser bug — client-side tooling, not GB10 inference),
   377913 (macOS menu-bar SSH tunnel manager — personal macOS tool, not GB10-specific),
   377759 (vision model recommendations — no durable GB10 flags/env/errors/numbers/quant formats).
+
+## 2026-07-25 — Forum ingest: 5 new topics (Batch 35)
+
+- **Sources:** 5 new forum topics found, all technically relevant. 5 new sources registered
+  (Batch 35). 5 topic IDs added to processed_topics.txt (total now 452).
+- **Sources registered:** S-forum-gridbook (PrismaQuant GridBook codebook quant plugin),
+  S-forum-nfs-modelshare (NFS HF cache + docker save|ssh pattern), S-forum-mikrotik-cr804-042
+  (CRS804 + FS breakout cable — NCCL stuck at 0.5 GB/s, cold power-drain fix), S-forum-ling3-flash
+  (Ant Ling-3.0-Flash 124B-A5B announcement — weights pending), S-forum-woolyai (WoolyAI
+  closed-source multi-agent inference stack — vendor benchmarks, no repro recipe).
+- **Pages touched:** quantization-on-gb10 (GridBook — 41 codebook formats 1.781-6 bit, native
+  FP8/NVFP4-grid dequant via tensor-core table lookup, ~10% decode / 30% prefill overhead;
+  Qwen3.6-27B 5.5-bit KL 0.0049; Hy3-295B-A21B 2.9-bit single-Spark; MTP-head quant optimizer;
+  GGUF IQ on vLLM found lacking; MXFP8 abandoned; REAP pruning ineffective on modern MoE — all
+  [conjecture]), multinode-tp-and-networking (CRS804-4DDQ + FS QDD-400G-2QPC02 breakout — link
+  healthy but NCCL/ib_write_bw stuck at ~0.5 GB/s, DCQCN throttling, cold power-drain fix;
+  MikroTik auto-negotiate may need explicit bandwidth for ~20-24 GB/s on 4× clusters; NFS-share
+  HF cache pattern with CX-7 IPs + fstab automount + docker save|ssh; sparkrun native NFS cache
+  support — all [conjecture]), engines (WoolyAI multi-agent stack — closed-source, multi-model
+  swap scheduler, no repro recipe, community-skeptic; PrismaQuant GridBook vLLM plugin — not a
+  standalone engine, quant plugin extending PrismaQuant — all [conjecture]), benchmarks (3 new
+  forum-reported rows for WoolyAI DSV4-Flash/Gemma-4-26B/Nemotron-3-Nano-Omni at C1/C4;
+  Ant Ling-3.0-Flash 124B-A5B announced/upcoming — [conjecture]), roadmap (2 new open problems:
+  verify GridBook native-dequant performance + quality claims on real GB10; re-ingest Ling-3.0-Flash
+  when weights drop and benchmark NVFP4/AutoRound INT4 on single Spark), sources/README, index, log.
+- **Headline findings:**
+  1. **PrismaQuant GridBook** (tenari/RobTand) is the most technically significant single-Spark
+     quant development this batch: a vLLM plugin exposing 41 codebook quant formats (1.781-6 bit)
+     with dictionary entries constrained to the FP8/NVFP4 grid so dequant runs at full tensor-core
+     speed via table lookup. Two HF checkpoints released (Qwen3.6-27B 5.5-bit, Hy3-295B-A21B
+     2.9-bit). Claims ~10% decode / 30% prefill overhead and KL 0.0049 for the Qwen3.6-27B. If
+     verified on real GB10, this is the most promising path to single-Spark 300B-class MoE serving
+     — sub-NVFP4 codebook rates without sacrificing native tensor-core dequant. All [conjecture].
+  2. **CRS804-4DDQ first-use failure** is the same cold-power-drain class as the proven ib_write_bw
+     and GPU clock wedge fixes: link negotiates and ping/TCP/NCCL work, but RDMA throughput is
+     stuck at ~0.5 GB/s (DCQCN throttling, packet_seq_err climbing) until a full AC power-drain
+     forces the CX-7 firmware to apply correct settings. Warm reboot does not work. The
+     mtk-hotplug-handler.sh script is a partial alternative for remote-only users.
+  3. **Ant Ling-3.0-Flash 124B-A5B** (Ant Group/Alibaba) is a strong upcoming single-Spark
+     contender: 124B total / 5B active MoE with hybrid-linear KDA:MLA attention (5:1), 256K native
+     context. NVFP4 (≈70 GB) or AutoRound INT4 (≈62 GB) should fit on a single 121 GB Spark. Weights
+     expected "after Aug 3." Queued for re-ingest.
+  4. **WoolyAI** is a closed-source multi-model agentic inference stack with a resident-model-swap
+     scheduler — a genuine use-case shape vLLM/SGLang don't natively serve. But the benchmarks are
+     vendor-reported with no repro recipe, no launch command, no source code; community-skeptic.
+     C1 per-request decode (14-23 tok/s) is slower than llama.cpp/DSpark; the C4 aggregate numbers
+     (56-91 tok/s) are batch-amortized and don't exceed vLLM/SGLang at equivalent concurrency.
+- All [conjecture] — single-source forum reports, no hardware verification available. No new wiki
+  pages created. No index changes needed (all findings folded into existing pages).

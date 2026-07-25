@@ -3,8 +3,8 @@
 > **area:** roadmap
 > **status:** open-problem
 > **evidence:** mixed
-> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-inkling, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-intern-s2, S-forum-pmu-amu, S-forum-6x-ring-rdma
-> **updated:** 2026-07-22
+> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-inkling, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-intern-s2, S-forum-pmu-amu, S-forum-6x-ring-rdma, S-forum-gridbook, S-forum-ling3-flash
+> **updated:** 2026-07-25
 
 The unsolved stuff. Each item links to the page with the detail. Close an item by moving its finding
 onto the relevant page and deleting it here.
@@ -298,3 +298,29 @@ onto the relevant page and deleting it here.
   (3) test on a 3+ node switchless topology to confirm it solves the channel→HCA round-robin
   topology-unawareness problem. This is the key blocker for >3-node switchless GB10 deployments
   using all 4 RoCE ports. See `[[wiki/multinode-tp-and-networking.md]]` → Batch 29.
+
+## Forum-sourced open problems (2026-07-25 ingest, Batch 35)
+
+- **[conjecture]** **PrismaQuant GridBook codebook quant — verify the native-dequant performance
+  and quality claims on real GB10** (S-forum-gridbook, tenari/RobTand): the GridBook vLLM plugin
+  claims codebook dequant constrained to the FP8/NVFP4 grid runs at full tensor-core speed with
+  only ~10% decode / 30% prefill overhead, and that Qwen3.6-27B 5.5-bit achieves KL 0.0049 (77%
+  lower than PrismaAura at the same rate). Hardware agent should: (1) load
+  `rdtand/Qwen3.6-27B-prismaquant-codebook-5.5bit-vllm` on a Spark via the GridBook plugin and
+  measure decode tok/s + prefill tok/s vs. the existing proven Qwen3.6-27B FP8 (~30 tok/s dense)
+  and NVFP4 baselines; (2) verify the KL claim with a independent eval (ToolEvalBench or
+  llama-benchy quality probes); (3) test the Hy3-295B-A21B 2.9-bit checkpoint — does it fit on a
+  single 121 GB Spark and serve? At what tok/s? (4) test whether the MTP-head quant optimizer
+  preserves spec-decode acceptance. This is the most promising single-Spark 300B-class-MoE path
+  seen to date; verifying or refuting it is high-value. See `[[wiki/quantization-on-gb10.md]]` →
+  PrismaQuant GridBook section.
+- **[conjecture]** **Ant Ling-3.0-Flash 124B-A5B — re-ingest when weights drop, benchmark NVFP4
+  and AutoRound INT4 on a single Spark** (S-forum-ling3-flash, entrpi): weights expected "after
+  Aug 3." With 124B total at 4.5-bit NVFP4 ≈ 70 GB, or AutoRound INT4 ≈ 62 GB, this should fit
+  comfortably on a single 121 GB Spark with room for a large KV pool. The 1/64 expert activation
+  (5B active) suggests decode could be very fast — potentially exceeding Qwen3.5-122B-A10B
+  (current single-Spark GOAT). The hybrid-linear KDA:MLA 5:1 attention is a new arch on GB10;
+  verify whether vLLM/Atlas support it or if new attention kernels are needed. Hardware agent
+  should: (1) re-ingest the forum thread when weights release; (2) quant to NVFP4 + AutoRound
+  INT4; (3) benchmark decode/prefill/quality vs. Qwen3.5-122B-A10B and DSV4-Flash; (4) probe
+  KDA attention kernel support. See `[[wiki/benchmarks.md]]` → Announced / upcoming models.
