@@ -408,6 +408,13 @@ sources cite the experiment (what/config/when), never a private path.
 |---|---|---|---|---|
 | S-forum-qwen3tts-ggml | forum | Qwen3-TTS on DGX Spark: GGML CUDA crash `ggml_cuda_kernel_can_use_pdl` (PDL capability check) — root cause is CUDA 12.8/sm_120 build, not sm_121a; fix: force torch backend (CUDA graphs, no GGML); TTFA 2.65s, steady-state RTF ~1.7; PDL oddness on GB10 corroborated (swann.schilling, Drew_the_AI_Guy) | https://forums.developer.nvidia.com/t/377743 | 2026-07-22 |
 
+## Batch 34 forum sources (2026-07-25 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-vllm-stock-hang | forum | Stock vllm/vllm-openai:latest hangs silently during model load on ASUS GX10 (GB10) — never reaches "Application startup complete"; root cause is no SM121/Blackwell support in stock image; fix: use spark-vllm-docker --tf5 or CUDA 13/SM121 wheel (dotrantrung2003, Drew_the_AI_Guy) | https://forums.developer.nvidia.com/t/377613 | 2026-07-24 |
+| S-forum-locateanything | forum | LocateAnything-3B (visual grounding) bring-up on DGX Spark / ThinkStation PGX via spark-vllm-docker --tf5 — ARM64 wheel gaps (decord, deepspeed, bitsandbytes, liger_kernel), device_map='auto' slow on 128GB UMA, MoonViT sub-model HF auth hang, FastAPI server pattern for non-vLLM models (swann.schilling) | https://forums.developer.nvidia.com/t/371829 | 2026-07-23 |
+
 ## First-party sources (2026-07-22)
 
 || ID | type | What it is | Reference | Date |

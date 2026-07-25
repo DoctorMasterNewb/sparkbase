@@ -405,3 +405,14 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   tensor pinning tip [conjecture]), sources/README, index, log.
 - Skipped: 377793 (PSA about using Discourse MCP to follow the forum — social/meta; replies
   reference already-sourced DSV4-Flash-DSpark and Laguna-S-2.1 recipes, no new findings).
+
+## Forum ingest 2026-07-25 (Batch 34)
+- 5 new forum topics found (2 technically relevant, 3 skipped: SSH config parser bug,
+  macOS SSH tunnel manager, vision model recommendation thread).
+- 2 new sources registered (Batch 34). 5 topic IDs added to processed_topics.txt (total now 447).
+- Pages touched: containers-and-tooling (stock `vllm/vllm-openai:latest` hangs silently on GB10
+  — no SM121 support; LocateAnything-3B bring-up — ARM64 wheel gaps, device_map='auto' UMA
+  pitfall, FastAPI server pattern for non-vLLM models), platform-gb10 (device_map='auto' slow
+  on 128 GB UMA), models/qwen (stock vLLM hang on Qwen3.6-35B-A3B-NVFP4). All [conjecture].
+- Skipped: 378009 (NVIDIA Sync SSH config parser — client-side tooling), 377913 (macOS SSH
+  tunnel manager — personal tool), 377759 (vision model recommendations — no durable findings).

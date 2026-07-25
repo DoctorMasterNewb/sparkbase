@@ -1189,3 +1189,23 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   class already documented for vLLM FP4 CUTLASS and Triton ptxas, now confirmed in a
   third ecosystem component (GGML/qwentts.cpp). All [conjecture] — single detailed
   source + one corroborating reply. No new wiki pages created. No index changes needed.
+
+## Forum ingest 2026-07-25 (Batch 34)
+
+- 5 new forum topics found (2 technically relevant, 3 skipped: SSH config parser bug, macOS
+  SSH tunnel manager, vision model recommendation thread).
+- 2 new sources registered (Batch 34). 5 topic IDs added to processed_topics.txt (total now 447).
+- **Headline finding:** stock `vllm/vllm-openai:latest` hangs silently during model load on GB10
+  — reaches backend selection but never "Application startup complete"; root cause is no SM121
+  support in stock image. This corroborates the well-documented stock-vLLM-on-sm_121 gap and
+  reinforces that users must use GB10-tuned builds (spark-vllm-docker --tf5, CUDA 13/SM121 wheels).
+  All [conjecture].
+- Pages touched: containers-and-tooling (stock vLLM hang + LocateAnything-3B bring-up — ARM64
+  wheel gaps for decord/deepspeed/bitsandbytes/liger_kernel, device_map='auto' UMA pitfall,
+  MoonViT HF auth hang, FastAPI server pattern for non-vLLM models), platform-gb10
+  (device_map='auto' slow on 128 GB UMA — UMA-specific HuggingFace pitfall), models/qwen
+  (stock vLLM hang on Qwen3.6-35B-A3B-NVFP4 — image not flags is the failure), sources/README,
+  index, log.
+- Skipped: 378009 (NVIDIA Sync SSH config parser bug — client-side tooling, not GB10 inference),
+  377913 (macOS menu-bar SSH tunnel manager — personal macOS tool, not GB10-specific),
+  377759 (vision model recommendations — no durable GB10 flags/env/errors/numbers/quant formats).

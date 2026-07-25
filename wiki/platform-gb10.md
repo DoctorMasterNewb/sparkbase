@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml
-> **updated:** 2026-07-24
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything
+> **updated:** 2026-07-25
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -800,3 +800,15 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   detailed source + one corroborating reply → [conjecture] (would be [reported] with another
   independent confirmation). GB10-specific because it's the sm_121a targeting gap, not a generic
   GGML bug.
+
+### Batch 34 forum ingest (2026-07-25)
+
+- **[conjecture]** **`device_map='auto'` is slow on 128 GB unified memory** (S-forum-locateanything,
+  swann.schilling): on the GB10's 128 GB unified pool, HuggingFace's `device_map='auto'` runs a
+  metadata analysis pass that can appear frozen for many minutes — the user observed the
+  `LocateAnythingWorker` using `.to(device)` directly loads from cache in under a second instead.
+  This is related to the existing `[conjecture]` UMA mmap double-allocation finding
+  (S-forum-qwen35-lora-uma) — both are UMA-specific pitfalls in HuggingFace's device-mapping
+  logic, where code designed for multi-GPU discrete layouts doesn't account for the unified pool.
+  Single source → [conjecture]. See `[[wiki/containers-and-tooling.md]]` for the full
+  LocateAnything bring-up.

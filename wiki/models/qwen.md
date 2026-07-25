@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x
-> **updated:** 2026-07-23
+> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang
+> **updated:** 2026-07-25
 
 The best-supported family on GB10 — both Atlas (AOT kernels for the MoE variants) and vLLM serve it.
 The recurring lesson: **MoE-A3B NVFP4 + MTP is the fastest regime on Spark; the dense variant of the
@@ -185,6 +185,15 @@ claiming 2.5× speedup on B200. On GB10 the reality is different:
   This is an FP8 (not NVFP4) checkpoint — native FP8 compute on GB10. The 75-80 tok/s decode is
   notably lower than the 142 tok/s proven on Atlas with NVFP4+MTP (different engine, different
   quant, different serving stack). Single source → [conjecture].
+
+- **[conjecture]** **Stock `vllm/vllm-openai:latest` hangs silently loading Qwen3.6-35B-A3B-NVFP4
+  on GB10** (S-forum-vllm-stock-hang, dotrantrung2003): on an ASUS Ascent GX10, the upstream
+  `vllm/vllm-openai:latest` image reaches backend selection (FlashInfer attention, MARLIN NvFp4
+  MoE) but never reaches "Application startup complete" — the container stays `Up` but hangs
+  during initialization; all API requests return `Connection reset by peer`. Root cause is the
+  image, not the flags: stock upstream vLLM lacks SM121/Blackwell support. Fix: use a GB10-tuned
+  build (spark-vllm-docker `--tf5` or a CUDA 13 / SM121 wheel). See
+  `[[wiki/containers-and-tooling.md]]` for full details. Single source → [conjecture].
 
 ## See also
 `[[wiki/engines.md]]` · `[[wiki/quantization-on-gb10.md]]` · `[[wiki/models/holo-3.1.md]]` (Qwen3.5 VL MoE)

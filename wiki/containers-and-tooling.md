@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml
-> **updated:** 2026-07-24
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything
+> **updated:** 2026-07-25
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -334,3 +334,57 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   (S-forum-qwen-tts-arm64) — both are GB10 audio-stack issues, but the GGML crash is a
   different failure mode (kernel dispatch, not wheel availability). Single source + one
   corroborating reply → [conjecture].
+
+### Batch 34 forum ingest (2026-07-25)
+
+- **[conjecture]** **Stock `vllm/vllm-openai:latest` hangs silently during model load on GB10 —
+  no SM121 support** (S-forum-vllm-stock-hang, dotrantrung2003, Drew_the_AI_Guy): on an ASUS
+  Ascent GX10 (GB10), serving `nvidia/Qwen3.6-35B-A3B-NVFP4` with the upstream
+  `vllm/vllm-openai:latest` Docker image, the container starts and logs reach backend
+  selection (`FLASHINFER` attention, `FlashInferFP8ScaledMMLinearKernel`, `MARLIN` NvFp4 MoE)
+  but never progress to "Application startup complete." All API requests return
+  `curl: (56) Recv failure: Connection reset by peer`. The container stays `Up` (it doesn't
+  crash) — it simply hangs during initialization. **Root cause:** the upstream
+  `vllm/vllm-openai` image does not include Blackwell/SM121 support out of the box. This
+  corroborates the existing pattern documented across multiple batches: stock upstream
+  vLLM images lack sm_121/CUDA 13 support; use a GB10-tuned build
+  (`eugr/spark-vllm-docker` with `--tf5`, or a vLLM wheel built for CUDA 13 / SM121). The
+  user's config flags (`--kv-cache-dtype fp8 --attention-backend flashinfer --moe-backend
+  marlin --gpu-memory-utilization 0.7 --max-model-len 262144 --max-num-seqs 4
+  --max-num-batched-tokens 8192 --enable-chunked-prefill --async-scheduling
+  --enable-prefix-caching --speculative-config '{"method":"mtp",...}'
+  --load-format fastsafetensors --reasoning-parser qwen3 --tool-call-parser qwen3_xml
+  --enable-auto-tool-choice`) are a reasonable NVFP4+MTP recipe — the failure is the image,
+  not the flags. Single source (OP resolved after switching to a GB10-tuned build; the
+  fix was confirmed but the specific image used wasn't stated). Reinforces the existing
+  `[conjecture]` community-image-lag finding (S-forum-vllm025-nccl) and the easy-vllm
+  harness's identification of stock-vLLM-on-sm_121 as a "double hard wall"
+  (S-forum-easy-vllm).
+
+- **[conjecture]** **LocateAnything-3B bring-up on DGX Spark — ARM64 wheel gaps and
+  `device_map='auto'` UMA pitfall** (S-forum-locateanything, swann.schilling):
+  `nvidia/LocateAnything-3B` (visual grounding, not a vLLM-served text model) deployed as a
+  standalone FastAPI server inside `vllm-node-tf5` (eugr/spark-vllm-docker `--tf5` build,
+  CUDA 13 / SM121). Four GB10-specific bring-up findings:
+  1. **`decord` has no ARM64 wheel** — transformers' `check_imports` statically scans for
+     it before any code runs, so a `sys.modules` stub doesn't work. Fix: build a minimal
+     local stub package (`VideoReader` no-op class + `setup.py`) and `pip install` it.
+  2. **`deepspeed`, `bitsandbytes`, `liger_kernel` have no ARM64 wheels** — either no
+     wheel or compilation fails on GB10. Since this is inference-only, install deps
+     manually with `pip install --no-deps -e .` and skip the unneeded training-only
+     packages. This corroborates the broader aarch64 wheel gap pattern on GB10
+     (cf. torchaudio S-forum-qwen-tts-arm64, nvidia-vfx S-forum-nvidia-vfx, GGML
+     qwentts-cpp S-forum-qwen3tts-ggml).
+  3. **`device_map='auto'` is very slow on 128 GB unified memory** — runs a metadata
+     analysis pass that can appear frozen for many minutes. Fix: use `.to(device)`
+     directly (loads from cache in <1 s on GB10). Related to the existing
+     `[conjecture]` UMA mmap double-allocation finding (S-forum-qwen35-lora-uma) — both
+     are UMA-specific pitfalls in HuggingFace's device-mapping logic.
+  4. **MoonViT sub-model (`moonshotai/MoonViT-SO-400M`) downloaded separately from HF
+     Hub** — without authentication, the download hangs silently on rate limiting. Pass
+     `HF_TOKEN` via both `-e HF_TOKEN=` and `-e HUGGING_FACE_HUB_TOKEN=` env vars.
+  The bring-up also documents the pattern for non-vLLM models on Spark: use
+  `--entrypoint /bin/bash` + inline `git clone` + `pip install` in the `docker run`
+  command, expose a task-specific REST API (not `/v1/chat/completions`), and use
+  `--shm-size=16g --ipc=host`. `vllm-node-tf5` is confirmed as a known-good base image for
+  non-vLLM workloads on DGX Spark / ThinkStation PGX. Single source → [conjecture].
