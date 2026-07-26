@@ -1300,3 +1300,16 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
      instability on Spark.
 - All [conjecture] — single-source forum reports, no hardware verification available. No new wiki
   pages created. No index changes needed (all findings folded into existing pages).
+
+## 2026-07-26 — Scheduled forum ingest: 3 new topics, 0 ingested
+
+- **Sources:** 3 new forum topics scanned (378130, 378110, 378031).
+- **Pages touched:** none — all 3 topics were non-technical for GB10 inference purposes.
+- **Disposition:**
+  - 378130 (Asus GX10 first boot): general onboarding/setup advice — no durable GB10 findings.
+  - 378110 (Google Chrome now available for arm64): generic ARM64 software availability — not
+    GB10-specific.
+  - 378031 (MSI Edge Expert Nvme devices not found): hardware RMA troubleshooting (NVMe not
+    detected in BIOS) — OEM-specific hardware failure, no inference-relevant content.
+- All 3 topic IDs appended to `sources/processed_topics.txt` to prevent re-scanning. No sources
+  registered, no wiki edits, no index changes.
