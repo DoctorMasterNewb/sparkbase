@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama, S-forum-glm52-8x, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-laguna-v251-bench, S-forum-mistral-s4-119b, S-forum-qwen36-fp8-2x, S-forum-solar-open2, S-forum-woolyai
-> **updated:** 2026-07-25
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama, S-forum-glm52-8x, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-laguna-v251-bench, S-forum-mistral-s4-119b, S-forum-qwen36-fp8-2x, S-forum-solar-open2, S-forum-woolyai, S-forum-solar-open2-nvfp4
+> **updated:** 2026-07-26
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
 anchor the rules on
@@ -495,6 +495,49 @@ All rows below are **[conjecture]** — single-source community-reported numbers
 > single-Spark contender vs. Qwen3.5-122B-A10B (current single-Spark GOAT) and DeepSeek-V4-Flash.
 > Community expectation (xkm121): "INT4 auto-round or NVFP4 of this model will make this a good new
 > contender." No weights, no tok/s yet → [conjecture]. Queued for re-ingest when weights drop.
+
+## Forum-reported benchmarks (2026-07-26 ingest, Batch 36)
+
+All rows below are **[conjecture]** — single-source community-reported numbers, not first-party.
+
+||| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+|||---|---|---|---|---|---|---|---||
+||| Solar-Open2-250B (250B-A15B MoE) | NVFP4 W4A4 (nota-ai) | vLLM v0.25.1 (UpstageAI fork) | 2 (TP=2, no-Ray) | 15.8 (c1, d0) / 15.4 (c1, d32k) | 262K | FP8 KV: 2,665,802 tok pool (10.17× concurrency); bf16 KV: ~1.33M tok; prefill 924-983 (d0) → 1711 sustained @ 33k; TTFT 523ms; util 0.90, max-num-seqs 4; VLLM_NVFP4_GEMM_BACKEND=flashinfer-cutlass | S-forum-solar-open2-nvfp4 ||
+
+> **[conjecture]** **Solar Open2 250B NVFP4 on 2× Spark — linear attention makes decode ~free with
+> depth; FP8 KV is a capacity lever, not a speed lever** (S-forum-solar-open2-nvfp4, danielgbates).
+> Two durable GB10-relevant findings from a single well-documented source:
+>
+> 1. **Hybrid linear attention dodges the KV-bandwidth wall.** Solar Open2 has 36 of 48 layers as KDA
+>    linear attention (12 GQA / 36 KDA mix). Decode at 32k context depth is within ~2.5% of
+>    empty-context speed (15.4 vs 15.8 tok/s). Every full-attention model on the same pair decays
+>    hard with context (a 310B MoE with NVFP4 KV drops to ~9 tok/s by 100k). **Why it bites on Spark:**
+>    the proven bandwidth-bound decode ceiling (~270 GB/s) means full-attention KV grows with context
+>    → decode slows. Hybrid-linear architectures that don't materialize per-token KV sidestep this.
+>    This is the same finding class as Nemotron-3 (Mamba-2 hybrid, S-sess-jun5) and Holo-3.1 (hybrid
+>    linear+full attention) — now generalized to a 4th architecture. See
+>    `[[wiki/attention-and-kv-cache.md]]`.
+> 2. **FP8 KV on hybrid-linear models is a capacity lever, not a speed lever.** On full-attention
+>    models, fp8 KV is a decode-speed lever at depth (~2× vs 4-bit KV elsewhere). On Solar it's
+>    speed-neutral — only 12/48 layers touch KV, so attention is a thin slice of decode time. What
+>    you get instead is 2× pool: 10.17× concurrency at 262k, or headroom to push max-model-len toward
+>    the model's native 1M. vLLM handles the mixed page layout fine (pads mamba page size 0.38% to
+>    keep mamba and attention pages equal). No quality regression observed.
+>
+> **Stack details:** vLLM v0.25.1 built from source for aarch64/sm121 (CUDA 13.2, torch 2.11).
+> SolarOpen2 isn't upstream — lives in UpstageAI's vLLM fork (`v0.22.0-solar-open2`), x86-only
+> wheels/docker. The fork drops onto v0.25.1 almost unchanged (3-line adaptation: v0.25 fuses the
+> KDA decay gate into the kernel, so the model's forward passes raw `g1` instead of calling
+> `fused_kda_gate` first). Model: `nota-ai/Solar-Open2-250B-Nota-NVFP4` — 250B MoE (320 experts, 8
+> active, ~15B active/token), NVFP4 W4A4 (llm-compressor, group 16), 153 GB / 29 shards, ~77 GiB
+> weights/node. **Gotcha:** `--logits-processors` wants `module.path:ClassName` (colon) — the dotted
+> form dies at worker init with `ValueError: not enough values to unpack (expected 2, got 1)`.
+> Coherence probes pass in both KV configs (temp-0 arithmetic + reasoning-split + tool calls).
+>
+> This is a second-source corroboration of the existing INT4 Solar-Open2 row (S-forum-solar-open2,
+> Batch 32, ~15 tok/s INT4 on 2× Spark) — same decode rate, now characterized with the NVFP4 W4A4
+> quant and the FP8-KV capacity finding. Both are single-source → [conjecture]. The flat-with-depth
+> finding is the load-bearing result for the KB.
 
 ## Image generation benchmarks (diffusion models on GB10, 2026-07-10)
 

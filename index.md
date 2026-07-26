@@ -416,3 +416,17 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   on 128 GB UMA), models/qwen (stock vLLM hang on Qwen3.6-35B-A3B-NVFP4). All [conjecture].
 - Skipped: 378009 (NVIDIA Sync SSH config parser — client-side tooling), 377913 (macOS SSH
   tunnel manager — personal tool), 377759 (vision model recommendations — no durable findings).
+
+## Forum ingest 2026-07-26 (Batch 36)
+- 4 new forum topics found (3 technically relevant, 1 skipped as non-technical question with no
+  answers/findings).
+- 3 new sources registered (Batch 36). 4 topic IDs added to processed_topics.txt (total now 451).
+- Pages touched: benchmarks (Solar-Open2-250B NVFP4 W4A4 on 2× Spark — 15.8 tok/s decode, flat
+  with depth; FP8 KV = capacity lever not speed lever; full recipe + flags — [conjecture]),
+  attention-and-kv-cache (hybrid-linear attention dodges KV-bandwidth wall; FP8 KV capacity vs
+  speed distinction — [conjecture]), platform-gb10 (USB-C PD firmware pending update causes
+  overheating without load; 30-min power-cycle fix — [conjecture]), engines (GLM-5.2-Vision-NVFP4
+  frozen-backbone projector; adaptive MTP dynamic 2–5 draft depth — [conjecture]),
+  roadmap (1 new open problem: adaptive MTP feedback-loop overhead on bandwidth-bound decode).
+- Skipped: 378102 (CUDA_VISIBLE_DEVICES simulation question — no answers, no findings, buying
+  advice context).

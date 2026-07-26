@@ -1258,3 +1258,45 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
      (56-91 tok/s) are batch-amortized and don't exceed vLLM/SGLang at equivalent concurrency.
 - All [conjecture] — single-source forum reports, no hardware verification available. No new wiki
   pages created. No index changes needed (all findings folded into existing pages).
+
+## 2026-07-26 — Forum ingest: 4 new NVIDIA DGX Spark forum topics (Batch 36)
+
+- **Sources:** 4 new forum topics from forums.developer.nvidia.com. 3 technically relevant, 1
+  skipped (non-technical question with no answers). 3 new sources registered as `S-forum-*` in
+  `sources/README.md` (Batch 36): S-forum-glm52-vision, S-forum-solar-open2-nvfp4,
+  S-forum-typec-thermal. All type `forum` → capped at `[conjecture]` (single source each).
+- **Pages touched:** benchmarks (Solar-Open2-250B NVFP4 W4A4 on 2× Spark — 15.8 tok/s decode c1,
+  flat with depth to 32K; FP8 KV speed-neutral but doubles pool 10.17× concurrency; full recipe +
+  flags: VLLM_NVFP4_GEMM_BACKEND=flashinfer-cutlass, VLLM_USE_FLASHINFER_MOE_FP4=1, util 0.90,
+  vLLM v0.25.1 from source sm121, UpstageAI fork v0.22.0-solar-open2 — [conjecture]),
+  attention-and-kv-cache (two durable findings: (1) hybrid linear attention (36/48 KDA layers)
+  dodges KV-bandwidth wall — decode flat with depth, generalizes sparse/hybrid finding to 4th
+  arch class; (2) FP8 KV is capacity lever not speed lever on hybrid-linear models, contrasting
+  proven speed-lever finding on full-attention models — [conjecture]), platform-gb10 (USB-C PD
+  firmware pending update causes overheating without load after July 23 OTA; 30-min full
+  power-cycle forces pending update to apply; related to existing reboot-doesn't-complete
+  USB-C PD finding — [conjecture]), engines (GLM-5.2-Vision-NVFP4 — frozen-backbone 49.5M-param
+  projector maps MoonViT 1152→GLM 6144-dim; adaptive MTP dynamically switches 2–5 drafted tokens
+  based on p2–p4 acceptance — new MTP regime on Spark, all existing recipes use fixed
+  num_speculative_tokens — [conjecture]), roadmap (1 new open problem: adaptive MTP feedback-loop
+  overhead on bandwidth-bound GB10 decode), sources/README, index, log.
+- **Headline findings:**
+  1. **Solar Open2 NVFP4 — linear attention makes decode ~free with depth on Spark.** The
+     load-bearing result: 15.4 tok/s at 32K depth vs 15.8 at depth 0 (−2.5%), while every
+     full-attention model on the same pair decays hard. This generalizes the proven
+     sparse/hybrid-attention finding (Nemotron-3 Mamba-2, Holo hybrid, MSA sparse) to a 4th
+     architecture class (KDA linear attention). The FP8-KV-capacity-vs-speed distinction is a
+     new GB10 rule of thumb: FP8 KV for speed on full-attention, FP8 KV for capacity on
+     hybrid-linear.
+  2. **GLM-5.2-Vision + adaptive MTP — two firsts on Spark.** First vision-enabled GLM-5.2
+     (frozen-backbone projector, no weight changes), and first adaptive (dynamic-depth) MTP
+     recipe — all existing MTP on Spark uses fixed draft depth. The adaptive approach is
+     theoretically sound but unbenchmarked on GB10; feedback-loop overhead on the bandwidth-
+     bound decode path is the open question.
+  3. **USB-C PD firmware thermal — a 3rd USB-C PD platform issue.** Pending PD firmware update
+     not applying during OTA causes sustained heat at idle; 30-min power-cycle forces the
+     update. This joins the existing reboot-doesn't-complete and ASUS GX10 PD capsule findings
+     as evidence that the USB-C power-delivery subsystem is a recurring source of platform
+     instability on Spark.
+- All [conjecture] — single-source forum reports, no hardware verification available. No new wiki
+  pages created. No index changes needed (all findings folded into existing pages).

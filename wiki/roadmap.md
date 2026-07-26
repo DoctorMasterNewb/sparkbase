@@ -3,8 +3,8 @@
 > **area:** roadmap
 > **status:** open-problem
 > **evidence:** mixed
-> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-inkling, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-intern-s2, S-forum-pmu-amu, S-forum-6x-ring-rdma, S-forum-gridbook, S-forum-ling3-flash
-> **updated:** 2026-07-25
+> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-inkling, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-intern-s2, S-forum-pmu-amu, S-forum-6x-ring-rdma, S-forum-gridbook, S-forum-ling3-flash, S-forum-glm52-vision
+> **updated:** 2026-07-26
 
 The unsolved stuff. Each item links to the page with the detail. Close an item by moving its finding
 onto the relevant page and deleting it here.
@@ -298,6 +298,19 @@ onto the relevant page and deleting it here.
   (3) test on a 3+ node switchless topology to confirm it solves the channel→HCA round-robin
   topology-unawareness problem. This is the key blocker for >3-node switchless GB10 deployments
   using all 4 RoCE ports. See `[[wiki/multinode-tp-and-networking.md]]` → Batch 29.
+
+## Forum-sourced open problems (2026-07-26 ingest, Batch 36)
+
+- **[conjecture]** **Adaptive MTP (dynamic draft depth) — does the feedback loop overhead
+  negate the benefit on bandwidth-bound Spark decode?** (S-forum-glm52-vision, CosmicRaisins):
+  the adaptive MTP modification dynamically switches between 2 and 5 drafted tokens based on
+  the acceptance rate of positions p2–p4 — theoretically matching draft depth to per-step
+  acceptance (more tokens in code, fewer in prose). All existing MTP recipes on Spark use a
+  fixed `num_speculative_tokens`. Hardware agent should: (1) benchmark adaptive-MTP vs
+  fixed-MTP=2 and fixed-MTP=5 on GLM-5.2 (or any MTP-capable model) on a 4× Spark cluster;
+  (2) measure whether the per-step acceptance-feedback overhead costs decode tok/s on the
+  bandwidth-bound GB10 path; (3) verify the quality-vs-speed tradeoff claim (30+ tok/s in
+  code without prose regression). See `[[wiki/engines.md]]` → GLM-5.2-Vision + adaptive MTP.
 
 ## Forum-sourced open problems (2026-07-25 ingest, Batch 35)
 

@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything
-> **updated:** 2026-07-25
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal
+> **updated:** 2026-07-26
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -812,3 +812,27 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   logic, where code designed for multi-GPU discrete layouts doesn't account for the unified pool.
   Single source → [conjecture]. See `[[wiki/containers-and-tooling.md]]` for the full
   LocateAnything bring-up.
+
+### Batch 36 forum ingest (2026-07-26)
+
+- **[conjecture]** **DGX Spark overheating without load after firmware update — pending USB-C PD
+  firmware not installed** (S-forum-typec-thermal, unicornxoxo2): after a July 23 system update,
+  a DGX Spark became extremely hot to the touch even when powered off (still hot after 20 min
+  with power on but no workload). Running vLLM (Qwen3.6-35B-A3B) caused a spontaneous reboot after
+  ~1h. On the next boot, the system displayed "an important update has been installed" for **USB-C
+  PD (type-C power) firmware** — a pending update that had not installed previously. After a
+  30-min full power-cycle (complete PSU disconnect), the unit returned to normal temperatures and
+  stable operation. **Root cause appears to be a pending USB-C PD firmware update that failed to
+  apply during the normal OTA cycle**, causing a power-delivery issue that manifests as sustained
+  heat even at idle. This is distinct from the GPU power-controller wedge (no clock pinning
+  observed) and the EC fan-curve regression (different firmware subsystem). It is most closely
+  related to the existing [conjecture] reboot-doesn't-complete finding (S-forum-reboot-powercycle),
+  which also implicates USB-C PD firmware — both point to the USB-C power-delivery subsystem as a
+  recurring source of platform instability. **Workaround:** full AC power-cycle (unplug PSU ≥30
+  min in this case) forces the pending PD firmware update to apply on next boot.
+  - **[conjecture]** `nvidia-smi -lgc 0,2000` (clock cap to 2000 MHz) was suggested as a
+    thermal-mitigation workaround by paulsc.liu; the OP attributed the issue to the firmware
+    update, not GPU clocks, and the 30-min power-cycle resolved it. The clock-cap approach was
+    not needed in this case but remains a general thermal workaround. Single source → [conjecture].
+  - NVIDIA staff (Neill) requested version numbers for both the July 23 update and the type-C
+    firmware update — not yet provided. Status: `open` — version tracking pending.

@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook
-> **updated:** 2026-07-25
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision
+> **updated:** 2026-07-26
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -309,3 +309,29 @@ Three engines run on the Spark pair; pick by arch support and quant.
   Qwen3.6-27B 5.5-bit (KL 0.0049), Hy3-295B-A21B 2.9-bit. Reported overhead ~10% decode / 30%
   prefill vs. native NVFP4. See `[[wiki/quantization-on-gb10.md]]` for the full mechanism and
   findings. Single source; no independent benchmark yet.
+
+## Forum ingest: GLM-5.2-Vision + adaptive MTP (2026-07-26)
+
+- **[conjecture]** **GLM-5.2-Vision-NVFP4 — frozen-backbone vision projector for GLM-5.2**
+  (S-forum-glm52-vision, CosmicRaisins): `baseten/GLM-5.2-Vision-NVFP4` adds vision to GLM-5.2
+  (744B/40B MoE) without modifying a single GLM weight — the text backbone and vision tower
+  (MoonViT) are both frozen and byte-identical to upstream. The only new parameters are a
+  **49.5M-parameter projector** that maps MoonViT's 1152-dim patch embeddings into GLM's
+  6144-dim token space. Ported to the CosmicRaisins/glm-5.2-gb10 repo for a 4-node Spark cluster
+  (TP=4). Only OCR and classification tested so far; GUI screenshot / visual-bug use cases
+  anticipated but not yet validated. **GB10 relevance:** this is the first reported
+  vision-enabled GLM-5.2 on Spark — the frozen-backbone approach means the existing NVFP4
+  recipe and MTP stack are unchanged; only the lightweight projector loads additionally.
+  Single source → [conjecture].
+- **[conjecture]** **Adaptive MTP — dynamic 2–5 drafted tokens based on acceptance feedback**
+  (S-forum-glm52-vision, CosmicRaisins): a modification of aidendle94's adaptive MTP work,
+  integrated into the GLM-5.2-gb10 repo. The model dynamically switches between 2 and 5 drafted
+  tokens depending on the acceptance rate of positions p2–p4. The goal: get the 30+ tok/s speedup
+  in code (where high acceptance justifies more drafted tokens) without sacrificing performance
+  in prose (where low acceptance makes extra drafted tokens wasteful). **This is a new MTP
+  regime on Spark** — all existing MTP recipes use a fixed `num_speculative_tokens` (e.g. MTP=2,
+  MTP=4, MTP=5). The adaptive approach has not been benchmarked vs fixed-MTP on GB10 yet.
+  Theoretically sound (match draft depth to per-step acceptance), but the overhead of the
+  feedback loop on the bandwidth-bound Spark decode path is uncharacterized. Single source →
+  [conjecture]. See `[[wiki/engines.md]]` → MTP quality & prefix-cache for the existing MTP
+  tuning findings.

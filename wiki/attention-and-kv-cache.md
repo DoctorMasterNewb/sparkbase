@@ -3,8 +3,8 @@
 > **area:** attention
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-m3-vision, S-mimo-results, S-mimo-doc, S-sess-jun5, S-sess-jun4, S-dflash-nvfp4, S-forum-mimo-2x-opt, S-forum-dsv4-kvcache, S-forum-inkling-nvfp4, S-forum-flashinfer-livelock
-> **updated:** 2026-07-21
+> **sources:** S-m3-vision, S-mimo-results, S-mimo-doc, S-sess-jun5, S-sess-jun4, S-dflash-nvfp4, S-forum-mimo-2x-opt, S-forum-dsv4-kvcache, S-forum-inkling-nvfp4, S-forum-flashinfer-livelock, S-forum-solar-open2-nvfp4
+> **updated:** 2026-07-26
 
 Which `--attention-backend` to pass is decided by the model's attention type, not preference. Get it
 wrong and KV-cache init fails or numerics are subtly off.
@@ -62,6 +62,32 @@ wrong and KV-cache init fails or numerics are subtly off.
   make models emit immediate-EOS at depth (a real behavior on pathological input) — this looks exactly like
   KV-quant corruption but is NOT. nvfp4 KV is coherent to 89k+ with varied content. Always test depth with a
   real corpus (`llama-benchy` uses a Gutenberg book for this).
+
+## Forum ingest: hybrid-linear attention & FP8-KV capacity (2026-07-26)
+
+- **[conjecture]** **FP8 KV on hybrid-linear models is a capacity lever, not a speed lever**
+  (S-forum-solar-open2-nvfp4, danielgbates): on Solar Open2 250B (36/48 KDA linear-attn layers),
+  FP8 KV is speed-neutral vs bf16 KV (15.8 vs 15.8 tok/s decode c1 d0) because only 12/48 layers
+  touch KV — attention is a thin slice of decode time. What FP8 KV buys instead is 2× pool:
+  2,665,802 tokens vs ~1.33M at 262K max-len (10.17× concurrency). This **contrasts** with the
+  proven finding that fp8 KV is a decode-speed lever at depth on full-attention models
+  (S-dflash-nvfp4: ~2× vs 4-bit KV at 200K depth on MiMo). The distinction: on full-attention
+  archs, KV grows with context and dominates decode bandwidth → halving KV bytes halves that
+  cost; on hybrid-linear archs, the linear layers don't materialize per-token KV, so the
+  attention cost is already small and halving it changes nothing. **GB10 rule of thumb:** choose
+  FP8 KV for *speed* on full-attention models at long context; choose FP8 KV for *capacity* on
+  hybrid-linear models. vLLM handles the mixed page layout (mamba + attention pages) by padding
+  the mamba page size 0.38% to keep both equal. Single source → [conjecture].
+- **[conjecture]** **Hybrid linear attention makes decode ~flat with context depth on Spark**
+  (S-forum-solar-open2-nvfp4, danielgbates): Solar Open2 decodes at 15.4 tok/s at 32K context depth
+  vs 15.8 tok/s at depth 0 — only ~2.5% degradation. Every full-attention model on the same 2×
+  Spark pair decays hard with context (a 310B MoE with NVFP4 KV drops to ~9 tok/s by 100K).
+  This generalizes the proven finding that sparse/hybrid attention makes long context cheap
+  (S-sess-jun5: Nemotron-3 Mamba-2 hybrid ran full 1M ctx × 4 slots) to a 4th architecture class
+  (KDA linear attention, after MSA sparse, Mamba-2 SSM, and Holo's hybrid linear+full). **Why it
+  bites on Spark:** the proven bandwidth-bound decode ceiling (~270 GB/s) means full-attention
+  KV grows linearly with context → decode slows; hybrid-linear architectures that don't
+  materialize per-token KV sidestep the wall entirely. See `[[wiki/benchmarks.md]]` → Batch 36.
 
 ## See also
 `[[wiki/quantization-on-gb10.md]]` · `[[wiki/platform-gb10.md]]` · `[[wiki/models/minimax.md]]` · `[[wiki/models/mimo-v2.5.md]]`
