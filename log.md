@@ -1343,3 +1343,38 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
 - **Evidence promotions:** Qwen3.5-122B-A10B-int4 as single-Spark daily driver → [reported]
   (4 independent users agree). No claims promoted past [reported] — no hardware verification.
 - No new wiki pages created. No index changes needed (all findings folded into existing pages).
+
+## 2026-07-27 — Scheduled forum ingest: 2 new topics, 2 ingested
+
+- **Sources:** 2 new forum topics found (378099, 377598). 2 new sources registered (Batch 38).
+  2 topic IDs added to `sources/processed_topics.txt` (total now 464).
+- **Pages touched:** models/glm-5.2 (NEW page — consolidated all GLM-5.2 findings across 12
+  sources: hybrid FP8+NVFP4+MXFP4 recipe, tool-eval-bench quality, reasoning-parser bug,
+  word-salad root cause, KV kernel constraints, cross-thread performance summary),
+  benchmarks (4 new [conjecture] rows: GLM-5.2 hybrid v2 20-25 tok/s / llama-benchy depth-concurrency
+  table / v3-GPTQ 20.6 tok/s / official NVIDIA NVFP4 ~115 GB/node),
+  platform-gb10 (ASUS GX10 SoC+TPM firmware update — stable, 2-4% benchmark noise, slow reboot),
+  quantization-on-gb10 (3-way mixed-precision checkpoint FP8+NVFP4+MXFP4, custom NVFP4 KV cache
+  with scaling/calibration, GLM-5.2 repetition_penalty sensitivity),
+  engines (glm45 reasoning-parser structured-output 58% root cause — thinking off → 100% SO,
+  +8 pts hardmode; MTP4 > MTP5 on tool-eval; word-salad traced to repetition_penalty=1.2 config),
+  attention-and-kv-cache (b12x B12X_MLA_SPARSE kernel only reads packed fp8_ds_mla KV pages —
+  bf16 KV → immediate EOS; FLASHMLA_SPARSE has no sm12x sparse kernels),
+  sources/README, index, log.
+- **Disposition:**
+  - 377598 (GLM 5.2 Hybrid-FP8+NVFP4+MXFP4 + Optimal runtime recipe): INGESTED — technically
+    dense 31-post thread. Headline: first reported 3-way mixed-precision GLM-5.2 checkpoint on
+    GB10 (aidendle94). Multiple durable findings: hybrid quant recipe + Docker image, llama-benchy
+    depth/concurrency benchmark table, tool-eval-bench quality scores (86/100 v2, 85/100 v3-GPTQ),
+    reasoning-parser structured-output bug root cause (thinking off → 100% SO, +8 pts), MTP4 vs MTP5
+    quality (83 vs 85+), word-salad at >90k ctx root-caused to repetition_penalty=1.2, b12x sparse-MLA
+    KV format constraint, NVIDIA official GLM5 NVFP4 weight footprint (~115 GB/node). 7 active
+    posters. New model page created (wiki/models/glm-5.2.md) consolidating all GLM-5.2 findings.
+  - 378099 (New Asus GX10 Firmware Out Today): INGESTED — ASUS GX10 SoC + TPM firmware update.
+    Stability solid at 96% load/70W+. 2-4% benchmark delta (within noise). Slow reboot. Concurrent
+    minor NVIDIA driver update. No regression, no measurable improvement. Platform data point.
+- **Evidence promotions:** None. All new findings [conjecture] — multiple users in the same thread
+  using the same Docker image do not constitute independent sources. No claims promoted past
+  [reported] — no hardware verification available.
+- **New wiki page created:** wiki/models/glm-5.2.md (GLM-5.2 model page, consolidating 12 sources).
+- Index updated with new model page link and Batch 38 ingest summary.

@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal
-> **updated:** 2026-07-26
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25
+> **updated:** 2026-07-27
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -836,3 +836,16 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
     not needed in this case but remains a general thermal workaround. Single source → [conjecture].
   - NVIDIA staff (Neill) requested version numbers for both the July 23 update and the type-C
     firmware update — not yet provided. Status: `open` — version tracking pending.
+
+### Batch 38 forum ingest (2026-07-27)
+
+- **[conjecture]** **New ASUS GX10 SoC + TPM firmware update — stable, no significant performance
+  change** (S-forum-asus-fw-jul25, robert287): ASUS GX10 received new SoC and TPM firmware updates
+  in late July 2026. Both applied on first try; nodes stable at 96% GPU load pulling 70W+. Reboot
+  was notably slow ("FOREVER," tens of minutes per one user). Benchmark delta: 2-4% across model
+  benchmarks — within noise / attributable to fresh clean state, not a real performance boost. The
+  update references "performance enhancements" but none were measurable. A concurrent minor NVIDIA
+  driver update may contribute to stability. This is an ASUS GX10 data point (vs the FE Spark
+  firmware updates tracked in S-forum-fw-july2026 / S-forum-asus-fw0103) — corroborates that both
+  OEMs are actively shipping firmware in the July 2026 window. No version numbers captured. Status:
+  `open` — no regression observed, no measurable improvement.

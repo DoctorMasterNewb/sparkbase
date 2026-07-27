@@ -3,8 +3,8 @@
 > **area:** attention
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-m3-vision, S-mimo-results, S-mimo-doc, S-sess-jun5, S-sess-jun4, S-dflash-nvfp4, S-forum-mimo-2x-opt, S-forum-dsv4-kvcache, S-forum-inkling-nvfp4, S-forum-flashinfer-livelock, S-forum-solar-open2-nvfp4
-> **updated:** 2026-07-26
+> **sources:** S-m3-vision, S-mimo-results, S-mimo-doc, S-sess-jun5, S-sess-jun4, S-dflash-nvfp4, S-forum-mimo-2x-opt, S-forum-dsv4-kvcache, S-forum-inkling-nvfp4, S-forum-flashinfer-livelock, S-forum-solar-open2-nvfp4, S-forum-glm52-hybrid
+> **updated:** 2026-07-27
 
 Which `--attention-backend` to pass is decided by the model's attention type, not preference. Get it
 wrong and KV-cache init fails or numerics are subtly off.
@@ -190,3 +190,15 @@ wrong and KV-cache init fails or numerics are subtly off.
     sparse MLA on GB10 through FlashInfer (GLM-5.2, DeepSeek-V4-class, future MLA models) under
     cold-prefill workloads is at risk. The Triton workaround is drop-in and has no throughput
     penalty, making it the recommended path until the upstream mbarrier bug is fixed.
+
+## Forum ingest: b12x sparse-MLA KV format constraint (2026-07-27)
+
+- **[conjecture]** **b12x `B12X_MLA_SPARSE` kernel only reads packed `fp8_ds_mla` KV pages — bf16 KV
+  returns immediate EOS** (S-forum-glm52-hybrid, mclenithan): on a 6× GB10 cluster (TP=6, DCP varied)
+  running GLM-5.2 with the b12x sparse-MLA backend, the kernel only understands the packed fp8 DSA
+  page format (`fp8_ds_mla`). With bf16 KV pages, the kernel misreads memory and every request returns
+  an immediate EOS. The alternative backend that would accept non-packed KV (`FLASHMLA_SPARSE`) has
+  **no shipped sm12x sparse kernels**, so the fp8-vs-bf16 KV comparison could not be completed.
+  This is the same kernel maturity gap as the FlashInfer livelock finding above: the sparse-MLA
+  attention path on sm_121 has limited backend options and KV format support. See
+  `[[wiki/models/glm-5.2.md]]` → KV cache kernel constraint.

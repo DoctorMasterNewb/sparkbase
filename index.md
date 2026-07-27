@@ -30,6 +30,7 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [step-3.7](wiki/models/step-3.7.md) — retired; kept for the MTP-needs-cudagraphs finding.
 - [laguna-s-2.1](wiki/models/laguna-s-2.1.md) — 117.6B MoE NVFP4 single-node; DFlash spec=7; 22.6 tok/s decode, flat across depths; **retired** — output quality below MiMo/DeepSeek, no speed advantage over Qwen3.6.
 - [inkling](wiki/models/inkling.md) — Thinking Machines multimodal MoE (975B/41B-active); NVFP4 on 8× Spark, paged-KV cliff, Lamport-on-RoCE escape hatch, kernel bugs filed.
+- [glm-5.2](wiki/models/glm-5.2.md) — Zhipu AI 744B/40B-active MoE (sparse-MLA); 4×–8× Spark recipes, hybrid FP8+NVFP4+MXFP4 quant, MTP quality, reasoning-parser bug, KV kernel constraints.
 
 ## Reference
 - [benchmarks](wiki/benchmarks.md) — collated decode tok/s + concurrency table; append rows.
@@ -444,3 +445,23 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   rows: Qwen 122B int4/fp8/hybrid, DSV4-Flash 1× 45-50 tok/s), sources/README, index, log.
 - Skipped: 378131 (brewing agent application showcase — Mistral 119B on Spark, no durable
   technical findings).
+
+## Forum ingest 2026-07-27 (Batch 38)
+- 2 new forum topics found, both technically relevant.
+- 2 new sources registered (Batch 38). 2 topic IDs added to `sources/processed_topics.txt`
+  (total now 464).
+- **Headline finding:** GLM-5.2 hybrid FP8+NVFP4+MXFP4 — first reported 3-way mixed-precision
+  checkpoint on GB10 (aidendle94). Decode ~20-25 tok/s on 4× Spark (same bandwidth-bound range
+  as pure AWQ-INT4 / NVFP4). Tool-eval-bench 86/100 (v2) / 85/100 (v3-GPTQ). Structured Output
+  58% root-caused to reasoning-parser bug (thinking off → 100%, +8 pts overall). Word-salad at
+  >90k ctx root-caused to hardcoded `repetition_penalty=1.2` (config, not model/hardware). b12x
+  sparse-MLA kernel only reads packed fp8 KV pages. New model page created: `wiki/models/glm-5.2.md`.
+- Pages touched: models/glm-5.2 (NEW — consolidated all GLM-5.2 findings across 12 sources),
+  benchmarks (4 new [conjecture] rows: hybrid v2/v3/llama-benchy-table/official-NVFP4),
+  platform-gb10 (ASUS GX10 SoC+TPM firmware — stable, 2-4% noise, slow reboot),
+  quantization-on-gb10 (3-way hybrid quant, custom NVFP4 KV cache, repetition_penalty sensitivity),
+  engines (reasoning-parser structured-output bug, thinking-off A/B, MTP4 vs MTP5, word-salad root
+  cause), attention-and-kv-cache (b12x sparse-MLA KV format constraint — bf16 KV → immediate EOS),
+  sources/README, index, log.
+- No evidence promotions past [reported]. All new findings [conjecture] (single thread, multiple
+  users in same thread using same image → not independent).

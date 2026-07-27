@@ -3,7 +3,7 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid
 > **updated:** 2026-07-26
 
 Three engines run on the Spark pair; pick by arch support and quant.
@@ -335,3 +335,32 @@ Three engines run on the Spark pair; pick by arch support and quant.
   feedback loop on the bandwidth-bound Spark decode path is uncharacterized. Single source →
   [conjecture]. See `[[wiki/engines.md]]` → MTP quality & prefix-cache for the existing MTP
   tuning findings.
+
+## Forum ingest: GLM-5.2 reasoning parser, thinking-off, MTP depth (2026-07-27)
+
+- **[conjecture]** **Structured Output 58% on tool-eval-bench is a reasoning-parser bug, not a
+  model or quant bug** (S-forum-glm52-hybrid, mike_ber): the `glm45` reasoning parser leaks a
+  sentence fragment into the content channel before JSON output — the model produces perfectly
+  valid schema-compliant JSON but prefixes 1-3 tokens of an unfinished conversational lead-in
+  (e.g. `I{"ticker":"NVDA",...}`, `Here{"location":"Tokyo",...}`). **A/B test (category O, 6
+  scenarios, seed 42, temp 0):** thinking OFF → 100/100 (12/12 pts, all pass, median turn 4.9s);
+  thinking ON → 75/100 (9/12 pts, median turn 7.6s). Turning thinking off makes Structured Output
+  58% → 100% and is 36% faster. **Full hardmode run (thinking off): 83 → 88 (+8 pts, 140 → 148/168)**
+  — but Structured Reasoning dropped 100% → 67% and Restraint & Refusal 100% → 83%: without thinking,
+  the model reaches for a tool instead of doing the work itself. **Takeaway: strict output format →
+  thinking off; open-ended analysis → thinking on.** Confirmed by CosmicRaisins (image author).
+  This is a GLM-5.2-specific reasoning-parser issue, not a GB10 hardware issue, but it bites Spark
+  users running tool-calling agents. See `[[wiki/models/glm-5.2.md]]`.
+- **[conjecture]** **MTP4 outperforms MTP5 on tool-eval-bench for GLM-5.2** (S-forum-glm52-hybrid,
+  ciprianveg): MTP5 scored 83 on tool-eval-bench, switching to MTP4 gave 85+. Look for FSM errors
+  in logs for tool calls as a diagnostic. Consistent with the existing finding that higher MTP
+  depth can hurt quality (see MTP quality section above). Single source → [conjecture].
+- **[conjecture]** **GLM-5.2 word-salad at >90k context was caused by `repetition_penalty=1.2`,
+  not a model or hardware bug** (S-forum-glm52-hybrid, mclenithan): after 2 weeks of debugging
+  (trying multiple quants, vLLM versions, b12x versions), the root cause was a hardcoded
+  `repetition_penalty=1.2` left over from MiMo 2.5 work. With GLM-5.2, this causes word-salad
+  (random mixed-script fragments, top-1 logprob ~-10 to -12, near-uniform distribution) at >80-95k
+  tokens after 15+ multi-turn interactions. Temperature 0 does not prevent it. Fix: remove the
+  repetition penalty. **Durable lesson: sampling-parameter configs do not transfer between models
+  on Spark — GLM-5.2 has different sensitivity than MiMo 2.5.** See
+  `[[wiki/models/glm-5.2.md]]` and `[[wiki/quantization-on-gb10.md]]`.

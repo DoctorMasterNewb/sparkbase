@@ -3,7 +3,7 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama, S-forum-glm52-8x, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-laguna-v251-bench, S-forum-mistral-s4-119b, S-forum-qwen36-fp8-2x, S-forum-solar-open2, S-forum-woolyai, S-forum-solar-open2-nvfp4, S-forum-qwen122-king
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama, S-forum-glm52-8x, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-laguna-v251-bench, S-forum-mistral-s4-119b, S-forum-qwen36-fp8-2x, S-forum-solar-open2, S-forum-woolyai, S-forum-solar-open2-nvfp4, S-forum-qwen122-king, S-forum-glm52-hybrid
 > **updated:** 2026-07-27
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
@@ -564,6 +564,31 @@ All rows below are **[conjecture]** — single-source community-reported numbers
 > **[conjecture]** DSV4-Flash on single Spark: 45-50 tok/s, 240 tok/s at 16 concurrent, coherent
 > to 1M tokens (0rand). Consistent with existing S-forum-dsv4-dspark numbers (~60-67 tok/s on
 > 2× Spark). Single source → [conjecture].
+
+## Forum-reported benchmarks (2026-07-27 ingest, Batch 38)
+
+All rows below are **[conjecture]** — single-source community-reported numbers (multiple users in one
+thread, not independent threads), not first-party.
+
+|||| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+||---|---|---|---|---|---|---|---||
+|| GLM-5.2 (744B/40B MoE) | Hybrid FP8+NVFP4+MXFP4 | vLLM eldritch + b12x (production-hybrid-1.2) | 4 (TP=4+DCP4) | 20-25 (c1 prose) | 800K | ~800 pp tok/s @100k depth; custom NVFP4 KV cache; adaptive spec depth; 2 reporters in same thread | S-forum-glm52-hybrid ||
+|| GLM-5.2 (744B/40B MoE) | Hybrid FP8+NVFP4+MXFP4 | vLLM eldritch + b12x (production-hybrid-1.2) | 4 (TP=4+DCP4) | 20.1 (c1, d0) / 19.8 (c1, d4096) / 18.6 (c1, d8192) | 262K | llama-benchy v0.4.0 pp2048 tg128; pp 1605 (c1 d0) / 887 (c1 d4096) / 933 (c1 d8192); c4 decode drops to 9.9-17.8 | S-forum-glm52-hybrid ||
+|| GLM-5.2 (744B/40B MoE) | Hybrid+GPTQ (v3: MXFP4-Experts-GPTQ) | vLLM eldritch + b12x (production-hybrid-1.3) | 4 (TP=4+DCP4) | 20.6 (c1) | 262K | tool-eval 85/100; pp 2,814 tok/s; TTFT 10,828ms; GPTQ applied on top of MXFP4 experts | S-forum-glm52-hybrid ||
+|| GLM-5.2 (744B/40B MoE) | NVFP4 (official NVIDIA) | vLLM | 4 (TP=4) | (not benchmarked) | — | ~115 GB/node weights, ~460 GB total (excl. 20 GB MTP off by default); util ~98%; "pushes right up against limits" | S-forum-glm52-hybrid ||
+
+> **[conjecture]** **GLM-5.2 Hybrid FP8+NVFP4+MXFP4 on 4× Spark** (S-forum-glm52-hybrid,
+> aidendle94 + CosmicRaisins + alexander.korolev.germany): a community hybrid-quant checkpoint
+> mixing FP8 (attention/some layers), NVFP4, and MXFP4 (experts that would be FP3) — the first
+> reported 3-way mixed-precision GLM-5.2 checkpoint on GB10. Decode ~20-25 tok/s (c1 prose),
+> consistent with the existing TP=4 range (22-24 tok/s for AWQ-INT4 / NVFP4 in
+> S-forum-glm52-4x / S-forum-glm52-mtp-fix). Prefill ~800 tok/s at 100k depth. The llama-benchy
+> table shows decode degrading from 20.1 (c1, d0) to 18.6 (c1, d8192) and to 9.9 at c4/d8192 —
+> the depth+concurrency interaction is sharp. Custom NVFP4 KV cache with scaling/calibration;
+> adaptive speculative depth; Docker image `sparkrun-vllm-ds4-gb10:production-hybrid-1.2/1.3`.
+> Two reporters agree on ~800 pp / ~20-25 tg but are in the same thread using the same image →
+> stays [conjecture]. See `[[wiki/models/glm-5.2.md]]` for the full recipe, tool-eval-bench
+> quality results, and the reasoning-parser / repetition-penalty root causes.
 
 ## Image generation benchmarks (diffusion models on GB10, 2026-07-10)
 

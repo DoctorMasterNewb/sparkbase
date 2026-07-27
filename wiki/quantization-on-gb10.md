@@ -3,7 +3,7 @@
 > **area:** quantization
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook, S-forum-glm52-hybrid
 > **updated:** 2026-07-25
 
 GB10 has **no native FP4 compute and no native FP8 block-scale**. That one fact decides which quant
@@ -157,6 +157,35 @@ decompress, because at low batch you're memory-bound, not compute-bound.
   (vs ~22 tok/s at TP=4 NVFP4/AWQ-INT4 in S-forum-glm52-4x, ~24 tok/s NVFP4 MTP4 in
   S-forum-glm52-mtp-fix). Whether the speedup is from the quant mix, the 8× scale, the v16 branch,
   or the b12x backend cannot be isolated from a single source.
+
+## Forum ingest: GLM-5.2 hybrid FP8+NVFP4+MXFP4 (2026-07-27)
+
+- **[conjecture]** **3-way mixed-precision checkpoint: FP8 + NVFP4 + MXFP4 across different layer
+  groups** (S-forum-glm52-hybrid, aidendle94): `aidendle94/GLM-5.2-Hybrid-FP8-MXFP4` is the first
+  reported community checkpoint mixing three quant formats in one model on GB10. FP8 layers sourced
+  from RedHat AI, NVFP4 layers also from RedHat AI, MXFP4 experts (replacing what would be FP3 in
+  the B12X community work) sourced from AMD. The rationale: MXFP4 is more compact than FP3, so the
+  experts that would be FP3 are MXFP4, achieving more weight savings without the precision hit of
+  going all-NVFP4. Runs via the eldritch vLLM fork + b12x backend on 4× Spark. A v3 variant
+  (`aidendle94/GLM-5.2-MXFP4-Experts-GPTQ`) applies GPTQ on top of the MXFP4 expert layers for
+  further calibration. Decode ~20-25 tok/s (same range as pure AWQ-INT4 / NVFP4 at TP=4) — the
+  hybrid quant does not change the bandwidth-bound decode ceiling, it changes the weight footprint
+  and quality tradeoff. See `[[wiki/models/glm-5.2.md]]`.
+- **[conjecture]** **Custom NVFP4 KV cache with per-layer scaling and calibration**
+  (S-forum-glm52-hybrid, aidendle94): a custom NVFP4 KV cache implementation designed to retain
+  precision, built on work by Koush and Dooner. Per their tests, NVFP4 KV degradation is "almost
+  noise" — the OP reports clean 90k needle tests at FP4 KV. This is distinct from the `fp8_ds_mla`
+  packed page format used by the b12x sparse-MLA kernel. The custom implementation adds
+  scaling/calibration on top of the standard NVFP4 KV path. Single source → [conjecture]. See
+  `[[wiki/attention-and-kv-cache.md]]` for the KV format constraints on the b12x sparse-MLA path.
+- **[conjecture]** **GLM-5.2 is sensitive to `repetition_penalty` — 1.2 causes word-salad at depth**
+  (S-forum-glm52-hybrid, mclenithan): a hardcoded `repetition_penalty=1.2` (carried over from MiMo 2.5
+  config) caused catastrophic output corruption at >90k tokens after 15+ multi-turn interactions:
+  random mixed-script fragments (Latin/Cyrillic/CJK/Thai), top-1 logprob ~-10 to -12 (near-uniform
+  distribution). Fix: remove the repetition penalty entirely. **GB10-relevant lesson: GLM-5.2 has
+  different sampling-parameter sensitivity than MiMo 2.5 — configs do not transfer.** This is a
+  model-level finding, not a hardware finding, but it bites Spark users who run multiple models with
+  shared configs.
 
 ## See also
 `[[wiki/platform-gb10.md]]` · `[[wiki/attention-and-kv-cache.md]]` · `[[wiki/containers-and-tooling.md]]` · per-model pages under `wiki/models/`
