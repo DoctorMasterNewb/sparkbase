@@ -1313,3 +1313,33 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
     detected in BIOS) — OEM-specific hardware failure, no inference-relevant content.
 - All 3 topic IDs appended to `sources/processed_topics.txt` to prevent re-scanning. No sources
   registered, no wiki edits, no index changes.
+
+## 2026-07-27 — Scheduled forum ingest: 3 new topics, 2 ingested
+
+- **Sources:** 3 new forum topics found (378066, 378131, 376858). 2 new sources registered
+  (Batch 37). 3 topic IDs added to `sources/processed_topics.txt` (total now 462).
+- **Pages touched:** models/qwen (Qwen3.5-122B "king model" daily-driver consensus — 4
+  independent users confirm as best single-Spark model [reported]; AutoRound int4 ~65 tok/s
+  on 2× Spark, FP8 ~35 tok/s on 1×; sparkrun-recipes patched vLLM v26 5 lanes @ 256K 40+ tok/s;
+  AutoRound loop tendency; DSV4-Flash single-Spark 45-50 tok/s; Laguna corroborates retirement),
+  containers-and-tooling (sparkctl — config-driven multi-provider model serving CLI, YAML
+  configs, load balancing for clusters, contextual data plane), benchmarks (4 new
+  [conjecture] rows: Qwen 122B AutoRound int4 2× ~65 tok/s, Qwen 122B fp8 1× ~35 tok/s,
+  Qwen 122B hybrid vLLM v26 40+ tok/s 5-lane, DSV4-Flash 1× 45-50 tok/s / 240 @ c16),
+  sources/README, index, log.
+- **Disposition:**
+  - 378066 (Best Daily Single Spark Driver — King Model): INGESTED — 4 independent users
+    confirm Qwen3.5-122B-int4 as community consensus single-Spark daily driver → [reported].
+    Multiple tok/s numbers, recipe pointer (sparkrun-recipes), quant quality observation
+    (AutoRound loops), DSV4-Flash alternative. Technically dense, GB10-specific.
+  - 376858 (Built a tool for managing model serving on Sparks): INGESTED — sparkctl tool
+    registered as S-forum-sparkctl. Config-driven orchestration, multi-provider, load
+    balancing. Reinforces existing community-tool pattern. Single source → [conjecture].
+  - 378131 (Local model running real-world brewing agents): SKIPPED — application showcase
+    (home brewery with Mistral 119B on Spark, WhatsApp interface). No durable technical
+    GB10 findings (no flags, env vars, errors, quant details, tok/s numbers). The only
+    GB10-relevant detail (Mistral 119B running on Spark as daily driver) is noted in the
+    378066 thread analysis as corroboration that Mistral 119B is in community use.
+- **Evidence promotions:** Qwen3.5-122B-A10B-int4 as single-Spark daily driver → [reported]
+  (4 independent users agree). No claims promoted past [reported] — no hardware verification.
+- No new wiki pages created. No index changes needed (all findings folded into existing pages).

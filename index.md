@@ -430,3 +430,17 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   roadmap (1 new open problem: adaptive MTP feedback-loop overhead on bandwidth-bound decode).
 - Skipped: 378102 (CUDA_VISIBLE_DEVICES simulation question — no answers, no findings, buying
   advice context).
+
+## Forum ingest 2026-07-27 (Batch 37)
+- 3 new forum topics found (2 technically relevant, 1 skipped as application showcase).
+- 2 new sources registered (Batch 37). 3 topic IDs added to processed_topics.txt (total now 462).
+- **Headline finding:** Qwen3.5-122B-A10B-int4 is the community consensus single-Spark daily
+  driver — 4 independent forum users confirm it as the "king model" → **[reported]**. New tok/s
+  numbers: AutoRound int4 ~65 tok/s on 2× Spark (holds linearly past 100K context), FP8 ~35
+  tok/s on 1× Spark, sparkrun-recipes patched vLLM v26 build 5 lanes @ 256K ctx 40+ tok/s.
+  AutoRound int4 loop tendency flagged; NVFP4 variants may offer better fidelity.
+- Pages touched: models/qwen (122B "king model" consensus + sparkrun-recipes + AutoRound loop),
+  containers-and-tooling (sparkctl config-driven serving CLI), benchmarks (4 new [conjecture]
+  rows: Qwen 122B int4/fp8/hybrid, DSV4-Flash 1× 45-50 tok/s), sources/README, index, log.
+- Skipped: 378131 (brewing agent application showcase — Mistral 119B on Spark, no durable
+  technical findings).

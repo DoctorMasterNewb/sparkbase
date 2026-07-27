@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything
-> **updated:** 2026-07-25
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl
+> **updated:** 2026-07-27
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -388,3 +388,19 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   command, expose a task-specific REST API (not `/v1/chat/completions`), and use
   `--shm-size=16g --ipc=host`. `vllm-node-tf5` is confirmed as a known-good base image for
   non-vLLM workloads on DGX Spark / ThinkStation PGX. Single source → [conjecture].
+
+### Batch 37 forum ingest (2026-07-27)
+
+- **[conjecture]** **sparkctl — config-driven model serving CLI for DGX Spark nodes and clusters**
+  (S-forum-sparkctl, bradodarb): a CLI and orchestration layer for managing model serving on
+  single Sparks and Spark clusters. Config-driven (YAML), multi-provider — supports vLLM,
+  Ollama, llama.cpp, and other serving backends. Key differentiators vs sparkrun: (1) assumes
+  networking is already completed (no bootstrapping/SSH mesh — sparkrun does that); (2)
+  k8s/devops-inspired reproducible deployments via YAML configs; (3) load balancing for
+  clusters where the same model is deployed across several nodes (API gateway spreads load
+  evenly); (4) contextual data plane (metrics, LiteLLM proxy) that can run on host, node, or
+  k8s cluster. Tutorial at bradmurry.com. Community feedback (mrDragonFox): "you pretty much
+  reinvented sparkrun" — overlap acknowledged, but sparkctl targets users wanting config-driven
+  multi-provider deployments rather than sparkrun's bootstrap-and-serve model. GitHub:
+  `bradodarb/sparkctl`. Single source → [conjecture]. Reinforces the pattern of community-built
+  Spark orchestration tools (cf. sparkrun, Spark Studio, harinezumigel-llm-stack).

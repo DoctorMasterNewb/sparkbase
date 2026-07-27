@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama, S-forum-glm52-8x, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-laguna-v251-bench, S-forum-mistral-s4-119b, S-forum-qwen36-fp8-2x, S-forum-solar-open2, S-forum-woolyai, S-forum-solar-open2-nvfp4
-> **updated:** 2026-07-26
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama, S-forum-glm52-8x, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-laguna-v251-bench, S-forum-mistral-s4-119b, S-forum-qwen36-fp8-2x, S-forum-solar-open2, S-forum-woolyai, S-forum-solar-open2-nvfp4, S-forum-qwen122-king
+> **updated:** 2026-07-27
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
 anchor the rules on
@@ -536,8 +536,34 @@ All rows below are **[conjecture]** — single-source community-reported numbers
 >
 > This is a second-source corroboration of the existing INT4 Solar-Open2 row (S-forum-solar-open2,
 > Batch 32, ~15 tok/s INT4 on 2× Spark) — same decode rate, now characterized with the NVFP4 W4A4
-> quant and the FP8-KV capacity finding. Both are single-source → [conjecture]. The flat-with-depth
+> both are single-source → [conjecture]. The flat-with-depth
 > finding is the load-bearing result for the KB.
+
+## Forum-reported benchmarks (2026-07-27 ingest, Batch 37)
+
+All rows below are **[conjecture]** — single-source community-reported numbers, not first-party.
+
+||| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+|||---|---|---|---|---|---|---|---||
+||| Qwen3.5-122B-A10B | int4 (Intel AutoRound) | vLLM | 2 | ~65 (holds linearly over 100k) | 100K+ | vision tower needed; best balanced model on 2-Spark cluster | S-forum-qwen122-king ||
+||| Qwen3.5-122B-A10B | fp8 | vLLM | 1 | ~35 (at best) | — | marlin/deepgemm, no flashinfer; no tool-call quality improvement over int4 | S-forum-qwen122-king ||
+||| Qwen3.5-122B-A10B (hybrid int4-fp8) | int4-fp8 hybrid (blesyg) | vLLM v26 (patched) | 1 | 40+ (5 concurrent lanes) | 256K | sparkrun-recipes repo; KV cache + overhead optimization; unpublished vLLM v26 patches | S-forum-qwen122-king ||
+||| DeepSeek-V4-Flash | DSpark (NVFP4) | vLLM+DSpark | 1 | 45-50 (c1) / 240 (c16 agg) | 1M | coherent to 1M tokens; strongest 2-Spark alternative to 122B | S-forum-qwen122-king ||
+
+> **[reported]** **Qwen3.5-122B-A10B-int4 is the community consensus single-Spark daily driver** —
+> 4 independent forum users (Styles01, Josephbreda, 0rand, Rerollingingenshitimpactsucks)
+> confirm it as the "king model" for single-Spark use: largest capable model that fits in 121 GB
+> at high context, with a usable vision tower and good tool-calling. This corroborates the
+> existing S-forum-qwen122 finding (up to 51 tok/s on 1× Spark). The new numbers: AutoRound int4
+> on 2× Spark ~65 tok/s holding linearly past 100K context (Josephbreda); FP8 on 1× ~35 tok/s
+> (0rand); sparkrun-recipes patched vLLM v26 build achieves 5 concurrent lanes at 256K context
+> with 40+ tok/s decode (Styles01). The AutoRound int4 loop tendency is flagged by
+> Rerollingingenshitimpactsucks — NVFP4 variants may offer better fidelity. See
+> `[[wiki/models/qwen.md]]` → "king model" section for the full findings.
+>
+> **[conjecture]** DSV4-Flash on single Spark: 45-50 tok/s, 240 tok/s at 16 concurrent, coherent
+> to 1M tokens (0rand). Consistent with existing S-forum-dsv4-dspark numbers (~60-67 tok/s on
+> 2× Spark). Single source → [conjecture].
 
 ## Image generation benchmarks (diffusion models on GB10, 2026-07-10)
 

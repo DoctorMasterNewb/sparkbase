@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang
-> **updated:** 2026-07-25
+> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king
+> **updated:** 2026-07-27
 
 The best-supported family on GB10 — both Atlas (AOT kernels for the MoE variants) and vLLM serve it.
 The recurring lesson: **MoE-A3B NVFP4 + MTP is the fastest regime on Spark; the dense variant of the
@@ -194,6 +194,63 @@ claiming 2.5× speedup on B200. On GB10 the reality is different:
   image, not the flags: stock upstream vLLM lacks SM121/Blackwell support. Fix: use a GB10-tuned
   build (spark-vllm-docker `--tf5` or a CUDA 13 / SM121 wheel). See
   `[[wiki/containers-and-tooling.md]]` for full details. Single source → [conjecture].
+
+## Forum ingest: Qwen3.5-122B "king model" daily-driver consensus + sparkrun-recipes (2026-07-27)
+
+> **evidence:** reported (4 independent users agree 122B is the best single-Spark daily driver)
+> **sources:** S-forum-qwen122-king
+
+A forum thread (378066) on the best daily-driver model for a single DGX Spark drew 4
+independent users confirming **Qwen3.5-122B-A10B-int4** as the "king model" — the largest
+actually-capable model that fits comfortably in 121 GB unified memory at high context.
+
+- **[reported]** **Qwen3.5-122B-A10B-int4 is the community consensus single-Spark daily driver**
+  (S-forum-qwen122-king, Styles01 + Josephbreda + 0rand + Rerollingingenshitimpactsucks): 4
+  independent users with different workloads (agentic/tool-calling, vision/image
+  interpretation, 100k+ context, coding) all keep coming back to 122B-int4 as the default.
+  Key reasons cited: largest model that fits in memory at high context, capable vision tower
+  for image interpretation/translation, good tool-calling quality, and speed that holds
+  linearly through 100k+ context with AutoRound int4. 4 independent sources agreeing →
+  [reported].
+
+- **[conjecture]** **AutoRound int4 Qwen3.5-122B-A10B on 2× Spark: ~65 tok/s, holds linearly
+  over 100k context** (S-forum-qwen122-king, Josephbreda): "I get 65 t/s with Intel AutoRound.
+  Most importantly it holds fairly linearly through context over 100k." Also notes needing the
+  vision tower. Single-source number → [conjecture].
+
+- **[conjecture]** **FP8 122B on 1× Spark: ~35 tok/s at best** (S-forum-qwen122-king, 0rand):
+  "Fp8 122b is about 35 t/s at best times, mtp is multi pass very old style, run on marlin or
+  deepgemm no chance of flashinfer." Also reports "no tool call quality improvement over int4,
+  most likely due to use of suboptimal kernels." On a vanilla stack, 0rand reports "haven't
+  seen more than 40-45 from the memory" for int4 on 2 nodes. Single-source → [conjecture].
+
+- **[conjecture]** **sparkrun-recipes: patched vLLM v26 build, 5 lanes at 256K ctx, 40+ tok/s
+  decode on single Spark** (S-forum-qwen122-king, Styles01): `styles01/sparkrun-recipes` GitHub
+  repo — "massively increases KV cache and overhead optimization on the qwen 122b hybrid model
+  by blesyg." Requires "a lot of patching of the unpublished latest VLLM v26 build." Claims
+  "5 lanes at 256kb at 40+ t/s decode is pretty phenomenal" and "the absolute maximum
+  squeezing we can do of qwen 3.5 122b." Single-source recipe claim → [conjecture].
+
+- **[conjecture]** **Intel AutoRound int4 quant has a real tendency to loop** (S-forum-qwen122-king,
+  Rerollingingenshitimpactsucks): "IME this intel 4 bit autoround quant still has a very real
+  tendency to loop, and I'm not sure whether it's actually the best in terms of fidelity."
+  Suggests NVFP4 variants of 122B might perform better in output quality. Also notes "The
+  official Nvidia repo version of this loops because they apparently screwed up the
+  quantization themselves." Single-source quality observation → [conjecture].
+
+- **[conjecture]** **DSV4-Flash on single Spark: 45-50 tok/s, up to 240 tok/s at 16 concurrent
+  reqs, coherent to 1M tokens** (S-forum-qwen122-king, 0rand): reported as the strongest
+  alternative to 122B for 2-Spark clusters. Single-source number → [conjecture].
+
+- **[conjecture]** **Laguna is very slow / not good on this user's setup**
+  (S-forum-qwen122-king, Rerollingingenshitimpactsucks): "my results haven't been good."
+  Corroborates the first-party retirement finding on `[[wiki/models/laguna-s-2.1.md]]`.
+
+- **[conjecture]** **Mistral 119B used as a daily-driver replacement for Qwen 3.5**
+  (S-forum-qwen122-king, gaburko via topic 378131): a brewing-agent use case switched from
+  Qwen3.5 to Mistral 119B as the locally hosted LLM on DGX Spark. No tok/s or recipe details —
+  confirms the model is in daily use on Spark but adds no durable technical finding beyond
+  the existing Mistral-Small-4 page (`[[wiki/models/mistral-small-4.md]]`).
 
 ## See also
 `[[wiki/engines.md]]` · `[[wiki/quantization-on-gb10.md]]` · `[[wiki/models/holo-3.1.md]]` (Qwen3.5 VL MoE)
