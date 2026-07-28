@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king
-> **updated:** 2026-07-27
+> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash
+> **updated:** 2026-07-28
 
 The best-supported family on GB10 — both Atlas (AOT kernels for the MoE variants) and vLLM serve it.
 The recurring lesson: **MoE-A3B NVFP4 + MTP is the fastest regime on Spark; the dense variant of the
@@ -251,6 +251,57 @@ actually-capable model that fits comfortably in 121 GB unified memory at high co
   Qwen3.5 to Mistral 119B as the locally hosted LLM on DGX Spark. No tok/s or recipe details —
   confirms the model is in daily use on Spark but adds no durable technical finding beyond
   the existing Mistral-Small-4 page (`[[wiki/models/mistral-small-4.md]]`).
+
+## Forum ingest: Qwen 122B vLLM v26 + fp8 KV + DFlash + int8 lm-head (2026-07-28)
+
+> **evidence:** conjecture (single forum source)
+> **sources:** S-forum-qwen122-v26-dflash
+
+A forum thread (378167, styles01) documents the **first working fp8 KV + DFlash implementation
+on GB10** for a hybrid quantization model (Qwen3.5-122B-A10B). Three custom patches on top of
+an unreleased vLLM v26 build unlock fp8 KV for `inc_hybrid` quant models, free ~1.4 GB from the
+lm-head via int8 GEMV, and fix prefix-cache alignment for DFlash.
+
+- **[conjecture]** **vLLM v26 (main, commit 318b527) adds native fp8 KV support for hybrid
+  quantization models** (S-forum-qwen122-v26-dflash, styles01): previous vLLM versions (0.23–0.25)
+  were architecturally blocked — the `inc_hybrid` quant method didn't support fp8 KV, and the
+  lm-head projection (248K vocab × 3072 hidden = ~1.4 GB bf16) consumed memory that could go to KV
+  cache. Built from main with `--build-arg torch_cuda_arch_list='12.1'`, build time 3–5 hours on
+  GB10 (FA2/FA3 CUDA kernels are the slow part, ~85s each, 400 total). Single source → [conjecture].
+
+- **[conjecture]** **Three custom patches:**
+  1. **inc_hybrid** — enables fp8 KV cache for the hybrid quant model. Without it, the model
+     fails to load with `weight_scale_inv` errors.
+  2. **int8_lmhead_v3** — converts the 122B lm-head from bf16 (~1.4 GB) to int8 w8a16 GEMV
+     (~175 MB), freeing ~1.4 GB for KV cache. Hooks into `LogitsProcessor._apply_head` (v26's
+     new logits path). Bonus: recovers decode speed lost to fp8 KV overhead (45.98 vs 43.6 tok/s).
+  3. **prefix_align** — fixes prefix caching alignment issues that caused cache corruption with
+     DFlash speculative decoding.
+
+- **[conjecture]** **Benchmark results (single Spark, pp512/tg128, 3 runs):**
+
+  | Metric | bf16 KV (vLLM 0.23) | fp8 KV (v26 patched) | Improvement |
+  |---|---|---|---|
+  | KV cache | 549K tokens | 1,372,342 tokens | 2.6× |
+  | Concurrency @ 256K | 2.09× | 5.24× | 2.5× |
+  | Decode speed | 50.2 tok/s | 45.98 tok/s | recovered via int8 lm-head |
+  | Prefill speed | 726 tok/s | 957 tok/s | +32% |
+
+  Launch config: `--kv-cache-dtype fp8 --gpu-memory-utilization 0.85 --max-num-seqs 3
+  --max-num-batched-tokens 8192 --enable-prefix-caching --enable-chunked-prefill
+  --attention-backend FLASHINFER --speculative-config '{"method":"dflash","model":
+  "z-lab/Qwen3.5-122B-A10B-DFlash","num_speculative_tokens":7}'`. Model:
+  `bleysg/Qwen3.5-122B-A10B-int4-fp8-hybrid`. Single source → [conjecture].
+
+- **[conjecture]** **vLLM v26 natively supports FlashInfer on SM121** — lower overhead than
+  flash_attn for long contexts. (S-forum-qwen122-v26-dflash)
+
+This corroborates the existing sparkrun-recipes finding (S-forum-qwen122-king, Styles01) — same
+author, same "vLLM v26 patched" approach, now with full technical detail on the three patches and
+the fp8 KV + DFlash + int8 lm-head combination. The 45.98 tok/s decode at 256K context on a single
+Spark is a notable result for the 122B model, and the 1.37M-token KV pool (2.6× the bf16 baseline)
+is a significant capacity gain. The int8 lm-head technique (~1.4 GB → ~175 MB) is a GB10-specific
+memory-reclamation approach that could generalize to other large-vocab models on Spark.
 
 ## See also
 `[[wiki/engines.md]]` · `[[wiki/quantization-on-gb10.md]]` · `[[wiki/models/holo-3.1.md]]` (Qwen3.5 VL MoE)

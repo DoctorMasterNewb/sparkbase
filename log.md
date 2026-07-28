@@ -1378,3 +1378,27 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   [reported] — no hardware verification available.
 - **New wiki page created:** wiki/models/glm-5.2.md (GLM-5.2 model page, consolidating 12 sources).
 - Index updated with new model page link and Batch 38 ingest summary.
+
+## Forum ingest 2026-07-28 (Batch 39)
+
+- 5 new forum topics found (4 technically relevant, 1 skipped as social/buying advice).
+- 4 new sources registered (Batch 39). 5 topic IDs added to `sources/processed_topics.txt`
+  (total now 469).
+- **Headline finding:** Qwen 122B vLLM v26 + fp8 KV + DFlash + int8 lm-head on single Spark
+  (S-forum-qwen122-v26-dflash, styles01) — first working fp8 KV + DFlash implementation on GB10
+  for a hybrid quantization model. Three custom patches (inc_hybrid, int8_lmhead_v3, prefix_align)
+  on vLLM v26 main (commit 318b527). KV cache 549K→1.37M tokens (2.6×), concurrency 2.09×→5.24×
+  at 256K context. Decode 45.98 tok/s, prefill 957 tok/s (+32%). The int8 lm-head technique
+  (~1.4 GB → ~175 MB) is a GB10-specific memory-reclamation approach that could generalize to
+  other large-vocab models. Corroborates the existing sparkrun-recipes finding (S-forum-qwen122-king,
+  same author).
+- Pages touched: models/qwen (v26 + fp8 KV + DFlash + int8 lm-head recipe + benchmark table),
+  engines (SpeedyColibri — Rust port of Colibri for GLM-5.2, ~1→4 tok/s with fp8),
+  containers-and-tooling (whisper.cpp STT Docker recipe — 7 GB10-specific build gotchas including
+  CMAKE_CUDA_ARCHITECTURES="120;121", nvidia/cuda not nvcr.io, deploy.resources GPU access;
+  official llama.cpp Docker image matches custom builds, --mmap 0 mandatory on UMA, power-cycle
+  fixes 40→67 tok/s degradation), benchmarks (4 new [conjecture] rows: Qwen 122B v26 fp8/bf16 KV,
+  llama.cpp 35B-A3B NVFP4 GGUF, SpeedyColibri GLM-5.2), sources/README, index, log.
+- Skipped: 377281 (Concern about the usefulness of a single DGX Spark — social/buying advice,
+  104 posts, no durable technical findings).
+- No evidence promotions past [reported]. All new findings [conjecture] (single source each).

@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl
-> **updated:** 2026-07-27
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest
+> **updated:** 2026-07-28
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -404,3 +404,53 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   multi-provider deployments rather than sparkrun's bootstrap-and-serve model. GitHub:
   `bradodarb/sparkctl`. Single source → [conjecture]. Reinforces the pattern of community-built
   Spark orchestration tools (cf. sparkrun, Spark Studio, harinezumigel-llm-stack).
+
+### Batch 39 forum ingest (2026-07-28)
+
+- **[conjecture]** **whisper.cpp STT server on DGX Spark via Docker** (S-forum-whisper-docker,
+  swann.schilling): a complete Docker recipe for running whisper.cpp v1.8.4 as an STT server
+  on GB10. Several GB10-specific build gotchas:
+  1. **No pre-built ARM64+CUDA binaries** in whisper.cpp releases — must build from source
+     inside Docker.
+  2. **Use `docker.io/nvidia/cuda`, not `nvcr.io/nvidia/cuda`** — nvcr.io has no ARM64 tags.
+     Base: `nvidia/cuda:13.0.3-devel-ubuntu24.04`.
+  3. **Ubuntu 24.04, not 22.04** — DGX OS ships GLIBC 2.38; Ubuntu 22.04 containers only have
+     GLIBC 2.35 and fail with `version GLIBC_2.38 not found`.
+  4. **`CMAKE_CUDA_ARCHITECTURES="120;121"`** — must target both 120 and 121. Using only 120
+     compiles for `sm_120a` which is not compatible with GB10 (sm_121). This is the same
+     arch-targeting gap documented for vLLM/llama.cpp builds (cf. S-forum-llamacpp-container
+     `121a-real`, S-forum-sm121-kernel-guide).
+  5. **CUDA stubs for linking** — `libcuda.so.1` is a driver library not available at image
+     build time. Use `-DCMAKE_EXE_LINKER_FLAGS="-L/usr/local/cuda/lib64/stubs -lcuda"`.
+  6. **Only build `whisper-server` target** — building everything fails because `libcuda.so.1`
+     is unavailable at build time.
+  7. **`deploy.resources` GPU access, not `runtime: nvidia`** — `runtime: nvidia` throws
+     `unknown or invalid runtime name: nvidia` on DGX OS. Use the `deploy.resources.reservations.
+     devices` style with `driver: nvidia, count: all, capabilities: [gpu]`.
+  Model: `ggml-large-v3-turbo.bin` (1623.92 MB, 4-layer decoder). Flash attention enabled
+  (`--flash-attn`). Confirmed: `Device 0: NVIDIA GB10, compute capability 12.1, VMM: yes`.
+  An alternative approach (ajvazan) uses `mekopa/whisperx-blackwell` (WhisperX built for
+  SM_121) via faster-whisper with a FastAPI wrapper — `COMPUTE_TYPE=float16`, OpenAI-compatible
+  `/v1/audio/transcriptions` endpoint. Single source + one corroborating reply → [conjecture].
+  Reinforces the recurring ARM64 wheel/binary gap pattern on GB10 (cf. torchaudio, nvidia-vfx,
+  decord, GGML/qwentts — all require building from source with explicit sm_121 targeting).
+
+- **[conjecture]** **Official llama.cpp Docker image matches custom builds on GB10; `--mmap 0`
+  mandatory on UMA** (S-forum-llamacpp-fastest, pontostroy/knitvoger1): the official
+  `ghcr.io/ggml-org/llama.cpp:full-cuda13` image performs identically to a custom-optimized
+  build on DGX Spark — both achieve **72.28 tok/s tg128** (Qwen3.5-35B-A3B NVFP4,
+  `s-batman/Agents-A1-NVFP4-MTP-GGUF`, 19.84 GiB, 35.51B params). Key findings:
+  - **`--mmap 0` is mandatory on UMA** — without it, mmap and CUDA compete for the same
+    unified pool (same pattern as the ComfyUI double-VRAM bug, S-forum-comfyui-optimized).
+  - **`-fa 1` (flash attention)** enabled in all runs.
+  - **Performance degradation 40→67 tok/s fixed by system update** — a user getting 40 tok/s
+    (vs the expected ~72) was advised to power-cycle the Spark (unplug power adapter 3–5 min,
+    the known power-controller wedge fix, see `[[wiki/platform-gb10.md]]`). After a system
+    update + reboot, speed jumped to 67 tok/s. This corroborates the existing [reported]
+    power-controller wedge pattern: unexplained performance degradation → power-cycle.
+  - **scitrera/dgx-spark-llama-cpp image is slower** (30 tok/s vs 72 tok/s) — community image
+    not optimized for the current CUDA 13 / sm_121 stack.
+  - Vulkan backend loaded alongside CUDA (NV_coopmat2 matrix cores) but CUDA is the primary
+    compute path.
+  Single source (two users in one thread) → [conjecture]. Corroborates the power-controller
+  wedge pattern documented across multiple batches.

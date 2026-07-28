@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama, S-forum-glm52-8x, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-laguna-v251-bench, S-forum-mistral-s4-119b, S-forum-qwen36-fp8-2x, S-forum-solar-open2, S-forum-woolyai, S-forum-solar-open2-nvfp4, S-forum-qwen122-king, S-forum-glm52-hybrid
-> **updated:** 2026-07-27
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama, S-forum-glm52-8x, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-laguna-v251-bench, S-forum-mistral-s4-119b, S-forum-qwen36-fp8-2x, S-forum-solar-open2, S-forum-woolyai, S-forum-solar-open2-nvfp4, S-forum-qwen122-king, S-forum-glm52-hybrid, S-forum-qwen122-v26-dflash, S-forum-llamacpp-fastest, S-forum-speedycolibri
+> **updated:** 2026-07-28
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
 anchor the rules on
@@ -589,6 +589,31 @@ thread, not independent threads), not first-party.
 > Two reporters agree on ~800 pp / ~20-25 tg but are in the same thread using the same image →
 > stays [conjecture]. See `[[wiki/models/glm-5.2.md]]` for the full recipe, tool-eval-bench
 > quality results, and the reasoning-parser / repetition-penalty root causes.
+
+## Forum-reported benchmarks (2026-07-28 ingest, Batch 39)
+
+All rows below are **[conjecture]** — single-source community-reported numbers, not first-party.
+
+|| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+|---|---|---|---|---|---|---|---|---|
+| Qwen3.5-122B-A10B | int4-fp8 hybrid + fp8 KV + DFlash + int8 lm-head | vLLM v26 (patched, 3 patches) | 1 | 45.98 (tg128) | 256K | KV 1,372,342 tokens (2.6× bf16); concurrency 5.24× @ 256K; prefill 957 tok/s (+32%); first fp8 KV + DFlash on GB10 for hybrid quant | S-forum-qwen122-v26-dflash |
+| Qwen3.5-122B-A10B | int4-fp8 hybrid + bf16 KV | vLLM 0.23 (aeon) | 1 | 50.2 (tg128) | 256K | KV 549K tokens; concurrency 2.09× @ 256K; prefill 726 tok/s; baseline for fp8 KV comparison | S-forum-qwen122-v26-dflash |
+| Qwen3.5-35B-A3B (MoE) | NVFP4 (GGUF) | llama.cpp (official full-cuda13) | 1 | 72.28 (tg128) | — | s-batman/Agents-A1-NVFP4-MTP-GGUF; 19.84 GiB; pp512 2636.97 tok/s; --mmap 0 -fa 1; matches custom build | S-forum-llamacpp-fastest |
+| GLM-5.2 (744B/40B MoE) | int4 MoE + fp8 (expert streaming) | SpeedyColibri (Rust) | 1 | ~4 (with fp8) / ~1 (initial) | short | Rust port of Colibri; proof-of-concept; target 8 tok/s on 2× Spark | S-forum-speedycolibri |
+
+> **[conjecture]** **Qwen 122B vLLM v26 + fp8 KV + DFlash + int8 lm-head on single Spark**
+> (S-forum-qwen122-v26-dflash, styles01): the first working fp8 KV + DFlash implementation on
+> GB10 for a hybrid quantization model. Three custom patches (inc_hybrid, int8_lmhead_v3,
+> prefix_align) on vLLM v26 main (commit 318b527). KV cache 549K→1.37M tokens (2.6×), concurrency
+> 2.09×→5.24× at 256K context. Decode 45.98 tok/s (recovered from 43.6 via int8 lm-head), prefill
+> 957 tok/s (+32% over bf16 KV baseline). The int8 lm-head technique (~1.4 GB → ~175 MB) is a
+> GB10-specific memory-reclamation approach. See `[[wiki/models/qwen.md]]` for full details.
+>
+> **[conjecture]** **Official llama.cpp Docker image on GB10** (S-forum-llamacpp-fastest):
+> `ghcr.io/ggml-org/llama.cpp:full-cuda13` matches custom builds at 72.28 tok/s (Qwen3.5-35B-A3B
+> NVFP4 GGUF). `--mmap 0` mandatory on UMA. Performance degradation (40→67 tok/s) fixed by
+> system update + power-cycle — corroborates the power-controller wedge pattern. See
+> `[[wiki/containers-and-tooling.md]]` for full details.
 
 ## Image generation benchmarks (diffusion models on GB10, 2026-07-10)
 

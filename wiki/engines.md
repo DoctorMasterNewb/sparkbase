@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid
-> **updated:** 2026-07-26
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri
+> **updated:** 2026-07-28
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -247,6 +247,20 @@ Three engines run on the Spark pair; pick by arch support and quant.
   This is the first reported engine that makes a 744B model usable (if very slowly) on a
   single 121 GB Spark — the streaming-from-disk approach is the complement to the
   multi-node TP path used for other large MoE models.
+
+## Forum ingest: SpeedyColibri — Rust port of Colibri for GLM-5.2 (2026-07-28)
+
+- **[conjecture]** **SpeedyColibri** (S-forum-speedycolibri, GPilz): a Rust port of the Colibri
+  expert-streaming engine, targeting GLM-5.2 (744B MoE) on a single DGX Spark. Built on the Colibri
+  base by a developer who started learning the domain ~2 months prior. Initial version: ~1 tok/s.
+  With fp8 optimizations: ~4 tok/s. Working on multi-Spark setup (target: 8 tok/s on 2× Spark).
+  Repo: `GriffinPilz/SpeedyColibri`. **GB10 relevance:** confirms the expert-streaming approach is
+  reproducible by a different developer in a different language (Rust vs C), and that fp8 expert
+  quantization meaningfully improves throughput (1→4 tok/s, 4×). Still proof-of-concept speed —
+  the attention-not-disk bottleneck identified in the original Colibri profile applies. Single
+  source → [conjecture]. Community feedback (JW2026): the approach is more interesting as a
+  technique (applying expert streaming to other models, keeping unused layers in 2nd-tier memory
+  without REAP) than as a production inference engine; needs TP/PP/EP support to be useful.
 
 ## Forum ingest: MTP quality & prefix-cache interaction (2026-07-18)
 

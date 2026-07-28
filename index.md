@@ -465,3 +465,19 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   sources/README, index, log.
 - No evidence promotions past [reported]. All new findings [conjecture] (single thread, multiple
   users in same thread using same image → not independent).
+
+## Forum ingest 2026-07-28 (Batch 39)
+- 5 new forum topics found (4 technically relevant, 1 skipped: social/buying advice).
+- 4 new sources registered (Batch 39). 5 topic IDs added to `sources/processed_topics.txt`
+  (total now 469).
+- **Headline finding:** Qwen 122B vLLM v26 + fp8 KV + DFlash + int8 lm-head on single Spark
+  (styles01) — first working fp8 KV + DFlash on GB10 for hybrid quant models. 3 custom patches
+  (inc_hybrid, int8_lmhead_v3, prefix_align). KV 549K→1.37M tokens (2.6×), concurrency 5.24×
+  @ 256K, decode 45.98 tok/s, prefill 957 tok/s (+32%). int8 lm-head reclaims ~1.4 GB.
+- Pages touched: models/qwen (v26 + fp8 KV + DFlash + int8 lm-head recipe + benchmark table),
+  engines (SpeedyColibri — Rust port of Colibri for GLM-5.2, ~1→4 tok/s with fp8),
+  containers-and-tooling (whisper.cpp STT Docker — 7 GB10 build gotchas; official llama.cpp
+  Docker matches custom builds, --mmap 0 mandatory, power-cycle fixes 40→67 tok/s),
+  benchmarks (4 new [conjecture] rows), sources/README, index, log.
+- Skipped: 377281 (social/buying advice, 104 posts, no durable findings).
+- No evidence promotions past [reported]. All new findings [conjecture].
