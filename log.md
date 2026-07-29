@@ -1402,3 +1402,24 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
 - Skipped: 377281 (Concern about the usefulness of a single DGX Spark — social/buying advice,
   104 posts, no durable technical findings).
 - No evidence promotions past [reported]. All new findings [conjecture] (single source each).
+
+## 2026-07-29 — Forum ingest: Batch 40 — 5 new topics (3 processed, 2 skipped)
+
+- **Sources:** 3 forum threads registered (S-forum-gemma4-26b-bench, S-forum-comfyui-crash,
+  S-forum-cuda-mps). All type `forum` → capped at `[conjecture]` (single source each).
+- **Platform:** ComfyUI hard-crash root cause — GPU power spike (14→85 W) trips overcurrent
+  protection (distinct from power-controller wedge). Fix: `nvidia-smi -lgc 300,2100` + `swapoff -a`.
+  `nvidia-smi -pl` shows N/A on GB10 → clock capping is the only power control. `--highvram` is a
+  trap on UMA. `CUDA_CACHE_MAXSIZE=4GB` → 3× rerun speedup. ComfyUI has no multi-GPU/multi-node.
+  Second user confirms clock cap; third reports lock may not take on all firmware.
+- **Models:** Gemma-4-26B-A4B NVFP4 benchmark — Unsloth ~17% faster than nvidia on Spark
+  (160 vs 128 tok/s aggregate @100 concurrent). Spark ~6-7× slower than RTX Blackwell 6000 Pro.
+  Corroborates Unsloth-vs-nvidia quant difference (opposite direction from Qwen3.6-35B).
+- **Containers/tooling:** CUDA MPS for multiple vLLM on one GB10 — EXCLUSIVE_PROCESS mode,
+  MPS daemon, `--gpu-memory-utilization 0.45` per instance; latency up, throughput modestly up;
+  enables multi-model co-residency (alternative to lifecycle-swap pattern).
+- **Benchmarks:** 2 new [conjecture] rows (gemma-4-26B unsloth/nvidia NVFP4).
+- Pages touched: platform-gb10, models/gemma-4, containers-and-tooling, benchmarks,
+  sources/README, index, log.
+- Skipped: 378157 (won't boot after update — RMA/boot failure), 378245 (power adapter buying advice).
+- No evidence promotions past [reported]. All new findings [conjecture].

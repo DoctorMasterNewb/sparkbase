@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest
-> **updated:** 2026-07-28
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps
+> **updated:** 2026-07-29
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -454,3 +454,46 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
     compute path.
   Single source (two users in one thread) → [conjecture]. Corroborates the power-controller
   wedge pattern documented across multiple batches.
+
+### Batch 40 forum ingest (2026-07-29)
+
+- **[conjecture]** **ComfyUI hard-crash fix on DGX Spark — clock cap + swapoff + async offload**
+  (S-forum-comfyui-crash, jas.burton): a detailed diagnosis and fix for ComfyUI causing hard
+  system reboots on GB10. The root cause is a **GPU power spike** (14→85 W instantaneous) tripping
+  overcurrent protection, not thermal or OOM. See `[[wiki/platform-gb10.md]]` for the full
+  platform-level finding. ComfyUI-specific takeaways:
+  - **Working flags:** `python main.py --listen 0.0.0.0 --bf16-unet --bf16-vae --bf16-text-enc
+    --use-sage-attention` — no `--highvram`, no `--disable-async-offload`, no `--gpu-only`.
+    On UMA, ComfyUI's async weight offloader is near-free (pointer update, not a real
+    copy). `--highvram` forces all models pinned simultaneously → OOM with multi-model stacks.
+  - **`CUDA_CACHE_MAXSIZE=4294967296`** (4 GB) — 3× rerun speedup from larger PTX→SASS cache.
+  - **`NCCL_P2P_DISABLE=1`** — single GPU, skip NCCL overhead.
+  - **Avoid:** `CUDA_CACHE_DISABLE=1` (kills kernel cache, 3× slower reruns),
+    `PYTORCH_NO_CUDA_MEMORY_CACHING=1` (causes fragmentation → OOM).
+  - Full stack demonstrated: ComfyUI (LTX Video) + llama-server (Qwen3-VL-8B Q6_K) + FastAPI
+    web app on one Spark, peak ~93 GB / 119 GB, 68-74 °C, 45-51 W with clock cap — stable.
+  - A second user (frozenace88) confirms `nvidia-smi -lgc 300,2100` stabilized their system.
+    A third (knitvoger1) reports the lock command succeeds but the clock still shows 2418 MHz
+    — may not take effect on all firmware versions. See `[[wiki/platform-gb10.md]]`.
+  - **ComfyUI has no multi-GPU/multi-node support** (gpieceoffice, same thread): the
+    `worksplit-multigpu` branch loads models on each GPU in parallel (not split), abandoned
+    ~end of 2025. Multi-node model loading not feasible in ComfyUI.
+  Reinforces existing ComfyUI UMA findings (S-forum-comfyui-optimized, S-forum-comfyui-container).
+
+- **[conjecture]** **CUDA MPS for multiple vLLM instances on single DGX Spark**
+  (S-forum-cuda-mps, shahizat): an experiment running 2+ vLLM servers on one GB10 via CUDA
+  Multi-Process Service. MPS allows multiple CUDA processes to share scheduling resources,
+  reducing context-switch overhead. Setup:
+  1. `sudo nvidia-smi -i 0 -c EXCLUSIVE_PROCESS` (set compute mode)
+  2. `mkdir -p /tmp/nvidia-mps /var/log/nvidia-mps`
+  3. `export CUDA_MPS_PIPE_DIRECTORY=/tmp/nvidia-mps CUDA_MPS_LOG_DIRECTORY=/var/log/nvidia-mps`
+  4. `nvidia-cuda-mps-control -d` (start MPS controller daemon)
+  5. Each vLLM instance: `--gpu-memory-utilization 0.45` (split the UMA pool)
+  **Result:** latency increased significantly, throughput improved modestly. The main advantage
+  is serving **multiple independent models** on the same GPU (e.g. Qwen3.5-4B + another model),
+  not raw performance. This is an alternative to the lifecycle-swap pattern (start/stop one
+  model at a time) — MPS enables true co-residency at the cost of per-instance latency. A
+  second user (MadsRotwitt) asked about MPS with Docker/NGC vLLM containers — not addressed in
+  the thread. Single source → [conjecture]. Relevant to the existing [proven] single-tenant
+  constraint: MPS is a potential workaround but trades latency for co-residency. See
+  `[[wiki/platform-gb10.md]]` → operating constraints, `[[wiki/engines.md]]`.

@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4
-> **updated:** 2026-07-08
+> **sources:** S-sess-jun5, S-sess-jun4, S-forum-gemma4-26b-bench
+> **updated:** 2026-07-29
 
 Gemma-4 family on GB10. The 12B "unified" variant is a clean case study in *image-support* deciding
 serveability, and in FP8 online-dynamic being the GB10 fast path for a dense model.
@@ -34,6 +34,27 @@ serveability, and in FP8 online-dynamic being the GB10 fast path for a dense mod
 - **[proven]** `bg-digitalservices/gemma-4-26b-a4b-nvfp4` — hybrid attn + MoE, GeGLU, fp8 KV,
   **~67 tok/s** (MoE wins again — `[[wiki/quantization-on-gb10.md]]`).
 - Atlas actively maintains Gemma-4 kernels (dispatch + v_norm/lm_head/o_proj fixes through 2026-05).
+
+## gemma-4-26B-A4B NVFP4: Unsloth vs nvidia (vLLM, forum benchmark)
+
+- **[conjecture]** **Unsloth NVFP4 ~17% faster than nvidia NVFP4 on DGX Spark** (S-forum-gemma4-26b-bench,
+  shahizat): benchmarked `unsloth/gemma-4-26B-A4B-it-NVFP4` vs `nvidia/Gemma-4-26B-A4B-NVFP4`
+  with identical vLLM serve params (`--kv-cache-dtype fp8 --max-model-len 65536 --max-num-seqs 8
+  --max-num-batched-tokens 4096 --gpu-memory-utilization 0.85 --reasoning-parser gemma4
+  --enable-prefix-caching --trust-remote-code`), `vllm bench serve` with 100 concurrent random
+  1000-in/1000-out requests. On DGX Spark: Unsloth **159.77 tok/s aggregate output** (mean TPOT
+  47.14 ms) vs nvidia **128.21 tok/s** (mean TPOT 58.67 ms) — Unsloth ~17% higher throughput,
+  ~15% lower TPOT. This corroborates the broader pattern that Unsloth NVFP4 quants behave
+  differently from nvidia NVFP4 on GB10 (cf. S-forum-unsloth-qwen36 where Unsloth was ~15%
+  *slower* for Qwen3.6-35B-A3B — the direction is model-specific, not uniformly better).
+  - **[conjecture]** **DGX Spark ~6-7× slower than RTX Blackwell 6000 Pro** on this workload:
+    Blackwell 6000 Pro hits 901-1058 tok/s aggregate output vs Spark's 128-160 tok/s. The 6000
+    Pro also has ~5× lower TPOT (7-8 ms vs 47-59 ms). This is consistent with the known
+    bandwidth-bound decode ceiling on GB10 (~270 GB/s vs the 6000 Pro's much higher bandwidth).
+  - **[conjecture]** These are aggregate throughput numbers at 100 concurrent requests, not
+    single-stream decode. The TPOT (~47-59 ms on Spark) implies ~17-21 tok/s per-stream, which
+    is lower than the Atlas ~67 tok/s above — likely due to the concurrency saturating the
+    bandwidth-bound decode path. See `[[wiki/benchmarks.md]]`.
 
 ## Open
 Whether Atlas's gemma4 loader accepts the **unified** (audio-tower) arch vs the text+vision

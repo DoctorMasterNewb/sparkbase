@@ -456,9 +456,17 @@ sources cite the experiment (what/config/when), never a private path.
 
 ## Batch 39 forum sources (2026-07-28 ingest)
 
-|| ID | type | What it is | Reference | Date |
+||| ID | type | What it is | Reference | Date |
 |---|---|---|---|---|---|
 | S-forum-whisper-docker | forum | whisper.cpp STT server on DGX Spark via Docker — ARM64+CUDA build from source, CMAKE_CUDA_ARCHITECTURES="120;121" (not just 120), nvidia/cuda not nvcr.io (no ARM64 tags), CUDA stubs for linking, deploy.resources GPU access; whisperx-blackwell alternative (mekopa/whisperx-blackwell) (swann.schilling, ajvazan) | https://forums.developer.nvidia.com/t/371803 | 2026-05-30 |
 | S-forum-qwen122-v26-dflash | forum | Qwen 122B vLLM v26 + fp8 KV + DFlash + int8 lm-head on single Spark — first working fp8 KV + DFlash on GB10 for hybrid quant models; 3 custom patches (inc_hybrid, int8_lmhead_v3, prefix_align); KV 549K→1.37M tokens (2.6×), concurrency 2.09×→5.24× @ 256K; decode 45.98 tok/s, prefill 957 tok/s (+32%); build vLLM from main (commit 318b527) (styles01) | https://forums.developer.nvidia.com/t/378167 | 2026-07-26 |
 | S-forum-speedycolibri | forum | SpeedyColibri — Rust port of Colibri for GLM-5.2 (744B MoE) on single Spark; ~1 tok/s initial → ~4 tok/s with fp8; proof-of-concept by new developer; working on multi-spark (GriffinPilz/SpeedyColibri) (GPilz) | https://forums.developer.nvidia.com/t/376996 | 2026-07-16 |
 | S-forum-llamacpp-fastest | forum | Fastest llama.cpp Docker image on DGX Spark — official ghcr.io/ggml-org/llama.cpp:full-cuda13 matches custom builds (72.28 tok/s tg128); --mmap 0 mandatory on UMA; Agents-A1-NVFP4-MTP-GGUF 35B-A3B NVFP4; performance degradation 40→67 tok/s fixed by system update (power-cycle pattern) (knitvoger1, pontostroy) | https://forums.developer.nvidia.com/t/376946 | 2026-07-15 |
+
+## Batch 40 forum sources (2026-07-29 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-gemma4-26b-bench | forum | Gemma-4-26B-A4B NVFP4 benchmark: unsloth vs nvidia on DGX Spark vs RTX Blackwell 6000 Pro — vLLM serve, fp8 KV, 65K ctx, 100 concurrent reqs; Unsloth ~17% faster than nvidia on Spark (160 vs 128 tok/s aggregate output); Spark ~6-7× slower than Blackwell 6000 Pro; single-stream TPOT ~47-59 ms (shahizat) | https://forums.developer.nvidia.com/t/377364 | 2026-07-18 |
+| S-forum-comfyui-crash | forum | ComfyUI hard-crash fix on DGX Spark — GPU power spike (14→85W) trips overcurrent protection, not thermal/OOM; fix: swapoff -a + nvidia-smi -lgc 300,2100 (clock cap to 2100 MHz, ~50W); --highvram is a trap on UMA (forces all models pinned); CUDA_CACHE_MAXSIZE=4GB gives 3× rerun speedup; async weight offload near-free on UMA; 2nd user confirms clock cap stabilizes (jas.burton, frozenace88) | https://forums.developer.nvidia.com/t/360336 | 2026-02-11 |
+| S-forum-cuda-mps | forum | CUDA MPS for multiple vLLM instances on single DGX Spark — nvidia-smi -c EXCLUSIVE_PROCESS, nvidia-cuda-mps-control daemon, --gpu-memory-utilization 0.45 per instance; latency increases significantly, throughput improves modestly; enables serving multiple independent models on same GPU (shahizat) | https://forums.developer.nvidia.com/t/376724 | 2026-07-13 |

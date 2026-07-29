@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25
-> **updated:** 2026-07-27
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash
+> **updated:** 2026-07-29
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -836,6 +836,52 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
     not needed in this case but remains a general thermal workaround. Single source → [conjecture].
   - NVIDIA staff (Neill) requested version numbers for both the July 23 update and the type-C
     firmware update — not yet provided. Status: `open` — version tracking pending.
+
+### Batch 40 forum ingest (2026-07-29)
+
+- **[conjecture]** **GPU power spike trips overcurrent protection — distinct from the
+  power-controller wedge** (S-forum-comfyui-crash, jas.burton): during ComfyUI LTX Video
+  generation, the GB10 jumps from idle (~14 W) to full load (~85 W) instantly when denoising
+  kicks in. This **6× power transient** appears to trip overcurrent/power-delivery protection
+  in the compact Spark chassis, causing an **immediate hard shutdown** — no OOM, no thermal
+  flag, no CUDA error, no log entry in `dmesg`/`journalctl`/ComfyUI. Peak temp was only 78 °C
+  (not thermal). Only 49/119 GB RAM used (not OOM). `journalctl` shows "corrupted or uncleanly
+  shut down" after reboot. **This is a different failure mode from the power-controller wedge**
+  (which pins the clock at a low value with no throttle flag) — here the GPU was running
+  normally at ~85 W then instantly died from the transient. Config: driver 580.126.09,
+  CUDA 13.0, PyTorch 2.10.0+cu130, kernel 6.14.0-1015-nvidia.
+  - **[conjecture]** **Fix — clock cap to 2100 MHz** (`sudo nvidia-smi -lgc 300,2100`):
+    limits max GPU clock to 2100 MHz (down from default 2418 / boost 3003), keeping power
+    draw at ~50 W instead of 85 W. 1800 MHz was "rock solid," 2100 MHz is the "sweet spot."
+    Note: `nvidia-smi -pl` (power limit) shows N/A on GB10, so **clock capping is the only
+    way to control power**. A second user (frozenace88) confirms the clock cap stabilized
+    their system: 79 °C, 69.77 W, 2086 MHz, 96% util — stable. A third user (knitvoger1)
+    reports `nvidia-smi -lgc 300,2100` succeeds but `nvidia-smi --query-gpu=clocks.applications.graphics`
+    still shows 2418 MHz — the lock may not take effect on all units/firmware versions.
+  - **[conjecture]** **Fix — disable swap** (`sudo swapoff -a` + `vm.swappiness=10`): on
+    unified memory, swap is actively harmful — when the system approaches memory limits, the
+    OS pages to swap → saturates the system bus → display times out → total lockup (instead
+    of a clean OOM kill). This corroborates the existing swapoff guidance
+    (S-forum-llm-comfyui, S-forum-uvm-livelock) with a specific diagnosis of the mechanism
+    (bus saturation → display timeout → lockup). See also `[[wiki/engines.md]]`.
+  - **[conjecture]** **`CUDA_CACHE_MAXSIZE=4294967296` (4 GB)** — expanding the PTX→SASS
+    kernel compilation cache from the default ~256 MB to 4 GB gives a **3× speedup on
+    reruns** (kernel compilation amortized). Relevant for any CUDA workload with JIT
+    compilation (ComfyUI, vLLM with Triton kernels, etc.).
+  - **[conjecture]** **`--highvram` is a trap on unified memory** (S-forum-comfyui-crash,
+    jas.burton): the ComfyUI flag sounds like "use all the VRAM!" but on Spark it forces
+    every model to stay pinned on GPU simultaneously. With LTX Video (15 GB) + VAE (2.3 GB)
+    + ReActor + RIFE, that pushes past 80 GB and OOMs — especially with an LLM co-loaded.
+    Working flags: `--listen 0.0.0.0 --bf16-unet --bf16-vae --bf16-text-enc
+    --use-sage-attention` (no `--highvram`, no `--disable-async-offload`, no `--gpu-only`).
+    Let ComfyUI's async weight offloader do its job — on UMA the "offload" is basically a
+    pointer update, nearly free. This corroborates the existing ComfyUI UMA findings
+    (S-forum-comfyui-optimized, S-forum-comfyui-container). See
+    `[[wiki/containers-and-tooling.md]]`.
+  - **[conjecture]** **ComfyUI has no real multi-GPU/multi-node support** (gpieceoffice):
+    the `worksplit-multigpu` branch on ComfyUI GitHub loads the model on each GPU and
+    computes in parallel (not model-parallel split). It was abandoned ~end of 2025.
+    Multi-node model loading is not feasible in ComfyUI.
 
 ### Batch 38 forum ingest (2026-07-27)
 

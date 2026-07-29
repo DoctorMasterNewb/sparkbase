@@ -481,3 +481,27 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   benchmarks (4 new [conjecture] rows), sources/README, index, log.
 - Skipped: 377281 (social/buying advice, 104 posts, no durable findings).
 - No evidence promotions past [reported]. All new findings [conjecture].
+
+## Forum ingest 2026-07-29 (Batch 40)
+- 5 new forum topics found (3 technically relevant, 2 skipped: boot failure/RMA, power adapter buying advice).
+- 3 new sources registered (Batch 40). 5 topic IDs added to `sources/processed_topics.txt`
+  (total now 474).
+- **Headline finding:** ComfyUI hard-crash root cause on GB10 — GPU power spike (14→85 W
+  instantaneous) trips overcurrent protection, distinct from the power-controller wedge. Fix:
+  `nvidia-smi -lgc 300,2100` (clock cap to 2100 MHz, ~50 W) + `swapoff -a`. Second user
+  confirms clock cap stabilizes. `--highvram` is a trap on UMA; async offload is near-free.
+  `CUDA_CACHE_MAXSIZE=4GB` gives 3× rerun speedup.
+- **Gemma-4-26B-A4B NVFP4 benchmark:** Unsloth ~17% faster than nvidia on Spark (160 vs 128
+  tok/s aggregate @100 concurrent). Spark ~6-7× slower than RTX Blackwell 6000 Pro. Corroborates
+  Unsloth-vs-nvidia quant difference pattern (opposite direction from Qwen3.6-35B where Unsloth
+  was slower).
+- **CUDA MPS on Spark:** first documented MPS setup for multiple vLLM instances on one GB10.
+  `EXCLUSIVE_PROCESS` mode + MPS daemon + `--gpu-memory-utilization 0.45` per instance. Latency
+  increases, throughput modestly improves; main value is multi-model co-residency.
+- Pages touched: platform-gb10 (power spike/overcurrent, clock cap, swapoff mechanism, CUDA_CACHE,
+  --highvram UMA trap, ComfyUI no multi-GPU), models/gemma-4 (Unsloth vs nvidia NVFP4 benchmark),
+  containers-and-tooling (ComfyUI crash fix recipe, CUDA MPS setup), benchmarks (2 new [conjecture]
+  rows: gemma-4-26B unsloth/nvidia NVFP4), sources/README, index, log.
+- Skipped: 378157 (won't boot after update — RMA/boot failure, no durable technical findings),
+  378245 (power adapter + network connectivity — buying advice, basic setup question).
+- No evidence promotions past [reported]. All new findings [conjecture].
