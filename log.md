@@ -1423,3 +1423,43 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   sources/README, index, log.
 - Skipped: 378157 (won't boot after update — RMA/boot failure), 378245 (power adapter buying advice).
 - No evidence promotions past [reported]. All new findings [conjecture].
+
+## 2026-07-29 — Forum ingest: Batch 41 — 5 new topics (all processed)
+
+- **Sources:** 5 forum threads registered (S-forum-power-90w, S-forum-gpu-throttle-cmd,
+  S-forum-unsloth-b12x, S-forum-nvfp4-kv, S-forum-dsv4-reap25). All type `forum` → capped at
+  `[conjecture]` (single source each) except the clock-cap mitigation which reaches [reported].
+  5 topic IDs added to `sources/processed_topics.txt` (total now 479).
+- **Platform:** Hard power-off under sustained GPU load at ~90W (topic 378315) — detailed
+  reproduction with stepped FP16 matmul, throttle bit logging, firmware versions. Dies before
+  thermal protection (no throttle flag, GPU 82°C), CPU 92-97°C while GPU 78-83°C. Firmware
+  update (SOCFW/EC/USBPD) did not fix — dies sooner after update. Clock cap 2200 MHz fixes.
+  DCGM `diag -r 3` skips all targeted tests on GB10. `nvidia-smi` power.limit/max_limit/temps
+  all N/A. NVIDIA confirms known issue. **Clock-cap mitigation promoted to [reported]** — 4
+  independent threads corroborate `nvidia-smi -lgc 2000-2200` as the standard GB10 power/thermal
+  mitigation (S-forum-comfyui-crash, S-forum-gpu-throttle-cmd, S-forum-power-90w,
+  S-forum-temps-normal). GPU throttle commands reference thread (topic 378300) documents
+  `nvidia-smi -lgc 0,2000` — full speed ~80W, 2000MHz ~60W, performance unaffected at 2150MHz.
+- **Models/Qwen:** Unsloth+b12x vs nvidia+Marlin benchmark (topic 376703) — Unsloth 435.84 vs
+  nvidia 404.24 tok/s aggregate at 100 concurrent (~8% Unsloth lead). Reverses prior [reported]
+  15% slower finding — the b12x backend (not the quant) is the lever. Working flashinfer_b12x
+  recipe: `CUTE_DSL_ARCH=sm_121a`, `vllm>=0.25.0`, `flashinfer-python>=0.6.13`,
+  `nvidia-cutlass-dsl>=4.5.2`. vLLM 0.25.x startup hang reported (rtamax).
+- **Attention/KV cache:** NVFP4 KV cache on SGLang (topic 377425) — 1.68× more capacity than
+  FP8 on Spark (2.31M vs 1.37M tokens, Qwen3-4B). dtype `torch.float4_e2m1fn_x2`. Extends the
+  KV quant ladder: bf16 → fp8 (2×) → NVFP4 (1.68× over fp8, ~3.36× over bf16).
+- **Quantization:** Sub-4-bit formats (IQ2) cannot use tensor cores on GB10 — dequant overhead
+  negates compute advantage (~72 ms/layer vs ~62 for dp4a). MXFP4 is the only format that
+  escapes to tensor cores natively. W4A8 (fp4×E4M3) is source-faithful for DSV4-Flash.
+- **Engines:** DSV4-Flash REAP25 PrismaAURA (topic 376872) — third independent ds4 fork for
+  single GB10. 92/100 tool-eval, 16.5 tok/s spec decode, 77.2% DSpark acceptance. Measured-KL
+  quant allocation (IQ2+MXFP4+MXFP8 mix via Fisher-sensitivity knapsack) beats hand-picked by
+  8 composite points. v0.2.3: W4A8 CUTLASS type-40 path, 410-430 tok/s prefill, 3 concurrent
+  1M-ctx sessions. marco.palaferri fork: 854 tok/s prefill via HMMA attention, 24-25 tok/s
+  decode at 55k-70k ctx. DSV4-Flash prefill is compute-bound (tensor cores), not bandwidth-bound.
+- **Benchmarks:** 8 new [conjecture] rows (Unsloth+b12x, nvidia+Marlin, Qwen3-4B NVFP4/FP8 KV
+  on Spark + 6000 Pro, DSV4-Flash REAP25 twaggs88 + marco.palaferri).
+- Pages touched: platform-gb10, models/qwen, attention-and-kv-cache, quantization-on-gb10,
+  engines, benchmarks, sources/README, index, log.
+- **Evidence promotion:** clock-cap mitigation → [reported] (4 independent corroborating sources).
+  All other new findings [conjecture]. No promotions past [reported].

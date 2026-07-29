@@ -3,8 +3,8 @@
 > **area:** attention
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-m3-vision, S-mimo-results, S-mimo-doc, S-sess-jun5, S-sess-jun4, S-dflash-nvfp4, S-forum-mimo-2x-opt, S-forum-dsv4-kvcache, S-forum-inkling-nvfp4, S-forum-flashinfer-livelock, S-forum-solar-open2-nvfp4, S-forum-glm52-hybrid
-> **updated:** 2026-07-27
+> **sources:** S-m3-vision, S-mimo-results, S-mimo-doc, S-sess-jun5, S-sess-jun4, S-dflash-nvfp4, S-forum-mimo-2x-opt, S-forum-dsv4-kvcache, S-forum-inkling-nvfp4, S-forum-flashinfer-livelock, S-forum-solar-open2-nvfp4, S-forum-glm52-hybrid, S-forum-nvfp4-kv
+> **updated:** 2026-07-29
 
 Which `--attention-backend` to pass is decided by the model's attention type, not preference. Get it
 wrong and KV-cache init fails or numerics are subtly off.
@@ -88,6 +88,21 @@ wrong and KV-cache init fails or numerics are subtly off.
   bites on Spark:** the proven bandwidth-bound decode ceiling (~270 GB/s) means full-attention
   KV grows linearly with context → decode slows; hybrid-linear architectures that don't
   materialize per-token KV sidestep the wall entirely. See `[[wiki/benchmarks.md]]` → Batch 36.
+
+## Forum ingest: NVFP4 vs FP8 KV cache capacity on GB10 (2026-07-29)
+
+- **[conjecture]** **NVFP4 KV cache gives 1.68× more capacity than FP8 on DGX Spark**
+  (S-forum-nvfp4-kv, shahizat): using SGLang with `Qwen/Qwen3-4B` on a single Spark, NVFP4 KV
+  cache (`--kv-cache-dtype nvfp4`) allocates **2,309,504 tokens** vs FP8 (`--kv-cache-dtype
+  fp8_e4m3`) at **1,371,456 tokens** — a 1.68× capacity increase. The NVFP4 KV dtype is
+  `torch.float4_e2m1fn_x2`. On RTX PRO 6000 Blackwell the ratio is similar (1,808,192 vs
+  1,067,328 = 1.69×). Launch config: `--prefill-attention-backend flashinfer
+  --decode-attention-backend trtllm_mha --disable-radix-cache`. Production deployments should
+  validate model quality and task-specific accuracy before enabling aggressive KV cache
+  quantization. Single source → [conjecture]. This corroborates the existing finding that
+  lower-bit KV cache increases token capacity on GB10 — the same principle as fp8 vs bf16 KV
+  (2× capacity), now extended to NVFP4 vs fp8 (1.68×). See `[[wiki/benchmarks.md]]` for the
+  full benchmark numbers.
 
 ## See also
 `[[wiki/quantization-on-gb10.md]]` · `[[wiki/platform-gb10.md]]` · `[[wiki/models/minimax.md]]` · `[[wiki/models/mimo-v2.5.md]]`

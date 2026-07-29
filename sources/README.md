@@ -465,8 +465,18 @@ sources cite the experiment (what/config/when), never a private path.
 
 ## Batch 40 forum sources (2026-07-29 ingest)
 
-|| ID | type | What it is | Reference | Date |
-|---|---|---|---|---|
+||| ID | type | What it is | Reference | Date ||
+---|---|---|---|---|---|
 | S-forum-gemma4-26b-bench | forum | Gemma-4-26B-A4B NVFP4 benchmark: unsloth vs nvidia on DGX Spark vs RTX Blackwell 6000 Pro — vLLM serve, fp8 KV, 65K ctx, 100 concurrent reqs; Unsloth ~17% faster than nvidia on Spark (160 vs 128 tok/s aggregate output); Spark ~6-7× slower than Blackwell 6000 Pro; single-stream TPOT ~47-59 ms (shahizat) | https://forums.developer.nvidia.com/t/377364 | 2026-07-18 |
 | S-forum-comfyui-crash | forum | ComfyUI hard-crash fix on DGX Spark — GPU power spike (14→85W) trips overcurrent protection, not thermal/OOM; fix: swapoff -a + nvidia-smi -lgc 300,2100 (clock cap to 2100 MHz, ~50W); --highvram is a trap on UMA (forces all models pinned); CUDA_CACHE_MAXSIZE=4GB gives 3× rerun speedup; async weight offload near-free on UMA; 2nd user confirms clock cap stabilizes (jas.burton, frozenace88) | https://forums.developer.nvidia.com/t/360336 | 2026-02-11 |
 | S-forum-cuda-mps | forum | CUDA MPS for multiple vLLM instances on single DGX Spark — nvidia-smi -c EXCLUSIVE_PROCESS, nvidia-cuda-mps-control daemon, --gpu-memory-utilization 0.45 per instance; latency increases significantly, throughput improves modestly; enables serving multiple independent models on same GPU (shahizat) | https://forums.developer.nvidia.com/t/376724 | 2026-07-13 |
+
+## Batch 41 forum sources (2026-07-29 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-power-90w | forum | Hard power-off under sustained GPU load at ~90W — detailed reproduction with stepped FP16 matmul, throttle bit logging; persists after full platform firmware update (SOCFW/EC/USBPD); clock cap 2200 MHz fixes; CPU 92-97°C while GPU 78-83°C; no orderly shutdown, no pstore, no rasdaemon errors; NVIDIA confirms known issue (pacardenaz, aniculescu) | https://forums.developer.nvidia.com/t/378315 | 2026-07-27 |
+| S-forum-gpu-throttle-cmd | forum | GPU clock cap commands reference — nvidia-smi -lgc 0,2000; full speed ~80W → 2000MHz ~60W; performance basically unaffected at 2150MHz throttle (elsaco, azampatti) | https://forums.developer.nvidia.com/t/378300 | 2026-07-27 |
+| S-forum-unsloth-b12x | forum | Unsloth vs nvidia Qwen3.6-35B-A3B-NVFP4 benchmark with flashinfer_b12x on Spark — Unsloth+b12x ~8% faster than nvidia+Marlin (436 vs 404 tok/s agg @100 conc); flashinfer_b12x working recipe (CUTE_DSL_ARCH=sm_121a, vllm>=0.25.0, flashinfer>=0.6.13); vLLM 0.25.x startup hang reported (shahizat, TheAwakenOne, rtamax) | https://forums.developer.nvidia.com/t/376703 | 2026-07-13 |
+| S-forum-nvfp4-kv | forum | NVFP4 vs FP8 KV cache on DGX Spark and RTX 6000 Pro — SGLang, Qwen3-4B; NVFP4 KV gives 1.68× more capacity than FP8 on Spark (2.31M vs 1.37M tokens); dtype torch.float4_e2m1fn_x2; production should validate quality before enabling (shahizat) | https://forums.developer.nvidia.com/t/377425 | 2026-07-19 |
+| S-forum-dsv4-reap25 | forum | DeepSeek-V4-Flash REAP25 PrismaAURA measured-quant for single GB10 — ds4-server fork, 92/100 tool-eval, 16.5 tok/s spec decode, 77.2% DSpark acceptance; IQ2_XXS+MXFP4+MXFP8 mixed quant via measured-KL knapsack; W4A8 CUTLASS type-40 source-faithful path; IQ2 stays on dp4a (tensor core dequant net loss); marco.palaferri fork: 854 tok/s prefill, 24-25 tok/s decode at 55k-70k ctx (twaggs88, marco.palaferri) | https://forums.developer.nvidia.com/t/376872 | 2026-07-14 |

@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri
-> **updated:** 2026-07-28
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25
+> **updated:** 2026-07-29
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -261,6 +261,65 @@ Three engines run on the Spark pair; pick by arch support and quant.
   source → [conjecture]. Community feedback (JW2026): the approach is more interesting as a
   technique (applying expert streaming to other models, keeping unused layers in 2nd-tier memory
   without REAP) than as a production inference engine; needs TP/PP/EP support to be useful.
+
+## Forum ingest: DSV4-Flash REAP25 PrismaAURA — measured-quant ds4 fork (2026-07-29)
+
+> **evidence:** conjecture (single forum thread, 2 developers in same thread)
+> **sources:** S-forum-dsv4-reap25
+
+- **[conjecture]** **twaggs88/DeepSeek-V4-Flash-REAP25-DSpark-ds4-GGUF — measured-KL quant
+  allocation for single GB10** (S-forum-dsv4-reap25, twaggs88): a third independent fork of
+  antirez/ds4 tuned for a single GB10, with a matching GGUF whose quantization was **measured
+  per-tensor** (not hand-picked). Key results on one GB10:
+  - Tool-use quality: 92/100 (tool-eval-bench hardmode, temp 0.95, top-p 0.38)
+  - Decode (speculative, 0–8k ctx): 16.5 tok/s, flat with depth
+  - DSpark draft acceptance: 77.2% (structured/tool workloads)
+  - Prefill: ~420→~390 tok/s (2k→8k prompt)
+  - Resident size: 91 GB (weights + merged drafter)
+  - v0.2.3 update: prefill 365→~410–430 t/s via W4A8 CUTLASS type-40 path; 3 concurrent 1M-ctx
+    sessions (was 2) via pre-stored MXFP8_LT layout (freed ~6.4 GiB double-storage)
+
+  **Quant allocation methodology:** each routed-expert tensor's reconstruction error was measured
+  per candidate format against the FP8/FP4 QAT source, weighted by empirical Fisher sensitivity,
+  allocated under byte budget by exact knapsack (built on PrismaQuant). Result: IQ2_XXS floor
+  (2.06 bpw) on most experts, MXFP4 (4.25 bpw) promoted on quality-sensitive layers (early
+  layers want it on gate/up, late layers on down — depth pattern), MXFP8 on attention/shared/
+  head. Experts REAP-pruned 25%. The MXFP4/MXFP8 are byte-lossless re-encodes of the checkpoint's
+  source encoding — zero requantization loss. Choosing formats by measurement beat a good hand
+  rule by 8 composite points at equal size and speed. Single source → [conjecture].
+
+- **[conjecture]** **W4A8 CUTLASS type-40 path is source-faithful for DSV4-Flash** (S-forum-dsv4-reap25,
+  twaggs88): DeepSeek-V4-Flash ships `expert_dtype: fp4` with `activation_scheme: dynamic, fmt: e4m3`
+  — the model was designed to compute experts in exactly fp4×E4M3. The W4A8 path (fp4 weights ×
+  E4M3 activations) runs on sm_120 f8f6f4 tensor cores, ~2.6× faster per layer than dp4a. It's
+  more faithful to the original than Q8_K activations (which the source never uses). Single source.
+
+- **[conjecture]** **IQ2 experts cannot move to tensor cores — dequant net loss** (S-forum-dsv4-reap25,
+  twaggs88): the 2-bit IQ2 experts are the majority of routed layers. Moving them to tensor cores
+  requires 2-bit→8-bit dequant expansion, which costs more bandwidth than the tensor cores save
+  (~72 ms/layer vs ~62 for dp4a; E4M3 is also ~2.5% RMS lossy on the IQ2 codebook). So IQ2 stays
+  on CUDA-core dp4a — this is the wall for "all experts on tensor cores." MXFP4 is the only format
+  that escapes to tensor cores natively (zero dequant). This is a GB10-specific finding because
+  the sm_121 tensor-core FP4 path exists but the dequant overhead for sub-4-bit formats negates
+  the compute advantage. Single source → [conjecture].
+
+- **[conjecture]** **marco.palaferri/xangel82/DS4-GB10-GX10-DSpark-CUDA — 854 tok/s prefill, 24-25
+  tok/s decode at 55k-70k ctx** (S-forum-dsv4-reap25, marco.palaferri): a fourth independent ds4
+  fork. Latest results: up to 854.26 tok/s on first 8192-token cold prefill chunk; 787.06 tok/s
+  average on 13.6k-token cold prompt; 724.69 tok/s on 41.7k-token append at 55.3k context; ~24-25
+  tok/s DSpark decode at 55k-70k context. Pipeline: token-tile HMMA attention, D2R/MMQ routed-MoE
+  prefill, MXFP4 indexer cache with native SM121 block-scaled MMA, exact Top-512 selection. The
+  HMMA-attention path is fp16/non-bit-exact (trades ~2× cold prefill for determinism vs the
+  exact path). Single source → [conjecture]. This is notably faster prefill than twaggs88's
+  ~410-430 tok/s — the gap attributed to HMMA attention + bigger 8192-token prefill chunks.
+
+- **[conjecture]** **DSV4-Flash prefill is compute-bound, not bandwidth-bound** (S-forum-dsv4-reap25,
+  twaggs88): "the experts sit at a couple percent of the memory roofline, so the whole game is
+  filling the tensor cores." This contrasts with the proven finding that decode is bandwidth-bound
+  on GB10 — the prefill/decode asymmetry means different optimization strategies apply to each
+  phase. Prefill optimization (tensor core utilization, attention kernel choice, chunk size) is
+  distinct from decode optimization (weight bandwidth reduction). Single source → [conjecture],
+  consistent with the proven bandwidth-bound decode finding.
 
 ## Forum ingest: MTP quality & prefix-cache interaction (2026-07-18)
 

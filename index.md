@@ -505,3 +505,36 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - Skipped: 378157 (won't boot after update — RMA/boot failure, no durable technical findings),
   378245 (power adapter + network connectivity — buying advice, basic setup question).
 - No evidence promotions past [reported]. All new findings [conjecture].
+
+## Forum ingest 2026-07-29 (Batch 41)
+- 5 new forum topics found, all technically relevant.
+- 5 new sources registered (Batch 41). 5 topic IDs added to `sources/processed_topics.txt`
+  (total now 479).
+- **Headline finding:** Hard power-off under sustained GPU load at ~90W — detailed reproduction
+  with stepped FP16 matmul and throttle bit logging. Unit dies before thermal protection engages
+  (no throttle flag, GPU only 82°C), persists after full platform firmware update (SOCFW/EC/USBPD
+  all current), clock cap 2200 MHz fixes it. CPU 92-97°C while GPU 78-83°C — GPU sensor looks
+  normal. DCGM cannot stress GB10 (Skip for all targeted tests). NVIDIA confirms known issue.
+  Clock-cap mitigation now corroborated by 4 independent threads → [reported] as standard GB10
+  power/thermal mitigation.
+- **Unsloth+b12x vs nvidia+Marlin:** Unsloth ~8% faster than nvidia at 100 concurrent on Spark
+  (436 vs 404 tok/s agg) — reverses the prior [reported] 15% slower finding. The b12x backend
+  (not the quant) appears to be the lever. Working flashinfer_b12x recipe documented
+  (CUTE_DSL_ARCH=sm_121a, vllm>=0.25.0, flashinfer>=0.6.13).
+- **NVFP4 KV cache:** 1.68× more capacity than FP8 on Spark (2.31M vs 1.37M tokens, Qwen3-4B on
+  SGLang). dtype `torch.float4_e2m1fn_x2`. Extends the KV quant ladder: bf16 → fp8 (2×) → NVFP4
+  (1.68× over fp8).
+- **DSV4-Flash REAP25 PrismaAURA:** third independent ds4 fork for single GB10 — 92/100 tool-eval,
+  16.5 tok/s spec decode, measured-KL quant allocation (IQ2+MXFP4+MXFP8 mix via knapsack). Key
+  GB10 finding: sub-4-bit formats (IQ2) cannot use tensor cores — dequant overhead negates compute
+  advantage. MXFP4 is the only format that escapes to tensor cores natively. marco.palaferri fork
+  achieves 854 tok/s prefill via HMMA attention. DSV4-Flash prefill is compute-bound, not
+  bandwidth-bound — distinct from decode.
+- Pages touched: platform-gb10 (hard power-off at 90W, clock cap [reported], DCGM Skip, GPU
+  throttle commands), models/qwen (Unsloth+b12x benchmark, flashinfer_b12x recipe, vLLM 0.25.x
+  hang), attention-and-kv-cache (NVFP4 KV cache capacity), quantization-on-gb10 (NVFP4 KV cache,
+  sub-4-bit tensor-core wall, W4A8 source-faithful path), engines (DSV4 REAP25 measured-quant,
+  marco.palaferri fork, IQ2 tensor-core wall, prefill compute-bound), benchmarks (8 new
+  [conjecture] rows), sources/README, index, log.
+- No evidence promotions past [reported]. All new findings [conjecture] except the clock-cap
+  mitigation which reaches [reported] via 4 independent corroborating sources.

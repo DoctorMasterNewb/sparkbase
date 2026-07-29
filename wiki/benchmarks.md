@@ -3,7 +3,7 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama, S-forum-glm52-8x, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-laguna-v251-bench, S-forum-mistral-s4-119b, S-forum-qwen36-fp8-2x, S-forum-solar-open2, S-forum-woolyai, S-forum-solar-open2-nvfp4, S-forum-qwen122-king, S-forum-glm52-hybrid, S-forum-qwen122-v26-dflash, S-forum-llamacpp-fastest, S-forum-speedycolibri, S-forum-gemma4-26b-bench
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama, S-forum-glm52-8x, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-laguna-v251-bench, S-forum-mistral-s4-119b, S-forum-qwen36-fp8-2x, S-forum-solar-open2, S-forum-woolyai, S-forum-solar-open2-nvfp4, S-forum-qwen122-king, S-forum-glm52-hybrid, S-forum-qwen122-v26-dflash, S-forum-llamacpp-fastest, S-forum-speedycolibri, S-forum-gemma4-26b-bench, S-forum-unsloth-b12x, S-forum-nvfp4-kv, S-forum-dsv4-reap25
 > **updated:** 2026-07-29
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
@@ -616,6 +616,37 @@ All rows below are **[conjecture]** — single-source community-reported numbers
 > NVFP4 GGUF). `--mmap 0` mandatory on UMA. Performance degradation (40→67 tok/s) fixed by
 > system update + power-cycle — corroborates the power-controller wedge pattern. See
 > `[[wiki/containers-and-tooling.md]]` for full details.
+
+## Forum-reported benchmarks (2026-07-29 ingest, Batch 41)
+
+All rows below are **[conjecture]** — single-source community-reported numbers, not first-party.
+
+||| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+|||---|---|---|---|---|---|---|---||
+||| Qwen3.6-35B-A3B (Unsloth-Fast) | NVFP4 + flashinfer_b12x | vLLM 0.25.0 | 1 | 435.84 (agg @100 conc) / ~4.4 (per-req) | 1000 in/out | TPOT 212.83 ms; ITL 210.97 ms; Unsloth+b12x ~8% faster than nvidia+Marlin; single Spark | S-forum-unsloth-b12x ||
+||| Qwen3.6-35B-A3B (nvidia) | NVFP4 + Marlin | vLLM 0.25.0 | 1 | 404.24 (agg @100 conc) / ~4.0 (per-req) | 1000 in/out | TPOT ~228 ms (est); default Marlin backend; single Spark | S-forum-unsloth-b12x ||
+||| Qwen3-4B | NVFP4 KV | SGLang (dev-cu13) | 1 | — | — | KV pool 2,309,504 tokens (1.68× FP8); dtype torch.float4_e2m1fn_x2; flashinfer prefill + trtllm_mha decode | S-forum-nvfp4-kv ||
+||| Qwen3-4B | FP8 KV (fp8_e4m3) | SGLang (dev-cu13) | 1 | — | — | KV pool 1,371,456 tokens; baseline for NVFP4 KV comparison | S-forum-nvfp4-kv ||
+||| Qwen3-4B | NVFP4 KV | SGLang (dev-cu13) | 1 (6000 Pro) | — | — | KV pool 1,808,192 tokens (1.69× FP8); TPOT 17.04 ms; 5,275 tok/s output @100 conc; RTX PRO 6000 Blackwell | S-forum-nvfp4-kv ||
+||| Qwen3-4B | FP8 KV (fp8_e4m3) | SGLang (dev-cu13) | 1 (6000 Pro) | — | — | KV pool 1,067,328 tokens; RTX PRO 6000 Blackwell baseline | S-forum-nvfp4-kv ||
+||| DeepSeek-V4-Flash (REAP25) | IQ2_XXS+MXFP4+MXFP8 mix + DSpark | ds4-server (twaggs88 fork) | 1 | 16.5 (spec, 0-8k) / ~24 (structured, v0.2.3) | 1M | 92/100 tool-eval; 77.2% DSpark acceptance; 91 GB resident; 420→390 pp tok/s; 410-430 pp (v0.2.3 W4A8) | S-forum-dsv4-reap25 ||
+||| DeepSeek-V4-Flash (REAP25) | IQ2_XXS+MXFP4+MXFP8 mix + DSpark | ds4 (marco.palaferri fork) | 1 | 24-25 (DSpark, 55k-70k ctx) | 55k+ | 854 pp tok/s (first 8k chunk); 787 pp (13.6k prompt); 724 pp (41.7k append @55k ctx); HMMA attention | S-forum-dsv4-reap25 ||
+
+> **[conjecture]** **Unsloth+b12x vs nvidia+Marlin on Spark** (S-forum-unsloth-b12x, shahizat):
+> Unsloth aggregate 435.84 vs nvidia 404.24 tok/s at 100 concurrent — a ~8% Unsloth lead. This
+> reverses the prior [reported] finding (Unsloth ~15% slower) — the difference is the b12x
+> backend (Unsloth uses b12x, nvidia uses Marlin). A controlled comparison isolating the backend
+> variable is needed. Single source → [conjecture]. See `[[wiki/models/qwen.md]]`.
+>
+> **[conjecture]** **NVFP4 KV cache 1.68× capacity over FP8 on Spark** (S-forum-nvfp4-kv, shahizat):
+> Qwen3-4B on SGLang: NVFP4 KV pool 2.31M tokens vs FP8 1.37M tokens. The dtype is
+> `torch.float4_e2m1fn_x2`. Quality validation recommended before production use. Single source.
+>
+> **[conjecture]** **DSV4-Flash REAP25 on single GB10 — 16.5 tok/s spec decode, 92/100 tool-eval**
+> (S-forum-dsv4-reap25, twaggs88): a third independent ds4 fork with measured-KL quant allocation.
+> The IQ2+MXFP4+MXFP8 mixed format beats hand-picked allocation by 8 composite points. marco.palaferri's
+> fork achieves 854 tok/s prefill via HMMA attention. DSV4-Flash prefill is compute-bound (tensor
+> cores), not bandwidth-bound — distinct from decode. See `[[wiki/engines.md]]` for full details.
 
 ## Image generation benchmarks (diffusion models on GB10, 2026-07-10)
 

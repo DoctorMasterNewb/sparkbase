@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash
-> **updated:** 2026-07-28
+> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x
+> **updated:** 2026-07-29
 
 The best-supported family on GB10 — both Atlas (AOT kernels for the MoE variants) and vLLM serve it.
 The recurring lesson: **MoE-A3B NVFP4 + MTP is the fastest regime on Spark; the dense variant of the
@@ -302,6 +302,47 @@ the fp8 KV + DFlash + int8 lm-head combination. The 45.98 tok/s decode at 256K c
 Spark is a notable result for the 122B model, and the 1.37M-token KV pool (2.6× the bf16 baseline)
 is a significant capacity gain. The int8 lm-head technique (~1.4 GB → ~175 MB) is a GB10-specific
 memory-reclamation approach that could generalize to other large-vocab models on Spark.
+
+## Forum ingest: Unsloth vs nvidia Qwen3.6-35B-A3B-NVFP4 with flashinfer_b12x (2026-07-29)
+
+> **evidence:** conjecture (single forum source, same author as prior benchmarks)
+> **sources:** S-forum-unsloth-b12x
+
+A benchmark thread (376703, shahizat) directly compares `unsloth/Qwen3.6-35B-A3B-NVFP4-Fast`
+with `--moe-backend flashinfer_b12x` vs `nvidia/Qwen3.6-35B-A3B-NVFP4` with default Marlin
+backend on vLLM 0.25.0, 100 concurrent requests, random 1000-in/1000-out.
+
+- **[conjecture]** **Unsloth+b12x ~8% faster than nvidia+Marlin on Spark at 100 concurrency**
+  (S-forum-unsloth-b12x, shahizat): Unsloth aggregate output 435.84 tok/s vs nvidia 404.24 tok/s
+  on DGX Spark — a ~8% Unsloth lead. This **reverses direction** from the prior [reported]
+  finding (S-forum-unsloth-qwen36) where Unsloth was ~15% *slower* than nvidia on GB10. The
+  key difference: the prior benchmarks used Marlin backend for both, while here Unsloth uses
+  `flashinfer_b12x` and nvidia uses default Marlin. The b12x backend appears to be the lever,
+  not the quant itself. Single source → [conjecture]. TPOT: Unsloth 212.83 ms vs nvidia ~228 ms
+  (estimated from 404 tok/s aggregate / 100 concurrent).
+
+- **[conjecture]** **Working flashinfer_b12x recipe on DGX Spark** (S-forum-unsloth-b12x,
+  TheAwakenOne citing Unsloth blog): the recipe for enabling b12x on Spark:
+  ```
+  export CUTE_DSL_ARCH=sm_121a
+  vllm serve unsloth/Qwen3.6-35B-A3B-NVFP4-Fast --moe-backend flashinfer_b12x
+  ```
+  Prerequisites: `vllm>=0.25.0`, `flashinfer-python>=0.6.13`, `nvidia-cutlass-dsl>=4.5.2`,
+  installed via `uv pip install ... --torch-backend=auto`. A capability check snippet confirms
+  b12x availability: `has_flashinfer_b12x_gemm()` and `has_flashinfer_b12x_moe()` must both
+  return True on sm_121. If b12x is unavailable, serving degrades to Marlin W4A16 (~2× slower).
+  This corroborates the existing [conjecture] finding (S-forum-unsloth-qwen36, jbourny) that
+  b12x is not available on stock vLLM — it requires the Unsloth-recommended install path.
+
+- **[conjecture]** **vLLM 0.25.x startup hang on GB10** (S-forum-unsloth-b12x, rtamax): vLLM
+  0.25.x hangs at "Waiting for 1 local, 0 remote core engine proc(s) to start" — both in Python
+  env and Docker. No resolution posted in thread. Single source → [conjecture].
+
+This finding **qualifies but does not overturn** the existing [reported] finding that Unsloth
+NVFP4 is ~15% slower than nvidia NVFP4 on GB10 (S-forum-unsloth-qwen36, 3 independent sources).
+The prior benchmarks all used Marlin backend for both quants; this benchmark uses b12x for
+Unsloth only, suggesting the b12x backend — not the quant — may be the performance lever. A
+controlled comparison (nvidia+b12x vs Unsloth+b12x) is needed to isolate the variable.
 
 ## See also
 `[[wiki/engines.md]]` · `[[wiki/quantization-on-gb10.md]]` · `[[wiki/models/holo-3.1.md]]` (Qwen3.5 VL MoE)

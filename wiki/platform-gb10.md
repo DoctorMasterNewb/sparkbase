@@ -3,7 +3,7 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd
 > **updated:** 2026-07-29
 
 The hardware facts every model bring-up assumes. Read this first.
@@ -882,6 +882,53 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
     the `worksplit-multigpu` branch on ComfyUI GitHub loads the model on each GPU and
     computes in parallel (not model-parallel split). It was abandoned ~end of 2025.
     Multi-node model loading is not feasible in ComfyUI.
+
+### Batch 41 forum ingest (2026-07-29)
+
+- **[conjecture]** **Hard power-off under sustained GPU load at ~90W — persists after full platform
+  firmware update** (S-forum-power-90w, pacardenaz): a DGX Spark (FE, BIOS 5.36_0ACUM018,
+  SOCFW 2.155.11, EC 3.5.8, USBPD 0.5.22, OTA2607, driver 580.159.03) hard-powers-off whenever
+  sustained FP16 matmul load pushes GPU power above ~90W — fully reproducible with a stepped
+  workload (4096→20480 matrix size). Key diagnostic findings:
+  - **Dies before thermal protection engages.** At free clocks no thermal reason bit is ever
+    asserted — it goes from throttle 0x0 straight to power-off, dying at GPU 82°C (cooler than the
+    83°C step it just completed). CPU/SoC reaches 92–97°C while GPU reads 78–83°C. The GPU sensor
+    never looks abnormal.
+  - **Clock cap fixes it.** `nvidia-smi -lgc 300,2200` limits GPU to 2200 MHz; the unit completes
+    all steps plus one beyond the crash point. At the capped clock, SwThermalSlowdown (0x20) does
+    get asserted and the unit survives by throttling from 92W down to ~82W. Same peak power,
+    opposite outcome — the free-clock ramp appears too fast for protection to react.
+  - **No orderly shutdown.** `journalctl` shows zero shutdown markers — the log simply stops
+    mid-operation. No kernel panic, no pstore (`/sys/fs/pstore` empty), no rasdaemon errors, no
+    GPU ECC errors. This is the same "zero forensic trace" signature as the TP=2 host freeze
+    (S-forum-host-freeze-tp2) and the UVM livelock shutdown (S-forum-uvm-livelock).
+  - **Firmware update did not fix it** — SOCFW 2.152.15→2.155.11, EC 3.3.2→3.5.8, USB-C PD
+    applied 0x00000516. After the update, the unit dies *sooner* (step 8192 at 88.82W vs step
+    16384 at 91.81W before).
+  - **DCGM cannot stress GB10.** `dcgmi diag -r 3` reports Skip for targeted_power,
+    targeted_stress, memory_bandwidth, memory, pcie, and diagnostic on GB10 — only the
+    software/deployment group runs. `nvidia-smi` reports power.limit, power.max_limit, and all
+    temperature thresholds as N/A.
+  - **Memory is not the constraint** — died with 36.7 GB used (of 124.6 GB) in one run and 99.5 GB
+    in another. Pure matmul workload, no KV cache or UVM livelock involved.
+  - NVIDIA staff (aniculescu) confirmed this is a **known issue** and recommends lowering GPU
+    clock max + running DGX Spark Fieldiag. This corroborates the existing power-controller wedge
+    and thermal shutdown findings — the clock-cap workaround is now corroborated by 3+ independent
+    sources (S-forum-comfyui-crash, S-forum-gpu-throttle-cmd, this thread). Status: `open`.
+  - **[reported]** **`nvidia-smi -lgc <min>,<max>` clock cap is the standard GB10 power/thermal
+    mitigation** — now corroborated by 4 independent forum threads (S-forum-comfyui-crash
+    2100 MHz, S-forum-gpu-throttle-cmd 2000 MHz, S-forum-power-90w 2200 MHz, S-forum-temps-normal
+    referencing wildpines.ai blog). The pattern: cap GPU clocks to 2000–2200 MHz to keep power
+    under ~60–70W, avoiding overcurrent trips and thermal shutdowns with minimal performance loss
+    (full-speed GPU self-throttles to ~2150 MHz under load anyway). On GB10, `nvidia-smi -pl`
+    (power limit) reports N/A, so **clock capping is the only power-control mechanism available**.
+
+- **[conjecture]** **GPU clock cap commands reference** (S-forum-gpu-throttle-cmd, elsaco,
+  azampatti): `sudo nvidia-smi -lgc 0,2000` limits GPU to 2000 MHz. At full speed under
+  context-prefill or heavier models, power draws ~80W; at 2000 MHz it's ~60W or less. The GPU
+  self-throttles to ~2150 MHz under sustained load with basically unaffected speed. Reboots/
+  firmware updates reset the clock lock, requiring re-application. This thread is a reference
+  for the clock-cap mitigation corroborated across multiple findings.
 
 ### Batch 38 forum ingest (2026-07-27)
 

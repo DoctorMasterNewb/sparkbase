@@ -3,8 +3,8 @@
 > **area:** quantization
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook, S-forum-glm52-hybrid
-> **updated:** 2026-07-25
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-dsv4-reap25
+> **updated:** 2026-07-29
 
 GB10 has **no native FP4 compute and no native FP8 block-scale**. That one fact decides which quant
 to pick. Decode is **bandwidth-bound** (`[[wiki/platform-gb10.md]]`), so the winning quant is usually
@@ -373,3 +373,31 @@ decompress, because at low batch you're memory-bound, not compute-bound.
   find redundant weights to prune." Abandoned. Relevant to the documented 15% expert-prune finding
   for GLM-5.2 (S-forum-glm52-4x) — that worked on a specific model; the general claim that pruning
   is a reliable lever is weakened.
+
+## Forum ingest: NVFP4 KV cache & sub-4-bit tensor-core wall (2026-07-29)
+
+- **[conjecture]** **NVFP4 KV cache on SGLang — `torch.float4_e2m1fn_x2`, 1.68× FP8 capacity**
+  (S-forum-nvfp4-kv, shahizat): SGLang supports `--kv-cache-dtype nvfp4` on DGX Spark (and RTX
+  PRO 6000 Blackwell). On a single Spark with Qwen3-4B, NVFP4 KV allocates 2,309,504 tokens vs
+  FP8's 1,371,456 (1.68×). The dtype is `torch.float4_e2m1fn_x2`. Config: `--prefill-attention-backend
+  flashinfer --decode-attention-backend trtllm_mha --disable-radix-cache`. Quality validation
+  recommended before production deployment. This extends the KV-cache quantization ladder on GB10:
+  bf16 → fp8 (2×) → NVFP4 (1.68× over fp8, ~3.36× over bf16). Single source → [conjecture].
+
+- **[conjecture]** **Sub-4-bit formats cannot use tensor cores on GB10 — dequant overhead negates
+  compute advantage** (S-forum-dsv4-reap25, twaggs88): IQ2 (2-bit) experts require 2-bit→8-bit
+  dequant expansion to reach tensor cores, which costs more bandwidth than the tensor cores save
+  (~72 ms/layer vs ~62 for CUDA-core dp4a; E4M3 is also ~2.5% RMS lossy on the IQ2 codebook).
+  MXFP4 is the only format that escapes to tensor cores natively (zero dequant, it's already a
+  native tensor-core format). This is the wall for "all experts on tensor cores" — 2-bit and
+  3-bit formats stay on CUDA-core dp4a. GB10-specific because the sm_121 tensor-core FP4 path
+  exists but the dequant overhead for sub-4-bit formats negates the compute advantage. Single
+  source → [conjecture], but consistent with the proven no-native-FP4-compute finding (the FP4
+  tensor-core path handles MXFP4/NVFP4 but not arbitrary sub-4-bit codebooks).
+
+- **[conjecture]** **W4A8 (fp4 weights × E4M3 activations) is source-faithful for DSV4-Flash**
+  (S-forum-dsv4-reap25, twaggs88): DeepSeek-V4-Flash's config ships `expert_dtype: fp4` with
+  `activation_scheme: dynamic, fmt: e4m3` — the model was designed for fp4×E4M3 compute. The W4A8
+  CUTLASS type-40 path runs on sm_120 f8f6f4 tensor cores, ~2.6× faster per layer than dp4a, and
+  is more faithful to the original than Q8_K activations. This is a model-specific finding but
+  relevant to any FP4-QAT model on GB10 — the source encoding may have a native tensor-core path.
