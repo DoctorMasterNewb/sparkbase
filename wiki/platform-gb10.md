@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd
-> **updated:** 2026-07-29
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal
+> **updated:** 2026-07-30
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -942,3 +942,90 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   firmware updates tracked in S-forum-fw-july2026 / S-forum-asus-fw0103) — corroborates that both
   OEMs are actively shipping firmware in the July 2026 window. No version numbers captured. Status:
   `open` — no regression observed, no measurable improvement.
+
+### Batch 42 forum ingest (2026-07-30)
+
+- **[conjecture]** **apt upgrade to driver 580.173.02 breaks GPU on OTA2607 —
+  "torn" driver/firmware pairing** (S-forum-driver580-173, chenette): on 2 × DGX Spark
+  (GB10) running DGX OS OTA2607 (DGX_SWBUILD_VERSION=7.2.3, DGX_OTA_VERSION=7.3.1,
+  kernel 6.17.0-1026-nvidia), a routine `apt upgrade` pulled
+  `nvidia-driver-580-open` from **580.159.03** → **580.173.02** (Ubuntu
+  noble-updates/restricted + noble-security/restricted). After reboot, GPU fails to
+  initialize with the same Xid 119 / SEC2 secure-boot timeout fingerprint as
+  S-forum-gsp-timeout:
+  ```
+  NVRM: Xid 119, Timeout after 6s waiting for GSP_INIT_DONE (function 4097)
+  NVRM: ksec2PrepareBootCommands_GB20B: SEC2 secure boot partition timed out.
+  NVRM: RmInitAdapter failed! (0x62:0x65:2028)
+  $ nvidia-smi → "No devices were found"
+  ```
+  `nvidia-spark-ota-check` reports the OTA as **"torn"** (152/153 checks pass; the
+  **only** failing component is the driver — OTA2607 expects 580.159.03, but
+  580.173.02 was installed). SOCFW, EC, and all system packages are correctly at
+  OTA2607. Both units failed identically. Root cause: Ubuntu's restricted pocket
+  serves a driver newer than — and not paired with — the GPU secure-boot (GSP/SEC2)
+  firmware shipped in OTA2607. The `nv-update-disable` mechanism did **not** prevent
+  the upgrade. **Workaround:** downgrade driver to 580.159.03 (exact archived debs
+  from Launchpad librarian) + `apt-mark hold`. **Resolution:** re-running the DGX
+  Dashboard update on 2026-07-28 fixed it — the dashboard applied the remaining
+  OTA components that pair with 580.173.02. **Key GB10 insight:** a plain `apt
+  upgrade` on a Spark can install an unpaired driver that the on-box firmware
+  rejects, bricking GPU init — always use the DGX Dashboard or pin driver packages.
+  - **[conjecture]** **580.173.02 works on some Sparks** (amurnane123, same thread):
+    4 DGX Sparks running driver 580.173.02 with current firmware — all GPUs work
+    normally (nvidia-smi shows GB10, 46°C, 11W idle, vLLM worker running). This
+    means the failure is **firmware-version-dependent**, not a universal
+    incompatibility — 580.173.02 is fine *if* the platform firmware is at the
+    matching version. The regression only bites when the driver outpaces the
+    firmware (OTA2607 firmware + 580.173.02 driver = torn pairing).
+  - **[conjecture]** **Reinstall + Secure Boot disable as alternative fix**
+    (padrian, same thread): on 4 × Sparks (2 FE + 2 Gigabyte), 2 Gigabyte units
+    hit the same issue. Fix: `sudo apt install --reinstall nvidia-driver-580-open
+    nvidia-utils-580 nvidia-compute-utils-580 nvidia-settings` + disable Secure
+    Boot. The FE units were unaffected. This suggests Secure Boot's driver signing
+    verification may also play a role.
+  - Status: `fixed` — re-running DGX Dashboard update resolves the torn pairing.
+    Related to the existing OTA loop findings (S-forum-ota-loop,
+    S-forum-update-loop) and the GSP_INIT_DONE timeout (S-forum-gsp-timeout) —
+    same Xid 119 class, but here the root cause is a driver/firmware version
+    mismatch rather than a firmware update alone.
+
+- **[conjecture]** **USB3→USB2 fallback at boot corroborated on Asus GX10 —
+  external drive connected at boot sticks at USB2** (S-forum-model-storage,
+  gaborm): every DGX OEM and the FE have an issue initializing the high-speed
+  USB layer if an external drive is already connected at boot/start — the
+  connection gets stuck at USB2 speed. **Fix:** unmount, disconnect, reconnect,
+  mount. This corroborates the existing **[reported]** USB3 SuperSpeed PHY
+  fallback finding (S-forum-usb2-fallback, 7 independent users) with an 8th
+  user and extends it to the Asus GX10 OEM SKU — now confirmed across FE,
+  Gigabyte, MSI, and ASUS variants. The symptom is the same: USB3 device
+  enumerates only at USB 2.0 (480 Mbps) speed when connected at boot.
+  - **[conjecture]** **USB SSD speed drops to 20 MB/s intermittently** (starkrun,
+    same thread): a USB SSD connected to a Spark normally transfers at ~775 MB/s
+    but randomly drops to 20 MB/s and stays stuck — no errors in `dmesg`, reboot
+    does not fix, it "just started working fine the next day." Cause unknown
+    (thermal throttling of the enclosure controller hypothesized by x1917x).
+    Single source → [conjecture]. Relevant to anyone using USB SSD for model
+    storage on Spark.
+
+- **[conjecture]** **Acer Veriton GN100 thermal A/B test — both units ~68°C
+  under sustained load, no throttling** (S-forum-acer-thermal, jjustice): two
+  Acer Veriton GN100 (DGX Spark OEM) units running Qwen3.5-122B-A10B INT4
+  AutoRound + DFlash via vLLM (`aeon-vllm-ultimate`), 1 hour continuous
+  `llama-benchy` load (pp2048/tg512, concurrency 3, 300 runs). Results: both
+  units settled at **68-70°C under load** (one brief 82°C spike on unit A,
+  recovered), 96% GPU util, ~25 tok/s per request, **zero thermal throttling**,
+  zero errors. CPU usage stayed low (6.3% / 5.3% avg). The idle temperature gap
+  (42°C vs 43°C) did not persist under load. Both landed within the range
+  reported by StorageReview's OEM cooling comparison: **Acer peaks ~68°C** vs
+  **80-82°C for other OEM builds** where thermal throttling begins. After the
+  test, both units idled at ~40°C. Config: mini-rack with space, no extra fans.
+  This is the first published Acer Veriton GN100 thermal data point →
+  [conjecture]. Corroborates the existing thermal findings (S-forum-temps-normal
+  zones 0/5 at 94.6°C, S-forum-thermal-shutdown) — the Acer chassis appears to
+  run cooler than FE/Gigabyte/MSI under the same workload.
+  - **[conjecture]** **spark_hwmon driver for full system power telemetry**
+    (azampatti, same thread): `antheas/spark_hwmon` — a Linux hwmon driver for
+    the DGX Spark (GB10 SoC) that exposes full system power telemetry via
+    standard `sensors` / sysfs interfaces. Referenced as a tool for more
+    detailed thermal monitoring. Single source → [conjecture].

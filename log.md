@@ -1463,3 +1463,40 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   engines, benchmarks, sources/README, index, log.
 - **Evidence promotion:** clock-cap mitigation → [reported] (4 independent corroborating sources).
   All other new findings [conjecture]. No promotions past [reported].
+
+## 2026-07-30 — Scheduled forum ingest: 4 new topics (Batch 42)
+
+- **Sources:** 4 new forum topics found, 3 technically relevant (1 skipped: RMA complaint).
+  3 new sources registered (Batch 42). 4 topic IDs added to processed_topics.txt (total now 483).
+- **Headline finding:** apt upgrade to driver 580.173.02 breaks GPU on OTA2607 —
+  "torn" driver/firmware pairing (S-forum-driver580-173, chenette). Ubuntu's
+  noble-updates/restricted serves nvidia-driver-580-open 580.173.02 which is newer
+  than and not paired with the GSP/SEC2 firmware in OTA2607 (expects 580.159.03).
+  After reboot: Xid 119, GSP_INIT_DONE timeout, SEC2 secure-boot fails,
+  nvidia-smi "No devices found". nvidia-spark-ota-check reports torn=1 (152/153
+  checks pass, only driver mismatches). nv-update-disable did not prevent the
+  upgrade. Fix: re-run DGX Dashboard update (applies matching OTA components) or
+  downgrade to 580.159.03 + apt-mark hold. 580.173.02 works fine on Sparks with
+  matching firmware (amurnane123: 4 units OK) — failure is firmware-version-
+  dependent, not universal. Same Xid 119 class as S-forum-gsp-timeout.
+- **Platform:** USB3→USB2 fallback at boot corroborated on Asus GX10 (8th user,
+  4th OEM SKU — now confirmed across FE/Gigabyte/MSI/ASUS). USB SSD intermittent
+  20 MB/s speed drops (cause unknown). Acer Veriton GN100 thermal A/B: both units
+  ~68°C under sustained Qwen 122B INT4+DFlash load, zero throttling, Acer runs
+  ~12-14°C cooler than other OEMs. spark_hwmon driver for system power telemetry.
+- **Containers/tooling:** Model storage strategies for 1TB Sparks — 4TB NVMe upgrade
+  (Corsair MP700), NFS over 10GbE (~1.1 GB/s), NVMe-oF over 400G fabric, cron-based
+  offloading, modelctl tool (piresbruno/modelctl), USB SSD caveats. Key gotcha:
+  external USB drives at boot stick at USB2 speed.
+- **Benchmarks:** Acer Veriton GN100 thermal A/B test data (Qwen3.5-122B-A10B INT4
+  AutoRound + DFlash, 1h sustained, ~25 tok/s, 68°C, 96% GPU util).
+- Pages touched: platform-gb10 (driver 580.173.02 torn pairing, USB2 corroboration,
+  Acer thermal, USB SSD speed drops, spark_hwmon), containers-and-tooling (model
+  storage strategies, modelctl, spark_hwmon), benchmarks (Acer thermal A/B),
+  sources/README, index, log.
+- Skipped: 378356 (RTL8127 NIC defect — RMA complaint for one specific unit, no
+  durable GB10 platform finding; 4 identical units on same network, only 1 affected
+  = hardware fault, not platform-wide).
+- No evidence promotions past [reported]. All new findings [conjecture] (single
+  source each). USB3 fallback remains [reported] (corroborated, not promoted
+  further — no hardware verification available).

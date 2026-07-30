@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps
-> **updated:** 2026-07-29
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal
+> **updated:** 2026-07-30
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -497,3 +497,44 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   the thread. Single source → [conjecture]. Relevant to the existing [proven] single-tenant
   constraint: MPS is a potential workaround but trades latency for co-residency. See
   `[[wiki/platform-gb10.md]]` → operating constraints, `[[wiki/engines.md]]`.
+
+## Model storage strategies (2026-07-30 ingest)
+
+- **[conjecture]** **Model storage is a first-class problem on 1TB Sparks**
+  (S-forum-model-storage, starkrun et al.): `/var/lib/docker` alone can reach
+  ~390 GB (images + build cache, no models). LLM models are 170 GB each
+  (DSV4-Flash, MiMo 2.5, Hy3). Community approaches on single and dual Sparks:
+  - **4TB NVMe upgrade** (Corsair MP700 Micro Gen5 2242): danielgbates and
+    robert287 both swapped the internal 1TB for a 4TB Gen5 NVMe — the most
+    straightforward solution. Custom inference swapping script stages/unstages
+    models between nodes + starts/stops vLLM containers.
+  - **NFS share over 10GbE**: FlossingEnthusiast reports ~1.1 GB/s from a
+    UGREEN DXP480T Plus all-flash NAS; ajvazan provides a complete NFS fstab
+    + rsync backup script pattern (`/etc/fstab` with `rsize=1048576,
+    wsize=1048576, x-systemd.automount`); domrockt uses Unraid NAS over 2.5GbE.
+    See also the existing NFS model-share source S-forum-nfs-modelshare
+    (~7 Gbit/s over CX-7).
+  - **NVMe-oF over 400G fabric switch**: robert287 runs 12 TB of NVMe-oF
+    attached to the 400G fabric switch, shared across all nodes — useful for
+    training checkpoints.
+  - **Cron-based model offloading**: VCR runs cron jobs that offload models
+    unused >1 week to attached storage, delete if >1 month, clear caches.
+  - **USB SSD**: starkrun reports 2TB USB SSD at 775 MB/s but randomly drops
+    to 20 MB/s (see platform-gb10.md USB SSD speed finding). nightonthesun
+    recommends USB 3.2 Gen2 2x2 SSD, noting USB bus bandwidth is the limit.
+  - **modelctl tool** (piresbruno): `github.com/piresbruno/modelctl` — downloads
+    models from HF to a local NAS, then syncs on-demand to the inference server.
+    Single source → [conjecture].
+  - **Key GB10-specific gotcha**: external USB drives connected at boot get
+    stuck at USB2 speed (unmount/disconnect/reconnect/mount fixes it — see
+    `[[wiki/platform-gb10.md]]` → USB3 fallback, now [reported] across 8 users
+    / 4 OEM SKUs). Symlinking `.cache/huggingface` to an external drive is
+    the common pattern (gaborm).
+
+- **[conjecture]** **spark_hwmon — Linux hwmon driver for DGX Spark system power
+  telemetry** (S-forum-acer-thermal, azampatti): `antheas/spark_hwmon` is a
+  community Linux hwmon driver for the GB10 SoC that exposes full system power
+  telemetry via standard `sensors` / sysfs interfaces. Useful for detailed
+  thermal and power monitoring beyond what `nvidia-smi` reports (which shows
+  GPU power only, not total SoC). Single source → [conjecture]. Relevant to
+  the existing power/thermal monitoring findings on platform-gb10.md.

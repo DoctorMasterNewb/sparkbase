@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama, S-forum-glm52-8x, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-laguna-v251-bench, S-forum-mistral-s4-119b, S-forum-qwen36-fp8-2x, S-forum-solar-open2, S-forum-woolyai, S-forum-solar-open2-nvfp4, S-forum-qwen122-king, S-forum-glm52-hybrid, S-forum-qwen122-v26-dflash, S-forum-llamacpp-fastest, S-forum-speedycolibri, S-forum-gemma4-26b-bench, S-forum-unsloth-b12x, S-forum-nvfp4-kv, S-forum-dsv4-reap25
-> **updated:** 2026-07-29
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama, S-forum-glm52-8x, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-laguna-v251-bench, S-forum-mistral-s4-119b, S-forum-qwen36-fp8-2x, S-forum-solar-open2, S-forum-woolyai, S-forum-solar-open2-nvfp4, S-forum-qwen122-king, S-forum-glm52-hybrid, S-forum-qwen122-v26-dflash, S-forum-llamacpp-fastest, S-forum-speedycolibri, S-forum-gemma4-26b-bench, S-forum-unsloth-b12x, S-forum-nvfp4-kv, S-forum-dsv4-reap25, S-forum-acer-thermal
+> **updated:** 2026-07-30
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
 anchor the rules on
@@ -672,3 +672,21 @@ single-node, via `diffusers` library (not ComfyUI). Generation time post-compile
   (~1.1×, marginal). Smaller gains than the ~3× seen on FLUX.2-dev (which uses activation-quantized
   real FP4 compute via Triton — see `[[wiki/quantization-on-gb10.md]]`). The difference: these are
   weight-only NVFP4 vs FLUX.2-dev's activation-quantized path.
+
+## Acer Veriton GN100 thermal A/B test (2026-07-30 ingest)
+
+**[conjecture]** — single-source forum benchmark, 2 × Acer Veriton GN100 (DGX Spark OEM),
+Qwen3.5-122B-A10B INT4 AutoRound + DFlash, vLLM (`aeon-vllm-ultimate`), 1h continuous
+`llama-benchy` (pp2048/tg512, concurrency 3, 300 runs, no cache). S-forum-acer-thermal.
+
+| Unit | Idle temp | Load temp (sustained) | Peak spike | GPU util | tok/s/req | Errors |
+|---|---|---|---|---|---|---|
+| A | 42°C | 68-74°C | 82°C (brief, recovered) | 96% | ~25 | 0 |
+| B | 43°C | 68-70°C | 70°C | 96% | ~25 | 0 |
+
+- Both units: zero thermal throttling, zero throughput degradation over 1 hour, 447/435
+  requests completed. CPU usage low (6.3% / 5.3% avg). GPU-bound decode workload.
+- Acer chassis peaks ~68°C vs 80-82°C for other OEM builds (per StorageReview comparison).
+- After the test, both units idled at ~40°C. Mini-rack, no extra fans.
+- **Durable finding:** the Acer Veriton GN100 runs ~12-14°C cooler than other OEM SKUs
+  under identical sustained inference load — first published Acer thermal data point.

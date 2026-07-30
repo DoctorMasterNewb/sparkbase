@@ -538,3 +538,25 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   [conjecture] rows), sources/README, index, log.
 - No evidence promotions past [reported]. All new findings [conjecture] except the clock-cap
   mitigation which reaches [reported] via 4 independent corroborating sources.
+
+## Forum ingest 2026-07-30 (Batch 42)
+- 4 new forum topics found (3 technically relevant, 1 skipped: RMA complaint).
+- 3 new sources registered (Batch 42). 4 topic IDs added to `sources/processed_topics.txt`
+  (total now 483).
+- **Headline finding:** apt upgrade to driver 580.173.02 breaks GPU on OTA2607 —
+  "torn" driver/firmware pairing. Ubuntu noble-updates serves 580.173.02 which
+  is not paired with OTA2607's GSP/SEC2 firmware (expects 580.159.03). Xid 119,
+  GSP_INIT_DONE timeout, nvidia-smi "No devices found". nvidia-spark-ota-check
+  reports torn=1. Fix: re-run DGX Dashboard update or downgrade + hold driver.
+  580.173.02 works on Sparks with matching firmware — failure is firmware-version-
+  dependent, not universal.
+- Pages touched: platform-gb10 (driver 580.173.02 torn pairing, USB3→USB2 fallback
+  corroborated on Asus GX10 [reported, 8th user/4th OEM SKU], USB SSD intermittent
+  20 MB/s drops, Acer Veriton GN100 thermal A/B ~68°C vs 80-82°C other OEMs,
+  spark_hwmon power telemetry driver), containers-and-tooling (model storage
+  strategies — 4TB NVMe, NFS 10GbE, NVMe-oF 400G, cron offloading, modelctl,
+  USB2-at-boot gotcha), benchmarks (Acer thermal A/B table), sources/README,
+  index, log.
+- Skipped: 378356 (RTL8127 NIC defect — RMA complaint, 1 of 4 identical units
+  affected, hardware fault not platform-wide).
+- No evidence promotions past [reported]. All new findings [conjecture].
