@@ -3,8 +3,8 @@
 > **area:** roadmap
 > **status:** open-problem
 > **evidence:** mixed
-> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-inkling, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-intern-s2, S-forum-pmu-amu, S-forum-6x-ring-rdma, S-forum-gridbook, S-forum-ling3-flash, S-forum-glm52-vision
-> **updated:** 2026-07-26
+> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-inkling, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-intern-s2, S-forum-pmu-amu, S-forum-6x-ring-rdma, S-forum-gridbook, S-forum-ling3-flash, S-forum-glm52-vision, S-forum-sm121-support
+> **updated:** 2026-07-30
 
 The unsolved stuff. Each item links to the page with the detail. Close an item by moving its finding
 onto the relevant page and deleting it here.
@@ -311,6 +311,25 @@ onto the relevant page and deleting it here.
   (2) measure whether the per-step acceptance-feedback overhead costs decode tok/s on the
   bandwidth-bound GB10 path; (3) verify the quality-vs-speed tradeoff claim (30+ tok/s in
   code without prose regression). See `[[wiki/engines.md]]` → GLM-5.2-Vision + adaptive MTP.
+
+## Forum-sourced open problems (2026-07-30 ingest, Batch 43)
+
+- **[conjecture]** **CuTE DSL FP4 restriction to sm_100a — blocks Python-DSL NVFP4 kernels
+  on GB10** (S-forum-sm121-support, baristankut/johnny_nv): CUTLASS C++ API works on sm_121,
+  but the Python DSL (CuTE DSL) still restricts FP4 operations to sm_100a only (CUTLASS
+  Issue #2800 open). This means any vLLM path using `CUTE_DSL_ARCH=sm_121a` for FP4 GEMM
+  via the Python DSL hits a dispatch failure. The vLLM PR #29711 (device guard + runtime SM
+  dispatch for `cutlass_scaled_fp4_mm`) is a workaround path. Hardware agent / kernel dev
+  should: (1) verify whether CUTLASS v4.4.x resolves the DSL restriction; (2) test the
+  PR #29711 device-guard path on a real NVFP4 model; (3) file or track Issue #2800 for
+  sm_121a support. See `[[wiki/quantization-on-gb10.md]]`.
+- **[conjecture]** **vLLM 0.14.0 — does it eliminate the --enforce-eager 20-30% perf loss on
+  GB10?** (S-forum-sm121-support, johnny_nv): NVIDIA states vLLM 0.14.0 (expected shortly)
+  "improves Blackwell compatibility and reduces reliance on eager execution." Hardware agent
+  should: (1) benchmark a MoE model (e.g. MiMo-V2.5 or MiniMax-M3) on vLLM 0.14.0 vs 0.25.1
+  with and without `--enforce-eager`; (2) measure whether cudagraph capture works for MoE
+  on sm_121 in 0.14.0; (3) quantify the performance recovery. This would directly address
+  the proven MoE cudagraph wall. See `[[wiki/cudagraphs-and-compile.md]]`.
 
 ## Forum-sourced open problems (2026-07-25 ingest, Batch 35)
 

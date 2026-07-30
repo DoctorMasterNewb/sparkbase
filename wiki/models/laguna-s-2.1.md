@@ -4,7 +4,7 @@
 > **status:** retired
 > **evidence:** proven
 > **sources:** S-laguna-v251-bench, S-forum-laguna-dflash, S-forum-laguna-quality
-> **updated:** 2026-07-24
+> **updated:** 2026-07-30
 
 Laguna-S-2.1 — 117.6B MoE, 8.5B active, 256 experts (top-10 + 1 shared), 48 layers (36 SWA +
 12 global), `sliding_window=512`, 256K context. NVFP4 W4A4 ~67 GB. Custom architecture
@@ -73,12 +73,22 @@ Key findings:
 
 ## Comparison to forum reports
 
-- **[reported]** Forum 377663 (vr8vr8): DFlash 7 spec tokens gives 40-50 tok/s on structured/agentic
-  workloads; 20-36 tok/s without spec. Our 22.6 tok/s on prose is at the low end of the no-spec range,
-  suggesting DFlash is providing minimal uplift on this workload. (S-forum-laguna-dflash)
-- **[conjecture]** The gap between our 22.6 tok/s mean and forum's 40-50 tok/s is likely workload
-  dependent. Structured/agentic prompts get higher DFlash acceptance (18-40%) than prose. Running
-  a coding/JSON benchmark would likely close this gap. (S-forum-laguna-dflash)
+- **[reported]** Forum 377663 (serapis, vr8vr8, colizu2020, clawdiusmaximus, mangosq): DFlash
+  acceptance is consistently low across multiple independent users — abysmal ~8% at 15 spec tokens
+  (serapis), 2-3% at 15 tokens (clawdiusmaximus), 18-40% at 7 tokens on structured/agentic, dropping
+  below 50% on temp=0/n=3 (mangosq). Decode speed 10-15 tok/s at 15 spec tokens (clawdiusmaximus),
+  ~20 tok/s at 7 spec tokens (colizu2020), 40-50 tok/s on structured workloads at 7 spec tokens
+  (vr8vr8). Multiple users independently report that positions 6-15 are always 0.0% acceptance —
+  the DFlash drafter is effectively only useful for positions 1-5. **Tool-eval-bench 82/100
+  (--hardmode)** (alexander.korolev.germany), **86/100** (clawdiusmaximus), **87.1/100 on
+  spark-bench** (clawdiusmaximus). NVFP4 and INT4 official releases are within 1 GB of each other
+  (INT4 slightly larger); both have tailored DFlash drafters (joshua.dale.warner). TP=2 config
+  gives 2,698,222-token KV cache, 10.29× max concurrency at 262K context (serapis). 1M context not
+  achievable (vr8vr8). (S-forum-laguna-dflash)
+- **[conjecture]** Our 22.6 tok/s mean on prose is at the low end of the no-spec range, suggesting
+  DFlash is providing minimal uplift on this workload. The gap to forum's 40-50 tok/s is likely
+  workload dependent — structured/agentic prompts get higher DFlash acceptance (18-40%) than prose.
+  (S-forum-laguna-dflash)
 - **[conjecture]** Forum 377674 (alperen.duru17): Laguna-S-2.1 on single Spark gets ~20-30 tps for
   reasoning — quality "as good as DeepSeek V4 Flash over two Sparks" for document reasoning with
   tool calls, but **fails single-shot generation tasks** (HTML game/simulation). This corroborates

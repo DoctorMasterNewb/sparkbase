@@ -560,3 +560,23 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - Skipped: 378356 (RTL8127 NIC defect — RMA complaint, 1 of 4 identical units
   affected, hardware fault not platform-wide).
 - No evidence promotions past [reported]. All new findings [conjecture].
+
+## Forum ingest 2026-07-30 (Batch 43)
+- 5 new forum topics found (3 technically relevant, 2 skipped: karaoke app showcase,
+  switch buying advice).
+- 2 new sources registered (Batch 43). 5 topic IDs added to processed_topics.txt
+  (total now 488).
+- **Headline finding:** SM121 software support thread (357663, 43 posts) — NVIDIA
+  official roadmap response + community fact-check. vLLM --enforce-eager 20-30% perf
+  loss, CuTE DSL FP4 restricted to sm_100a (Issue #2800), PyTorch 2.10/Triton 3.6.0/
+  FlashInfer 0.5.3+/CUTLASS 4.2.0+ roadmap, SGLang unofficial branch, MoE kernels
+  no optimized GB10 configs, tcgen05/DSMEM/TMEM/TMA lacking, CUDA 12.0f vs 12.1a
+  distinction, no locked/hidden memory on Spark.
+- Pages touched: platform-gb10 (SM121 software support — 10 new [conjecture] findings),
+  models/laguna-s-2.1 (DFlash acceptance corroborated by 5 independent users → [reported],
+  tool-eval 82-87/100, TP=2 KV cache 2.7M tokens), roadmap (2 new open problems: CuTE
+  DSL FP4 sm_100a restriction, vLLM 0.14.0 enforce-eager question), sources/README,
+  index, log.
+- Skipped: 378524 (AIraoke — app showcase, no GB10 findings), 378255 (switch buying
+  advice — CRS504/CRS812 already documented).
+- No evidence promotions past [reported].

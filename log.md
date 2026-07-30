@@ -1500,3 +1500,42 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
 - No evidence promotions past [reported]. All new findings [conjecture] (single
   source each). USB3 fallback remains [reported] (corroborated, not promoted
   further — no hardware verification available).
+
+## 2026-07-30 — Forum ingest: Batch 43 — 5 new topics (3 processed, 2 skipped)
+
+- **Sources:** 5 new forum topics found by fetch_new_topics.py. 3 technically relevant;
+  2 skipped (378524 = AIraoke karaoke app showcase, no GB10 findings; 378255 = switch
+  buying advice, switch models already documented in S-forum-mikrotik /
+  S-forum-4node-crs504). 2 new sources registered (Batch 43) in `sources/README.md`:
+  S-forum-sm121-support, S-forum-170hx-spark. Topic 377663 (Laguna S 2.1 Config &
+  Benchmarks) already has source S-forum-laguna-dflash registered — new corroborating
+  data from multiple users added to existing wiki page. 5 topic IDs added to
+  `sources/processed_topics.txt` (total now 488).
+- **Headline finding:** SM121 software support thread (357663, 43 posts) — the most
+  substantive software-roadmap thread to date. NVIDIA official (johnny_nv) posted a
+  detailed response; community (baristankut) fact-checked it line-by-line, catching
+  4 non-existent version numbers in the initial response. Key durable findings:
+  (1) vLLM --enforce-eager required for correctness in certain versions, 20-30% perf
+  loss, vLLM 0.14.0 expected to reduce eager reliance; (2) CuTE DSL FP4 restricted to
+  sm_100a only (CUTLASS Issue #2800 open) — Python-DSL NVFP4 path blocked on GB10;
+  (3) PyTorch 2.10 + FBGEMM/CUTLASS for sm12x, Triton 3.6.0 RC, FlashInfer 0.5.3+/0.6.1,
+  CUTLASS 4.2.0+/4.3.5/4.4.x roadmap; (4) SGLang on unofficial branch (sglang#11658 open);
+  (5) MoE kernels no optimized GB10 configs; (6) tcgen05/DSMEM/TMEM/TMA/multicast lacking
+  on sm_121 (corroborates existing TMA finding); (7) CUDA 12.0f vs 12.1a architectural
+  distinction; (8) DGX Spark has NO locked/hidden memory (refutes speculation).
+- **Laguna S 2.1 corroboration:** topic 377663 (59 posts) adds 5 independent users
+  confirming DFlash low acceptance — positions 6-15 always 0.0%, 7 tokens optimal,
+  tool-eval-bench 82-87/100. TP=2 KV cache 2.7M tokens, 10.29× concurrency at 262K.
+  NVFP4 and INT4 official releases within 1 GB. 1M context not achievable. All
+  corroborates existing [reported]/[proven] findings on the retired model page.
+- Pages touched: platform-gb10 (SM121 software support status — 10 new [conjecture]
+  findings, no locked memory), models/laguna-s-2.1 (DFlash acceptance corroborated
+  by 5 users → [reported], tool-eval scores, TP=2 KV cache, NVFP4 vs INT4 size),
+  roadmap (2 new open problems: CuTE DSL FP4 sm_100a restriction, vLLM 0.14.0
+  enforce-eager question), sources/README, index, log.
+- Skipped: 378524 (AIraoke — application showcase, no GB10-specific flags/env/quant/
+  tok-s findings), 378255 (switch buying advice — CRS504/CRS812 already documented).
+- No evidence promotions past [reported]. All new platform findings [conjecture]
+  (single thread, but NVIDIA official + community fact-check in same thread → not
+  independent sources). Laguna DFlash acceptance [reported] (multiple independent
+  users in same thread corroborating existing [reported] finding).

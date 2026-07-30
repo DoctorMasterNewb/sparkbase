@@ -3,7 +3,7 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark
 > **updated:** 2026-07-30
 
 The hardware facts every model bring-up assumes. Read this first.
@@ -1029,3 +1029,45 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
     the DGX Spark (GB10 SoC) that exposes full system power telemetry via
     standard `sensors` / sysfs interfaces. Referenced as a tool for more
     detailed thermal monitoring. Single source → [conjecture].
+
+### Batch 43 forum ingest (2026-07-30)
+
+- **[reported]** **SM121 software support status — NVIDIA official response + community
+  fact-check** (S-forum-sm121-support, 43-post thread): NVIDIA staff (johnny_nv) posted an
+  official roadmap response; community (baristankut) fact-checked it line-by-line. Key
+  durable findings:
+  - **[conjecture]** **vLLM `--enforce-eager` required in certain versions for correctness —
+    20-30% performance loss** (baristankut, confirmed by johnny_nv). vLLM 0.14.0 (expected
+    shortly) improves Blackwell compatibility and reduces reliance on eager execution.
+    Corroborates existing `[[wiki/cudagraphs-and-compile.md]]` finding that MoE cudagraph
+    capture fails on sm_121.
+  - **[conjecture]** **CuTE DSL FP4 restricted to sm_100a only** — CUTLASS Issue #2800 open.
+    C++ API works on sm_121, but Python DSL still restricts FP4 to sm_100a. CUTLASS compatible
+    with DGX Spark from v4.2.0; latest v4.3.5; v4.4.x adds better CuTE DSL (johnny_nv).
+  - **[conjecture]** **PyTorch 2.10** (scheduled Jan 21, 2026) includes FBGEMM and CUTLASS
+    matmul integrations for sm12x. CUDA kernels compiled at major arch family level (sm12x),
+    not per-SKU. Only Tensor Core–specific kernels need conditional compilation (already
+    handled). (johnny_nv)
+  - **[conjecture]** **Triton 3.6.0** (RC, tied to PyTorch release pipeline) contains SM121
+    fixes. Available via PyTorch test/nightly index. Latest stable: Triton 3.5.1. (johnny_nv,
+    baristankut)
+  - **[conjecture]** **FlashInfer 0.5.3+** supports sm12x with distributed wheels for DGX Spark.
+    Latest: 0.6.1. (johnny_nv)
+  - **[conjecture]** **SGLang runs via unofficial community branch** (lmsysorg/sglang:spark),
+    not mainline. GitHub Issue #11658 open with temporary workarounds (Triton PTXAS errors,
+    FP8 CUTLASS dispatch failures). Official wheels available as alternative. (baristankut,
+    johnny_nv)
+  - **[conjecture]** **MoE kernels: no optimized configs for NVIDIA_GB10** — runtime warning
+    confirms this. Active development. (baristankut)
+  - **[conjecture]** **CUDA 12.0f vs 12.1a distinction**: 12.0f is the correct baseline for
+    GeForce Blackwell general support; 12.1a only needed for chip-family-specific features.
+    Using a specific build variant to unlock optional features is an architectural capability
+    distinction, not a workaround. (johnny_nv)
+  - **[conjecture]** **tcgen05, DSMEM, TMEM, TMA/multicast support lacking on sm_121** —
+    referenced from dgx-spark-playbooks (closed Dec 19, 2025). Hardware appears present but
+    not supported by sm_121 PTXAS. Corroborates existing **[reported]** TMA finding (S-forum-tma).
+    (alexander.korolev.germany, baristankut)
+  - **[conjecture]** **No locked/hidden memory on DGX Spark** (S-forum-170hx-spark,
+    FlossingEnthusiast): unlike CMP 170HX crypto cards (which have unlockable hidden HBM),
+    the Spark's 121 GB unified memory is the full available pool — no extra "locked" memory.
+    This refutes speculation about hidden VRAM on Spark.
