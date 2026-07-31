@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark
-> **updated:** 2026-07-30
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo
+> **updated:** 2026-07-31
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -1071,3 +1071,25 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
     FlossingEnthusiast): unlike CMP 170HX crypto cards (which have unlockable hidden HBM),
     the Spark's 121 GB unified memory is the full available pool — no extra "locked" memory.
     This refutes speculation about hidden VRAM on Spark.
+
+### Batch 44 forum ingest (2026-07-31)
+
+- **[conjecture]** **Xid 31 MMU faults during AMP-enabled training on GB10** (S-forum-xid31-yolo,
+  dall9): Repeated Xid 31 (MMU fault) kernel events on DGX Spark during AMP-enabled YOLOv8s
+  training. All 5 AMP-enabled runs (batch 16/960, batch 12/960, batch 8/640) produced Xid 31
+  with `ENGINE GRAPHICS GPC2` and `FAULT_PDE ACCESS_TYPE_VIRT_READ`, from different Python
+  PIDs. With `CUDA_LAUNCH_BLOCKING=1`, the synchronous error was
+  `RuntimeError: cuDNN error: CUDNN_STATUS_EXECUTION_FAILED at torch.nn.functional.conv2d`.
+  A standalone FP16 `torch.matmul` loop ran 3,000 s / 208,000 iterations without any Xid;
+  one AMP-disabled training run went 3.5 h / 7 epochs without Xid (limited evidence — raw
+  stdout not retained). Environment: DGX OS 7.5.0, Ubuntu 24.04.4, kernel 6.17.0-1026-nvidia,
+  host driver 580.159.03, NGC PyTorch 26.06-py3 (PyTorch 2.13.0a0, Ultralytics 8.4.110),
+  CUDA forward-compat (CUDA 13.3 user driver 610.43.02 over kernel 580.159.03). Telemetry
+  ≤71 °C / 44 W over the captured window (does not exclude short transients). The GPC2
+  consistency across all events is noted as a reason not to rule out hardware/firmware.
+  NGC PyTorch 24.08 comparison was invalid (reported GB10 as unsupported, then hit a
+  NumPy/OpenCV ABI error before GPU work). **Root cause unresolved** — alternatives include
+  application-level illegal access, cuDNN/driver/GSP/address-translation interaction, or
+  localized hardware/firmware. This is a **non-LLM training workload** but documents a
+  GB10-specific GPU fault signature (Xid 31 / GPC2 / FAULT_PDE) under AMP conv paths that
+  may be relevant to any AMP-enabled compute on Spark.

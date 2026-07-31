@@ -580,3 +580,18 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - Skipped: 378524 (AIraoke — app showcase, no GB10 findings), 378255 (switch buying
   advice — CRS504/CRS812 already documented).
 - No evidence promotions past [reported].
+
+## Forum ingest 2026-07-31 (Batch 44)
+- 3 new forum topics found (1 technically relevant, 2 skipped: social intro, non-technical
+  question with no answers).
+- 1 new source registered (Batch 44). 3 topic IDs added to `sources/processed_topics.txt`
+  (total now 491).
+- **Finding:** Xid 31 MMU faults during AMP-enabled YOLOv8s training on GB10 — 5/5 AMP
+  runs fault with `ENGINE GRAPHICS GPC2` / `FAULT_PDE ACCESS_TYPE_VIRT_READ`; cuDNN
+  `CUDNN_STATUS_EXECUTION_FAILED` at conv2d; FP16 matmul and AMP-disabled training run
+  clean. Root cause unresolved (cuDNN/driver/GSP/hardware all open). Non-LLM workload but
+  documents a GB10-specific GPU fault signature under AMP conv paths. [conjecture].
+- Pages touched: platform-gb10 (Xid 31 MMU fault), sources/README, log.
+- Skipped: 378532 (social intro — replies reference already-sourced tools), 377567
+  (non-technical question, no answers).
+- No evidence promotions past [reported]. No new wiki pages created.

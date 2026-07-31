@@ -1539,3 +1539,26 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   (single thread, but NVIDIA official + community fact-check in same thread → not
   independent sources). Laguna DFlash acceptance [reported] (multiple independent
   users in same thread corroborating existing [reported] finding).
+
+## 2026-07-31 — Forum ingest: Batch 44 — 3 new topics (1 processed, 2 skipped)
+
+- **Sources:** 3 new forum topics found by fetch_new_topics.py. 1 technically relevant; 2
+  skipped. 1 new source registered as `S-forum-*` in `sources/README.md` (Batch 44 section).
+  3 topic IDs added to `sources/processed_topics.txt` (total now 491).
+- **Topics found:**
+  - 378529 (Repeated Xid 31 MMU faults during AMP-enabled YOLOv8s training on DGX Spark) —
+    highly technical, GB10-specific. Processed.
+  - 378532 (New DGX Spark owner - saying hello) — social/intro post. Replies reference
+    already-sourced tools (DSpark, sparkrun, Spark Studio, Hermes). Skipped as social.
+  - 377567 (How can I remove Build and Deploy a Multi-Agent Chatbot) — non-technical
+    question with no substantive answers. Skipped.
+- **Pages touched:** platform-gb10 (Xid 31 MMU fault during AMP-enabled YOLOv8s training —
+  new [conjecture] finding), sources/README, log.
+- **Key finding:** Xid 31 (MMU fault) with `ENGINE GRAPHICS GPC2` / `FAULT_PDE
+  ACCESS_TYPE_VIRT_READ` signature during AMP-enabled YOLOv8s conv2d training on GB10.
+  5/5 AMP runs fault; FP16 matmul loop and AMP-disabled training run clean. cuDNN
+  `CUDNN_STATUS_EXECUTION_FAILED` surfaced with `CUDA_LAUNCH_BLOCKING=1`. Root cause
+  unresolved (cuDNN/driver/GSP/hardware all open). Non-LLM workload but documents a
+  GB10-specific GPU fault signature under AMP conv paths. All [conjecture] (single source).
+- No evidence promotions past [reported]. No new wiki pages created. No index.md update
+  needed (no new pages).

@@ -495,3 +495,9 @@ sources cite the experiment (what/config/when), never a private path.
 |---|---|---|---|---|
 | S-forum-sm121-support | forum | DGX Spark (SM121) software support is severely lacking — 43-post thread; NVIDIA official response (johnny_nv) with version roadmap + community fact-checking (baristankut); vLLM --enforce-eager 20-30% perf loss, CuTE DSL FP4 restricted to sm_100a (Issue #2800), SGLang unofficial branch (sglang#11658), PyTorch 2.10 + FBGEMM/CUTLASS for sm12x, Triton 3.6.0 RC, FlashInfer 0.5.3+/0.6.1, CUTLASS 4.2.0+/4.3.5/4.4.x, vLLM 0.14.0 expected, MoE kernels no optimized GB10 configs, tcgen05/DSMEM/TMEM/TMA/multicast lacking, CUDA 12.0f vs 12.1a distinction (baristankut, johnny_nv, christopher_owen, vegax87, trystan1, josephbreda) | https://forums.developer.nvidia.com/t/357663 | 2026-07-29 |
 | S-forum-170hx-spark | forum | Cheaper 1T VRAM via CMP 170HX + 4 Sparks — confirms DGX Spark has NO locked/hidden memory (unlike 170HX crypto cards); tcgen05/DSMEM/TMEM/TMA/multicast gap referenced from dgx-spark-playbooks; 8× 170HX benchmark 30 tg/s GLM5.2 4-bit (not GB10-specific) (Ria33, FlossingEnthusiast, alexander.korolev.germany) | https://forums.developer.nvidia.com/t/378348 | 2026-07-29 |
+
+## Batch 44 forum sources (2026-07-31 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-xid31-yolo | forum | Repeated Xid 31 MMU faults during AMP-enabled YOLOv8s training on DGX Spark (GB10) — 5/5 AMP runs produce Xid 31 (ENGINE GRAPHICS GPC2, FAULT_PDE ACCESS_TYPE_VIRT_READ); CUDA_LAUNCH_BLOCKING=1 surfaces cuDNN CUDNN_STATUS_EXECUTION_FAILED at conv2d; FP16 matmul loop 3000s/208K iterations clean; AMP-disabled run 3.5h/7 epochs clean (limited evidence); NGC PyTorch 26.06-py3, driver 580.159.03, CUDA 13.3 user driver 610.43.02; telemetry ≤71°C/44W; GPC2 consistency suggests possible hardware/firmware (dall9) | https://forums.developer.nvidia.com/t/378529 | 2026-07-29 |
