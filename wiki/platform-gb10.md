@@ -3,7 +3,7 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power
 > **updated:** 2026-07-31
 
 The hardware facts every model bring-up assumes. Read this first.
@@ -1093,3 +1093,33 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   localized hardware/firmware. This is a **non-LLM training workload** but documents a
   GB10-specific GPU fault signature (Xid 31 / GPC2 / FAULT_PDE) under AMP conv paths that
   may be relevant to any AMP-enabled compute on Spark.
+
+### Batch 45 forum ingest (2026-07-31)
+
+- **[conjecture]** **Unified-memory kernel-init allocations consume ~50 GB before weight loading
+  starts on GB10** (S-forum-um-kernel-init, rp_37716): on `nvcr.io/nvidia/vllm:26.07-py3` (also
+  reproduced on `vllm/vllm-openai:v0.26.0-aarch64`), vLLM kernel/backend initialization
+  (FlashInfer FP8 scaled MM, DeepGEMM PDL, FlashInfer-CUTLASS NVFP4, TRITON_ATTN) consumes
+  **~50 GB of unified memory** *before* `weight_utils.py` begins reading the checkpoint. The
+  drop lands precisely at kernel/backend selection time (T+25s: 120 GB → 68 GB → 45 GB over
+  ~15s). This is NOT a measurement bug — `psutil.virtual_memory().available` accurately reads
+  real system memory. **Downstream effect:** for any checkpoint exceeding ~90% of the
+  post-init available RAM, vLLM's auto-prefetch optimization disables itself ("Auto-prefetch
+  is disabled… checkpoint size exceeds 90% of available RAM"), forcing the slow non-prefetch
+  disk-read path — several extra minutes on a 75 GB model. This is a GB10/Grace-Blackwell
+  UMA-specific finding: on discrete GPUs, kernel init allocations come from a separate VRAM
+  pool and don't shrink the system RAM available for weight prefetch. The auto-prefetch
+  check runs before kernel init settles, measuring available RAM as if that allocation doesn't
+  happen. Single source → [conjecture], but the mechanism is consistent with the proven UMA
+  constraints documented on this page.
+- **[conjecture]** **CX-7 PCIe "insufficient power on the PCIe slot (27W)" on all 4 ports**
+  (S-forum-cx7-pcie-power, ammarabbaxi13): `dmesg` shows `mlx5_pcie_event: Detected
+  insufficient power on the PCIe slot (27W)` on all 4 CX-7 interfaces during 2-node
+  deployment. `iperf3` shows 19.3 Gbits/sec with 6405 retries (unreliable), but
+  `ib_write_bw` reports 111.60 Gb/sec (healthy — consistent with proven fabric measurements).
+  The 27W PCIe slot power warning is the same class as the documented `SlotPowerLimit 0W`
+  bug (S-forum-cx7-13gbps) but at 27W instead of 0W. Unplugging both machines for 1 min
+  did NOT fix it in this case. Model loading (Qwen3.5-122B-FP8 TP=2 Ray) fails after weight
+  load with `gloo Connection closed by peer` — the worker node crashes. Fix was found via
+  the NCCL all-reduce deadlock thread. Concurrent requests stall 20-30s before generation
+  starts. Single source → [conjecture].

@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25
-> **updated:** 2026-07-29
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10
+> **updated:** 2026-07-31
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -437,3 +437,24 @@ Three engines run on the Spark pair; pick by arch support and quant.
   repetition penalty. **Durable lesson: sampling-parameter configs do not transfer between models
   on Spark — GLM-5.2 has different sensitivity than MiMo 2.5.** See
   `[[wiki/models/glm-5.2.md]]` and `[[wiki/quantization-on-gb10.md]]`.
+
+## Forum ingest: veloGB10 — Rust-based GB10-optimized engine (2026-07-31)
+
+- **[conjecture]** **veloGB10** (S-forum-velogb10, stav_kats/sf-stav): a seventh engine alongside
+  vLLM/Atlas/llama.cpp/ds4/TokenSpeed/Colibri — Rust-based with custom kernels written specifically
+  for the "retail" GB10 chipset. TP=2 cluster support (for performance, not just memory). Easy
+  install: compile Rust → 1 binary + a few PTX files, no Python deps. Repo: `sf-stav/veloGB10`.
+  Pure NVFP4 (100% of layers quantized, including MTP head as FP8 in "mixed" mode). Reported
+  single-user tok/s (not aggregated):
+  - Qwen3.6-27B-NVFP4-full: ~40 tok/s single, ~45-50 tok/s 2×
+  - Qwen3.6-35B-A3B-NVFP4: ~110 tok/s single, ~120+ tok/s 2×
+  - Qwen3.6-9B-NVFP4: ~80 tok/s single, ~90-100 tok/s 2×
+  - Qwen3.5-0.8B-NVFP4-mixed: ~227.8 tok/s, Qwen3.5-2B: ~161.6, Qwen3.5-4B: ~100
+  Community feedback: 2× cluster numbers are **slower than current engines** for the 27B dense
+  model (jc2375); JW2026 reports the 35B MoE is at parity with eugr vLLM at c=1 but vLLM wins
+  at c=4/8/16; robert287 gets 30 tok/s on 27B dense with vLLM (vs veloGB10's ~40 single / ~45-50
+  2× — but the 2× gain is modest for TP overhead). The engine is newly released; no independent
+  benchmarks yet. Single source → [conjecture]. The pure-NVFP4 (100% layers) approach is notable
+  — most NVFP4 checkpoints leave ~half layers in BF16 (see `[[wiki/quantization-on-gb10.md]]` →
+  NVFP4 meta-analysis). Whether veloGB10's custom kernels extract more from the full-NVFP4 path
+  on sm_121 is uncharacterized.

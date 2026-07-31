@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama, S-forum-glm52-8x, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-laguna-v251-bench, S-forum-mistral-s4-119b, S-forum-qwen36-fp8-2x, S-forum-solar-open2, S-forum-woolyai, S-forum-solar-open2-nvfp4, S-forum-qwen122-king, S-forum-glm52-hybrid, S-forum-qwen122-v26-dflash, S-forum-llamacpp-fastest, S-forum-speedycolibri, S-forum-gemma4-26b-bench, S-forum-unsloth-b12x, S-forum-nvfp4-kv, S-forum-dsv4-reap25, S-forum-acer-thermal
-> **updated:** 2026-07-30
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama, S-forum-glm52-8x, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-laguna-v251-bench, S-forum-mistral-s4-119b, S-forum-qwen36-fp8-2x, S-forum-solar-open2, S-forum-woolyai, S-forum-solar-open2-nvfp4, S-forum-qwen122-king, S-forum-glm52-hybrid, S-forum-qwen122-v26-dflash, S-forum-llamacpp-fastest, S-forum-speedycolibri, S-forum-gemma4-26b-bench, S-forum-unsloth-b12x, S-forum-nvfp4-kv, S-forum-dsv4-reap25, S-forum-acer-thermal, S-forum-sm121-4bugs, S-forum-velogb10, S-forum-hy3-1bit, S-forum-laguna-king
+> **updated:** 2026-07-31
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
 anchor the rules on
@@ -690,3 +690,21 @@ Qwen3.5-122B-A10B INT4 AutoRound + DFlash, vLLM (`aeon-vllm-ultimate`), 1h conti
 - After the test, both units idled at ~40°C. Mini-rack, no extra fans.
 - **Durable finding:** the Acer Veriton GN100 runs ~12-14°C cooler than other OEM SKUs
   under identical sustained inference load — first published Acer thermal data point.
+
+## Batch 45 forum ingest (2026-07-31)
+
+**[conjecture]** — all single-source forum benchmarks unless noted. S-forum-sm121-4bugs,
+S-forum-velogb10, S-forum-hy3-1bit, S-forum-laguna-king.
+
+| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source |
+|---|---|---|---|---|---|---|---|
+| gpt-oss-120B | MXFP4 | vLLM 0.17.1 patched | 1 | **59** [reported] | 131K | 4-bug fix + 6 gpt-oss pitfalls; `--enforce-eager` costs 26→59; corroboration: raphael.amorim 58-60 tok/s | S-forum-sm121-4bugs |
+| Qwen3.5-35B (BF16→MXFP4 online) | MXFP4 | vLLM 0.17.1 patched | 1 | **59** | 200K | same 4-bug fix; raphael.amorim: FP8 52-55 tok/s | S-forum-sm121-4bugs |
+| Qwen3.5-122B | NVFP4 Marlin W4A16 | vLLM 0.17.1 patched | 1 | ~15 | 200K | raphael.amorim: int4-AutoRound 28-29 tok/s | S-forum-sm121-4bugs |
+| Qwen3.6-27B (dense) | NVFP4-full (100%) | veloGB10 | 1 | ~40 | — | pure NVFP4, all layers quantized | S-forum-velogb10 |
+| Qwen3.6-27B (dense) | NVFP4-full (100%) | veloGB10 | 2 | ~45-50 | — | TP=2; community: slower than vLLM for 27B dense | S-forum-velogb10 |
+| Qwen3.6-35B-A3B (MoE) | NVFP4-full (100%) | veloGB10 | 1 | ~110 | — | pure NVFP4; at parity with eugr vLLM at c=1 | S-forum-velogb10 |
+| Qwen3.6-35B-A3B (MoE) | NVFP4-full (100%) | veloGB10 | 2 | ~120+ | — | TP=2; vLLM wins at c=4/8/16 | S-forum-velogb10 |
+| Qwen3.6-9B (dense) | NVFP4-full (100%) | veloGB10 | 1 | ~80 | — | pure NVFP4 | S-forum-velogb10 |
+| Hy3-295B | 1-bit GGUF | llama.cpp | 1 | ~15 | — | tight fit even at 1-bit; very intelligent but slow | S-forum-hy3-1bit |
+| Laguna-S-2.1 | NVFP4 (updated) | vLLM 0.25.1 | 1 | 19-50 | 256K | wide range: Schampuswerner 19-24, nuk3s 22.6, vr8vr8 40-50, robert287 45.5 code/27.2 structured | S-forum-laguna-king |

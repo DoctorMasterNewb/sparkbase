@@ -1562,3 +1562,67 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   GB10-specific GPU fault signature under AMP conv paths. All [conjecture] (single source).
 - No evidence promotions past [reported]. No new wiki pages created. No index.md update
   needed (no new pages).
+
+## 2026-07-31 — Forum ingest: Batch 45 — 8 new topics (6 processed, 2 skipped)
+
+- **Sources:** 8 new forum topics found by fetch_new_topics.py. 6 technically relevant; 2
+  skipped (378572 = vision model recommendation thread, 360814 = login issues). 6 new sources
+  registered as `S-forum-*` in `sources/README.md` (Batch 45 section). 8 topic IDs added to
+  `sources/processed_topics.txt` (total now 499).
+- **Topics found:**
+  - 378585 (Unified-memory kernel-init allocations consume ~50GB before weight loading) —
+    highly technical, GB10 UMA-specific. Processed.
+  - 364009 ([SM121] 4 bugs causing `!!!` output + gpt-oss-120B at 59 tok/s) — highly technical,
+    root cause analysis with working serve scripts. Processed.
+  - 377565 (Introducing veloGB10 inference engine) — new engine, GB10-optimized. Processed.
+  - 378459 (DGX Spark Communication Speed Issue) — CX-7 PCIe power issue, multinode. Processed.
+  - 376870 (Hy3 1bit quant) — 1-bit GGUF on single Spark. Processed.
+  - 377662 (Laguna-S-2.1 new king?) — 63-post community verdict thread. Processed.
+  - 378572 (Best vision capabilities at good performance / low memory footprint?) — model
+    recommendation thread, no durable GB10 findings. Skipped.
+  - 360814 (Login issues) — non-technical forum access problem. Skipped.
+- **Pages touched:** platform-gb10 (UMA kernel-init ~50GB allocation before weight loading
+  [conjecture]; CX-7 PCIe "insufficient power 27W" on all 4 ports [conjecture]),
+  quantization-on-gb10 (SM121 4-bug root cause of `!!!` garbage output — cutlass_fp4_supported()
+  false positive, CutlassExpertsFp4 matches SM121, SupportsQuant missing, PTX+Marlin race;
+  VLLM_MXFP4_BACKEND=marlin not VLLM_NVFP4_GEMM_BACKEND; gpt-oss-120B 59 tok/s [reported]
+  via 2 independent sources [conjecture]),
+  engines (veloGB10 — seventh engine, Rust-based GB10-optimized, pure NVFP4 100% layers,
+  Qwen3.6-27B ~40 tok/s single / ~45-50 2×, 35B-A3B ~110 single / ~120+ 2× [conjecture]),
+  multinode-tp-and-networking (CX-7 PCIe 27W power issue — same class as SlotPowerLimit 0W
+  bug; iperf3 unreliable for RDMA diagnosis, use ib_write_bw [conjecture]),
+  models/laguna-s-2.1 (63-post "new king?" community verdict — NOT a Qwen3.6-35B-A3B
+  replacement, quality below for agentic, tool-eval 86-97 vs 91-100 [reported] via 8+ users;
+  DFlash drafters may need re-creation after quant updates),
+  benchmarks (10 new forum-reported rows: gpt-oss-120B MXFP4 59 tok/s [reported], Qwen3.5-35B
+  MXFP4 59 tok/s, Qwen3.5-122B NVFP4 ~15 tok/s, veloGB10 Qwen3.6-27B/35B-A3B/9B, Hy3-295B
+  1-bit ~15 tok/s, Laguna-S-2.1 updated NVFP4 19-50 tok/s range),
+  sources/README, log.
+- **Key findings:**
+  1. **SM121 4-bug root cause of `!!!` garbage output** — the most detailed root cause analysis
+     of why NVFP4 models produce garbage on GB10. Four independent bugs, all must be fixed:
+     cutlass_fp4_supported() false positive (capability_int=121 exceeds threshold), CutlassExpertsFp4
+     matches SM121 (is_device_capability_family(120) returns True), SupportsQuant missing on Qwen3.5
+     model class (GDN layers silently quantized), PTX+Marlin race. The `VLLM_NVFP4_GEMM_BACKEND`
+     env var doesn't exist in vLLM 0.17.1 — use `VLLM_MXFP4_BACKEND=marlin` instead. This is a
+     common misconfiguration. [conjecture] (single source, but detailed and consistent with proven
+     no-native-FP4 finding).
+  2. **gpt-oss-120B at 59 tok/s on single GB10** — now [reported] (2 independent sources: coolthor
+     + raphael.amorim both report 58-60 tok/s). Close to the 273 GB/s bandwidth ceiling. Removing
+     `--enforce-eager` is the single biggest win (26→59 tok/s).
+  3. **UMA kernel-init allocations consume ~50GB before weight loading** — a new GB10/Grace-Blackwell
+     UMA-specific finding: FlashInfer/DeepGEMM/NVFP4-CUTLASS kernel initialization grabs ~50GB of
+     unified memory before weight_utils.py starts reading the checkpoint, disabling vLLM's
+     auto-prefetch for large NVFP4 models. On discrete GPUs, kernel init comes from a separate VRAM
+     pool and doesn't affect system RAM for weight prefetch. [conjecture] (single source).
+  4. **veloGB10** — seventh inference engine for GB10, Rust-based with custom kernels for the
+     "retail" GB10 chipset. Pure NVFP4 (100% layers quantized). Qwen3.6-35B-A3B ~110 tok/s single
+     (at parity with eugr vLLM at c=1), but 2× cluster numbers are slower than vLLM for 27B dense.
+     [conjecture] (single source, newly released).
+  5. **Laguna-S-2.1 "new king?" — community says NO** — 8+ independent users in a 63-post thread
+     conclude the model is not a Qwen3.6-35B-A3B replacement for agentic workloads. Tool-eval
+     86-97 vs Qwen's 91-100. DFlash drafters may need re-creation after quant updates. Corroborates
+     the first-party retirement decision. [reported].
+- **Evidence promotions:** gpt-oss-120B 59 tok/s → [reported] (2 independent sources agree).
+  Laguna-S-2.1 "not new king" → [reported] (8+ independent users). No promotions past [reported].
+- No new wiki pages created. No index.md update needed (no new pages).

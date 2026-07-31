@@ -3,8 +3,8 @@
 > **area:** quantization
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-dsv4-reap25
-> **updated:** 2026-07-29
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-dsv4-reap25, S-forum-sm121-4bugs
+> **updated:** 2026-07-31
 
 GB10 has **no native FP4 compute and no native FP8 block-scale**. That one fact decides which quant
 to pick. Decode is **bandwidth-bound** (`[[wiki/platform-gb10.md]]`), so the winning quant is usually
@@ -219,6 +219,44 @@ decompress, because at low batch you're memory-bound, not compute-bound.
   **[reported]** Triton's bundled ptxas 12.8 does NOT support sm_121a; symlink to CUDA's ptxas
   (`ln -sf /usr/local/cuda/bin/ptxas …/triton/backends/nvidia/bin/ptxas`) to fix Triton compilation.
   This is a known toolchain gap on GB10.
+
+## Forum ingest: SM121 4-bug root cause of `!!!` garbage output + gpt-oss-120B recipe (2026-07-31)
+
+- **[conjecture]** **Four independent bugs cause `!!!` garbage output on NVFP4 models on SM121 — all
+  four must be fixed** (S-forum-sm121-4bugs, coolthor): on stock vLLM 0.17.1, NVFP4 models produce
+  row-identical garbage (every element in an output row has the same wrong value, e.g.
+  `[-28.625, -28.625, -28.625, ...]`). This is the diagnostic signature of CUTLASS FP4 on SM121.
+  The four bugs:
+  1. **`cutlass_fp4_supported()` false positive** — passes `capability_int=121` to
+     `cutlass_scaled_mm_supports_fp4()` which returns True (121 exceeds any threshold), but
+     `cutlass_scaled_mm_supports_fp4(device_id=0)` correctly returns False on GB10. CUTLASS FP4
+     gets selected for all linear layers → garbage.
+  2. **`CutlassExpertsFp4` matches SM121** — `is_device_capability_family(120)` returns True for
+     any SM12x including SM121. MoE expert GEMMs get the broken kernel. Important:
+     `VLLM_NVFP4_GEMM_BACKEND=marlin` only affects linear layers; the MoE path ignores this env var.
+  3. **`SupportsQuant` missing on Qwen3.5 model class** — `Qwen3_5ForConditionalGeneration` doesn't
+     inherit `SupportsQuant`, so `apply_vllm_mapper()` is never called and hybrid GDN (SSM) layers
+     get NVFP4-quantized silently (should stay BF16).
+  4. **PTX + Marlin race** — already fixed in namake-taro's fork and eugr's patches.
+  Required env vars (all four): `VLLM_NVFP4_GEMM_BACKEND=marlin`,
+  `VLLM_MXFP4_USE_MARLIN=1`, `VLLM_USE_FLASHINFER_MOE_FP4=0`, `VLLM_MARLIN_USE_ATOMIC_ADD=1`.
+  Single source → [conjecture], but the root cause analysis is detailed and consistent with the
+  proven no-native-FP4-compute finding. See also the existing NVFP4 CUTLASS failure section above.
+- **[conjecture]** **`VLLM_NVFP4_GEMM_BACKEND` does NOT exist in vLLM 0.17.1 — it's silently ignored**
+  (S-forum-sm121-4bugs, coolthor): the correct env var for MXFP4 backend selection in 0.17.1 is
+  `VLLM_MXFP4_BACKEND=marlin`. Without this, vLLM auto-selects CUTLASS_FP4, causing repetition
+  loops on SM121. Verify in startup log: `[MXFP4] Using backend: marlin` (correct) vs
+  `[MXFP4] Auto-selected: CUTLASS_FP4` (wrong). This is a common misconfiguration — many serve
+  scripts reference the wrong env var name. Corroborates the existing `[proven]` finding that
+  `VLLM_NVFP4_GEMM_BACKEND` does not exist on some vLLM builds (see quant-related loader bugs above).
+- **[conjecture]** **gpt-oss-120B at 59 tok/s on single GB10** (S-forum-sm121-4bugs, coolthor):
+  after fixing all 4 NVFP4 bugs + 6 gpt-oss-specific pitfalls (tiktoken cache, harmony encoding,
+  reasoning parser), gpt-oss-120B MXFP4 achieves 59 tok/s decode at 131K context on single GB10 —
+  close to the 273 GB/s bandwidth ceiling. `--enforce-eager` costs 26→59 tok/s (removing it is the
+  single biggest win). Qwen3.5-35B MXFP4 also 59 tok/s at 200K context. Qwen3.5-122B NVFP4 Marlin
+  W4A16 ~15 tok/s at 200K. Corroborated by raphael.amorim: gpt-oss-120B 58-60 tok/s, Qwen3.5-35B
+  FP8 52-55 tok/s, Qwen3.5-122B int4-AutoRound 28-29 tok/s — all on single Spark. The
+  gpt-oss-120B 59 tok/s is now [reported] (2 independent sources agree).
 
 ## Forum ingest: Distributed NVFP4 quantization on 2x Spark (2026-07-08)
 

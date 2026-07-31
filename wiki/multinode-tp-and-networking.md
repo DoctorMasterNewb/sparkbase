@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3, S-forum-mikrotik-cr804-042, S-forum-nfs-modelshare
-> **updated:** 2026-07-25
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3, S-forum-mikrotik-cr804-042, S-forum-nfs-modelshare, S-forum-cx7-pcie-power
+> **updated:** 2026-07-31
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -799,3 +799,17 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
   an NFS cache directory natively + container drift detection, automating this. External-NAS
   variant (FlossingEnthusiast): 4×4TB NVMe RAID5 NAS over 10 GbE (~1.1 GB/s) keeps the
   internal NVMe as scratch and avoids the 4TB NVMe cooling concerns on-Spark.
+
+### Batch 45 forum ingest (2026-07-31)
+
+- **[conjecture]** **CX-7 PCIe "insufficient power (27W)" on all 4 ports during 2-node deployment**
+  (S-forum-cx7-pcie-power, ammarabbaxi13): `dmesg` shows `mlx5_pcie_event: Detected insufficient
+  power on the PCIe slot (27W)` on all 4 CX-7 interfaces. `iperf3` shows 19.3 Gbits/sec with 6405
+  retries (unreliable for RDMA diagnosis — use `ib_write_bw` instead, which reports 111.60 Gb/sec =
+  healthy). This is the same class as the documented `SlotPowerLimit 0W` bug (S-forum-cx7-13gbps)
+  but at 27W instead of 0W — the CX-7 PCIe power limit is misconfigured. Unplugging both machines
+  for 1 min did NOT fix it (unlike the 0W variant). Qwen3.5-122B-FP8 TP=2 via Ray fails after weight
+  load with `gloo Connection closed by peer` — the worker node crashes during initialization.
+  Fix was found via the NCCL all-reduce deadlock thread (helm's post #14). Concurrent requests stall
+  20-30s before generation starts. Single source → [conjecture]. Reinforces: use `ib_write_bw`, not
+  `iperf3`, to diagnose CX-7 fabric health on Spark.

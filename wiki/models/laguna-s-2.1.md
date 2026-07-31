@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** retired
 > **evidence:** proven
-> **sources:** S-laguna-v251-bench, S-forum-laguna-dflash, S-forum-laguna-quality
-> **updated:** 2026-07-30
+> **sources:** S-laguna-v251-bench, S-forum-laguna-dflash, S-forum-laguna-quality, S-forum-laguna-king
+> **updated:** 2026-07-31
 
 Laguna-S-2.1 — 117.6B MoE, 8.5B active, 256 experts (top-10 + 1 shared), 48 layers (36 SWA +
 12 global), `sliding_window=512`, 256K context. NVFP4 W4A4 ~67 GB. Custom architecture
@@ -95,6 +95,32 @@ Key findings:
   the first-party retirement finding: Laguna matches Qwen3.6-class quality for structured tasks but
   underperforms on generative tasks. The ~20-30 tps figure is consistent with the first-party 22.6
   tok/s decode measurement. (S-forum-laguna-quality)
+
+## Forum ingest: "New king?" — 63-post community verdict (2026-07-31)
+
+- **[reported]** **Community consensus: Laguna-S-2.1 is NOT the "new king" for single Spark** —
+  quality below Qwen3.6-35B-A3B for agentic workloads (S-forum-laguna-king, 8+ independent users):
+  - **vr8vr8**: 40-50 tok/s at c=1, 80-100 tok/s at c=2 (thinking off, updated NVFP4 weights).
+  - **nuk3s**: 22.6 tok/s on initial NVFP4; temp sweep on updated quant (07614121) shows flattened
+    curve — temp 0.0: 44.2→40.7 tok/s, temp 0.7: 32.2→38.7 tok/s (+20% decode at higher temps).
+    Still cannot match the MiaAI-Lab GitHub repo numbers.
+  - **Schampuswerner**: 19-24 tok/s decode, TTFR ~0.36s, 256K context, official NVFP4. Tool-eval
+    97/100 (vs Qwen3.6-35B-A3B 100/100), hardmode 86/100 (vs 91). "More issues with tool forcing,
+    polling, recovery and rollback." Bad at German. "No new king there for me at all."
+  - **robert287**: updated NVFP4 quant — 45.5 tok/s code / 27.2 tok/s structured.
+  - **mangosq**: agentic workflow test — Laguna spent 15 min deciding on a simple bug fix (Qwen3.6-27B
+    did it in 10 min), stopped mid-sentence, hallucinated a path. "NVFP4 quant is just not usable
+    right now."
+  - **greg190**: "not that impressed, but it is small."
+  - **tenari**: PrismaQuant-GridBook 6-bit release pending (`rdtand/Laguna-S-2.1-prismaquant-gridbook-6bit-vllm`).
+  - **jmckenzie** (RTX 6K Pro Discord): KLD on quants being worked out, DFlash models may need
+    re-creation. "Expect this to stabilize over the next couple of weeks."
+  - **Poolside** updated NVFP4 weights + JSONs mid-thread (clawdiusmaximus).
+  Multiple users independently conclude the model is not a Qwen3.6-35B-A3B replacement for agentic
+  use. The speed range (19-50 tok/s) is consistent with the first-party 22.6 tok/s measurement.
+  The quality gap (tool-eval 86-97 vs Qwen's 91-100) corroborates the retirement decision. The
+  thread also confirms that DFlash draft models may need re-creation after quant updates — the
+  initial drafters were tuned to the original NVFP4 weights. → [reported] (8+ independent users).
 
 ## Operational notes
 
