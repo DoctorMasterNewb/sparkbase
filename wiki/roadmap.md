@@ -3,8 +3,8 @@
 > **area:** roadmap
 > **status:** open-problem
 > **evidence:** mixed
-> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-inkling, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-intern-s2, S-forum-pmu-amu, S-forum-6x-ring-rdma, S-forum-gridbook, S-forum-ling3-flash, S-forum-glm52-vision, S-forum-sm121-support
-> **updated:** 2026-07-30
+> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-inkling, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-intern-s2, S-forum-pmu-amu, S-forum-6x-ring-rdma, S-forum-gridbook, S-forum-ling3-flash, S-forum-glm52-vision, S-forum-sm121-support, S-forum-inkling-small-2x
+> **updated:** 2026-08-01
 
 The unsolved stuff. Each item links to the page with the detail. Close an item by moving its finding
 onto the relevant page and deleting it here.
@@ -311,6 +311,19 @@ onto the relevant page and deleting it here.
   (2) measure whether the per-step acceptance-feedback overhead costs decode tok/s on the
   bandwidth-bound GB10 path; (3) verify the quality-vs-speed tradeoff claim (30+ tok/s in
   code without prose regression). See `[[wiki/engines.md]]` → GLM-5.2-Vision + adaptive MTP.
+
+## Forum-sourced open problems (2026-08-01 ingest, Batch 46)
+
+- **[conjecture]** **Inkling-Small FP8 KV cache — needs FlashAttention kernel modification,
+  not a config toggle** (S-forum-inkling-small-2x, PILCOTHINK citing vLLM blog): Inkling uses
+  BF16 for global attention; enabling FP8 KV requires modifying the Flash-attention kernel
+  specifically used by Inkling. This caps 2× Spark context at ~300K (BF16 KV only), vs the
+  model's 1M native window. Without FP8 KV, Inkling-Small is at a severe disadvantage vs
+  DSV4-Flash (which supports NVFP4 KV) on the same hardware. Hardware agent / kernel dev
+  should: (1) identify which FlashAttention kernel path Inkling routes through on sm_121a;
+  (2) assess feasibility of adding FP8 KV support to that path; (3) benchmark context
+  capacity gain (300K → ?) if FP8 KV is enabled. See
+  `[[wiki/models/inkling.md]]` → Inkling-Small on 2× Spark.
 
 ## Forum-sourced open problems (2026-07-30 ingest, Batch 43)
 

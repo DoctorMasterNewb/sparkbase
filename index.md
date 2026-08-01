@@ -29,7 +29,7 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [mistral-small-4](wiki/models/mistral-small-4.md) — 119B NVFP4 MLA; TRITON_MLA resolves head_size=320 on SM121; ~28-33 tok/s [reported]; Eagle/MTP not working; --shm-size 16g kernel crash.
 - [step-3.7](wiki/models/step-3.7.md) — retired; kept for the MTP-needs-cudagraphs finding.
 - [laguna-s-2.1](wiki/models/laguna-s-2.1.md) — 117.6B MoE NVFP4 single-node; DFlash spec=7; 22.6 tok/s decode, flat across depths; **retired** — output quality below MiMo/DeepSeek, no speed advantage over Qwen3.6.
-- [inkling](wiki/models/inkling.md) — Thinking Machines multimodal MoE (975B/41B-active); NVFP4 on 8× Spark, paged-KV cliff, Lamport-on-RoCE escape hatch, kernel bugs filed.
+- [inkling](wiki/models/inkling.md) — Thinking Machines multimodal MoE (975B/41B-active + Small 276B/12B-active); NVFP4 on 8× and 2× Spark, paged-KV cliff, FP8 KV absent (BF16 only), tool-calling parser bug, Lamport-on-RoCE escape hatch, kernel bugs filed.
 - [glm-5.2](wiki/models/glm-5.2.md) — Zhipu AI 744B/40B-active MoE (sparse-MLA); 4×–8× Spark recipes, hybrid FP8+NVFP4+MXFP4 quant, MTP quality, reasoning-parser bug, KV kernel constraints.
 
 ## Reference
@@ -595,3 +595,24 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - Skipped: 378532 (social intro — replies reference already-sourced tools), 377567
   (non-technical question, no answers).
 - No evidence promotions past [reported]. No new wiki pages created.
+
+## Forum ingest 2026-08-01 (Batch 46)
+- 4 new forum topics found, 3 technically relevant (1 application showcase registered for
+  provenance only).
+- 4 new sources registered (Batch 46). 4 topic IDs added to processed_topics.txt (total now 505).
+- Pages touched: models/inkling (Inkling-Small-NVFP4 on 2× Spark — NVFP4 fits but no FP8 KV
+  cache → context capped at ~300K, BF16 KV only; FP8 needs FlashAttention kernel mod per
+  vLLM blog; spark-vllm-docker recipe + paged-KV mod; tool-calling parser bug — direct
+  streaming emits `<|content_invoke_tool_json|>` as visible content, patched by ekkis;
+  tool-eval-bench 76/100; DSV4 uses less KV memory; tonyd2wild BF16-KV 262K DSpark variant
+  in progress; Qwen3.5-122B FP8 as vision alternative — all [conjecture]),
+  models/qwen (MoE LoRA training — Unsloth LoRA format incompatible with vLLM fused MoE
+  expert tensors; NVIDIA AutoModel/NeMo official MoE LoRA recipes for Gemma4-26B-A4B +
+  Qwen3.5-35B-A3B produce HF-compatible adapters servable via vLLM --enable-lora — all
+  [conjecture]), roadmap (Inkling-Small FP8 KV kernel modification open problem),
+  sources/README, index, log.
+- Skipped: 377760 (Super Idol Master 3D character asset pipeline — application showcase,
+  not LLM inference; AutoRemesher ARM64 Geogram patch is notable but outside core scope;
+  registered source for provenance only).
+- No evidence promotions past [reported]. All new findings [conjecture]. No new wiki pages
+  created.

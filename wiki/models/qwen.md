@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x, S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train
-> **updated:** 2026-07-31
+> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x, S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train, S-forum-moe-lora-vllm
+> **updated:** 2026-08-01
 
 The best-supported family on GB10 — both Atlas (AOT kernels for the MoE variants) and vLLM serve it.
 The recurring lesson: **MoE-A3B NVFP4 + MTP is the fastest regime on Spark; the dense variant of the
@@ -383,6 +383,29 @@ controlled comparison (nvidia+b12x vs Unsloth+b12x) is needed to isolate the var
   finding (S-forum-dflash-qwen122) and the DFlash drafter approach documented on
   `[[wiki/engines.md]]`. Single source → [conjecture]. No new durable technical finding
   beyond reinforcing the existing DFlash-over-custom-draft recommendation.
+
+## Forum ingest: MoE LoRA training + vLLM serving (2026-08-01)
+
+> **evidence:** conjecture (single forum source)
+> **sources:** S-forum-moe-lora-vllm
+
+- **[conjecture]** **Unsloth LoRA format incompatible with vLLM fused MoE expert
+  tensors** (S-forum-moe-lora-vllm, haidij): LoRA adapters trained via Unsloth for MoE models
+  (Qwen3.5-35B-A3B, Gemma-4-26B-A4B) fail to load in vLLM due to a mismatch between Unsloth's
+  fused expert tensor format and vLLM's fused MoE weight loading. Training only attention
+  layers (skipping experts) produces high-loss adapters that don't meaningfully affect output.
+  Unsloth Studio itself OOMs on these MoE models on GB10. Single source → [conjecture].
+
+- **[conjecture]** **NVIDIA AutoModel/NeMo provides official MoE LoRA recipes servable via
+  vLLM** (S-forum-moe-lora-vllm, aniculescu/NVIDIA): the `NVIDIA-NeMo/Automodel` repo includes
+  ready-to-run Gemma-4-26B-A4B (`gemma4_26b_a4b_moe_peft.yaml`) and Qwen3.5-35B-A3B
+  (`qwen3_5_35b.yaml`) MoE LoRA fine-tuning recipes. The LoRA `peft:` block applies to
+  language-side modules with the vision tower frozen. AutoModel saves PEFT checkpoints as
+  HF-compatible `adapter_config.json` + `adapter_model.safetensors`, servable via:
+  `vllm serve <base-model> --enable-lora --max-lora-rank 16
+  --lora-modules automodel-adapter=/path/to/checkpoint/model`
+  This is the official path for MoE LoRA training on GB10 that produces vLLM-compatible
+  adapters. Single source → [conjecture].
 
 ## See also
 `[[wiki/engines.md]]` · `[[wiki/quantization-on-gb10.md]]` · `[[wiki/models/holo-3.1.md]]` (Qwen3.5 VL MoE)

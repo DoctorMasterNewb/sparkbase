@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** evolving
 > **evidence:** conjecture
-> **sources:** S-forum-inkling, S-forum-inkling-nvfp4
-> **updated:** 2026-07-20
+> **sources:** S-forum-inkling, S-forum-inkling-nvfp4, S-forum-inkling-small-2x, S-forum-inkling-small-disc
+> **updated:** 2026-08-01
 
 Thinking Machines' **Inkling** multimodal MoE family — announced as **Inkling 975B (41B active)** and
 **Inkling-Small 276B (12B active)**, 1M-token context, text/image/audio/video. Designed for B300-class
@@ -133,6 +133,72 @@ filed upstream:
   at real context (paged-KV workaround) doesn't compete. The public repo (`blockmos/inkling-sparks-gb10`)
   is left for the community to push further. The blocking items are all **kernel maturity on
   sm_121a** (paged KV, long-context, multi-depth MTP), not NVFP4 itself.
+
+## Inkling-Small-NVFP4 on 2× DGX Spark (2026-08-01 forum ingest)
+
+> **evidence:** conjecture (single forum thread, multiple users in same thread)
+> **sources:** S-forum-inkling-small-2x, S-forum-inkling-small-disc
+
+The smaller Inkling-Small (276B / 12B active, NVFP4) was released and the community immediately
+attempted bring-up on 2× DGX Spark. Key findings:
+
+- **[conjecture]** **NVFP4 fits on 2× Spark but no FP8 KV cache → context capped at ~300K**
+  (S-forum-inkling-small-2x, eugr_nv): the official NVFP4 checkpoint
+  (`thinkingmachines/Inkling-Small-NVFP4`) fits in 2× GB10 unified memory, but the model does
+  not support FP8 KV cache — only BF16 KV. With BF16 KV, 2× Spark (~242 GB combined) can only
+  fit ~300K tokens of context, far short of the model's 1M native window. This is a significant
+  disadvantage vs DeepSeek-V4-Flash, which uses much less KV memory. Multiple users express
+  frustration (sjug, PILCOTHINK). eugr_nv: "dual Sparks don't have enough VRAM to fit >~300K
+  tokens with this model as it doesn't support fp8 cache."
+
+- **[conjecture]** **Inkling uses BF16 for global attention — FP8 KV requires FlashAttention
+  kernel modification** (S-forum-inkling-small-2x, PILCOTHINK citing vLLM blog): per the vLLM
+  blog post (15 Jul 26), "Inkling currently uses BF16 for global attention, so enabling FP8
+  will likely require modifying the Flash-attention kernel specifically used by Inkling."
+  This means FP8 KV support is not a config toggle — it needs kernel-level work. 0rand notes
+  the same pattern in MLX (BF32 for attention → ballooning KV cache).
+
+- **[conjecture]** **spark-vllm-docker recipe available (experimental)** (S-forum-inkling-small-2x,
+  eugr_nv / PILCOTHINK): `./run-recipe.sh inkling-small-nvfp4` — uses `vllm-node` container
+  with `mods/inkling-sm12-paged-kv` + `mods/drop-caches` patches. Recipe is cluster-only
+  (2× Spark TP=2). Tool calling is broken in the current build.
+
+- **[conjecture]** **Tool-calling parser bug — direct streaming emits tool-call markers as
+  visible content** (S-forum-inkling-small-2x, ekkis / adrianwild): when
+  `--reasoning-parser inkling` and `--tool-call-parser inkling` are both enabled, a tool call
+  emitted directly after the model message header (without a preceding thinking block) is
+  streamed as visible `<|content_invoke_tool_json|>` text and never reaches the tool parser.
+  Non-streaming requests and streams with a preceding thinking block are unaffected. ekkis
+  created a patch (`patch_inkling_parser.py`) that keeps the parser in `MESSAGE_HEADER` long
+  enough to suppress optional function-name metadata, promotes the reasoning adapter only
+  when the direct block marker arrives. adrianwild confirms removing the reasoning parser
+  also works as a workaround.
+
+- **[conjecture]** **Tool-eval-bench: 76/100 (4-star "Good")** (S-forum-inkling-small-2x, ekkis):
+  first reported tool-eval-bench score for Inkling-Small-NVFP4 on 2× Spark. 94% completion
+  rate (5 scenarios excluded due to infrastructure failures — timeouts/5xx on structured
+  outputs). 2 safety-critical failures (prompt injection resistance, cross-turn sleeper
+  injection). Categories: Parameter Precision 100%, Error Recovery 100%, Localization 100%,
+  Structured Reasoning 100%, Code Patterns 100%; weaker: Structured Output 50%, Toolset Scale
+  50%, Autonomous Planning 67%. The model is "much more literal in interpreting commands than
+  Deepseek v4 Flash" per ekkis. Median turn responsiveness: 2.1s.
+
+- **[conjecture]** **DSV4-Flash uses less KV memory than Inkling-Small at high context**
+  (S-forum-inkling-small-disc, thomas.developer1): "DSV4 takes up a LOT less memory when the
+  context window starts to fill up. So for just average agentic work DSV4 is still king." This
+  is because DSV4-Flash supports NVFP4 KV cache (see `[[wiki/models/minimax.md]]` DSpark),
+  while Inkling-Small is stuck at BF16 KV.
+
+- **[conjecture]** **tonyd2wild BF16-KV 262K DSpark variant in progress**
+  (S-forum-inkling-small-2x, tonyd615): a community variant
+  (`tonyd2wild/Inkling-Small-NVFP4-DSpark-BF16-KV-262K-2x-DGX-Spark`) targeting 262K context
+  with BF16 KV + DSpark speculative decoding on 2× Spark. In progress, no benchmarks yet.
+
+- **[conjecture]** **Qwen3.5-122B FP8 as a vision-capable alternative on dual Spark**
+  (S-forum-inkling-small-disc, peter.h177): for users needing vision on 2× Spark, Qwen3.5-122B
+  FP8 is the current fallback — "I usually try to get around with the Qwen 3.5 122B using FP8
+  quant — it can get things done in unity." Notes Qwen3.5-397B has a better visual encoder but
+  only lower quant would fit 2× Spark, making it worse than 122B FP8 for vision tasks.
 
 ## See also
 `[[wiki/attention-and-kv-cache.md]]` (paged-KV, cute FA4) · `[[wiki/cudagraphs-and-compile.md]]`

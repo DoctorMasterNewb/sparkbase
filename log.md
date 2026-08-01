@@ -1657,3 +1657,45 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
      Consistent with proven bandwidth-bound decode range. [conjecture].
 - No evidence promotions past [reported]. All new findings [conjecture] (single source each).
 - No new wiki pages created. No index.md update needed.
+
+## 2026-08-01 — Forum ingest: Batch 46 — 4 new topics (3 processed, 1 registered only)
+
+- **Sources:** 4 new forum topics from forums.developer.nvidia.com. 4 new sources registered
+  (Batch 46) in `sources/README.md`: S-forum-inkling-small-2x, S-forum-inkling-small-disc,
+  S-forum-moe-lora-vllm, S-forum-super-idol. 4 topic IDs added to `sources/processed_topics.txt`
+  (total now 505).
+- **Topics found:** 4 new topics. 3 technically relevant (2× Inkling-Small-NVFP4 on 2× Spark
+  threads + 1 MoE LoRA training thread); 1 application showcase (3D character asset pipeline,
+  registered for provenance only — not LLM inference, no durable GB10 inference findings).
+- **Pages touched:**
+  - models/inkling (Inkling-Small-NVFP4 on 2× Spark — NEW section: NVFP4 fits 2× GB10 but
+    no FP8 KV cache (BF16 only) → context capped at ~300K, far below 1M native; FP8 KV needs
+    FlashAttention kernel modification per vLLM blog, not a config toggle; spark-vllm-docker
+    recipe (experimental, paged-KV mod); tool-calling parser bug — direct streaming emits
+    `<|content_invoke_tool_json|>` as visible content when no preceding thinking block;
+    ekkis patch + adrianwild workaround (remove reasoning parser); tool-eval-bench 76/100
+    (4-star Good, 94% completion, 2 safety failures); DSV4 uses less KV memory at high ctx;
+    tonyd2wild BF16-KV 262K DSpark variant in progress; Qwen3.5-122B FP8 as vision alternative
+    on dual Spark — all [conjecture]),
+  - models/qwen (MoE LoRA training + vLLM serving — Unsloth LoRA format incompatible with
+    vLLM fused MoE expert tensors; NVIDIA AutoModel/NeMo official MoE LoRA recipes for
+    Gemma4-26B-A4B + Qwen3.5-35B-A3B, HF-compatible adapters servable via --enable-lora;
+    Unsloth Studio OOMs on these models — all [conjecture]),
+  - roadmap (Inkling-Small FP8 KV cache kernel modification open problem — [conjecture]),
+  - sources/README, index, log.
+- **Key findings:**
+  1. **Inkling-Small FP8 KV absent** — the most significant GB10-specific finding. The 276B/12B
+     MoE fits in NVFP4 on 2× Spark, but BF16-only KV cache caps context at ~300K (vs 1M native).
+     FP8 KV requires FlashAttention kernel modification (per vLLM blog), not a config toggle.
+     This makes Inkling-Small significantly less practical than DSV4-Flash on the same hardware
+     for long-context workloads. [conjecture] (single thread, multiple users corroborating).
+  2. **Inkling tool-calling parser bug** — vLLM's combined `--reasoning-parser inkling` +
+     `--tool-call-parser inkling` breaks on direct tool calls (no preceding thinking block):
+     tool-call markers are streamed as visible content. Community patch available. Same class
+     of parser-state-machine bug seen on GLM-5.2's reasoning-parser. [conjecture].
+  3. **MoE LoRA training path** — Unsloth LoRA adapters are incompatible with vLLM's fused MoE
+     weight loading (fused expert tensor format mismatch). NVIDIA's AutoModel/NeMo provides
+     the official path: recipes for Gemma4-26B-A4B and Qwen3.5-35B-A3B produce HF-compatible
+     PEFT adapters servable via `vllm serve --enable-lora`. [conjecture].
+- No evidence promotions past [reported]. All new findings [conjecture] (single sources).
+- No new wiki pages created. Index.md updated (Inkling description + new ingest section).
