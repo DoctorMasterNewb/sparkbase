@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x
-> **updated:** 2026-07-29
+> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x, S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train
+> **updated:** 2026-07-31
 
 The best-supported family on GB10 — both Atlas (AOT kernels for the MoE variants) and vLLM serve it.
 The recurring lesson: **MoE-A3B NVFP4 + MTP is the fastest regime on Spark; the dense variant of the
@@ -343,6 +343,46 @@ NVFP4 is ~15% slower than nvidia NVFP4 on GB10 (S-forum-unsloth-qwen36, 3 indepe
 The prior benchmarks all used Marlin backend for both quants; this benchmark uses b12x for
 Unsloth only, suggesting the b12x backend — not the quant — may be the performance lever. A
 controlled comparison (nvidia+b12x vs Unsloth+b12x) is needed to isolate the variable.
+
+## Forum ingest: Qwen3.6-35B-A3B-FP8 DeepGEMM assertion + draft model training (2026-07-31)
+
+> **evidence:** conjecture (single forum source for each finding)
+> **sources:** S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train
+
+- **[conjecture]** **Qwen3.6-35B-A3B-FP8 fails to load on patched 26.07 container with
+  DeepGEMM assertion** (S-forum-vllm-2607-xgrammar, rp_37716): on the xgrammar-patched
+  `nvcr.io/nvidia/vllm:26.07-py3` derivative image, `Qwen/Qwen3.6-35B-A3B-FP8` fails to
+  load entirely with `RuntimeError: Assertion error .../layout.hpp:59: Unknown SF
+  transformation` during FP8 MoE weight-layout conversion in DeepGEMM. This is a separate
+  issue from the xgrammar tool-calling bug — it's a DeepGEMM kernel/layout incompatibility
+  with the Qwen3.6-35B-A3B FP8 checkpoint on GB10. The same patched image loads and serves
+  `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8` without issue. Single source → [conjecture].
+  This is a new GB10-specific model-load failure — the error string
+  `layout.hpp:59: Unknown SF transformation` is a DeepGEMM internal assertion during
+  weight layout conversion, suggesting the FP8 MoE weight format in the Qwen3.6-35B-A3B-FP8
+  checkpoint uses a scaling-factor transformation that DeepGEMM's GB10 path doesn't
+  recognize. Corroborates the pattern of FP8 model-load fragility on sm_121 (cf. S-forum-
+  sm121-4bugs, S-forum-nvfp4-broken). Flagged for hardware-agent verification.
+
+- **[conjecture]** **~50 tok/s sustained decode with MTP nst=3 on vLLM for Qwen3.6-35B-A3B
+  on DGX Spark** (S-forum-qwen36-draft-train, colizu2020): a forum user reports running
+  Qwen3.6-35B-A3B on vLLM with MTP (`num_speculative_tokens=3`) for everyday coding and
+  agentic tasks (2-3 subagents in Claude Code CLI), sustaining ~50 tok/s decode. This is
+  a single-user self-reported number in the context of a draft-model training question, not
+  a controlled benchmark → [conjecture]. The ~50 tok/s is consistent with the proven
+  bandwidth-bound decode range for 3B-active MoE on single Spark (cf. the 41.8 tok/s
+  no-MTP proven result and the 142 tok/s Atlas NVFP4+MTP result on a different stack).
+  Single source → [conjecture].
+
+- **[conjecture]** **Community advice: use existing DFlash drafter over training custom DSpark
+  for Qwen3.6-35B-A3B** (S-forum-qwen36-draft-train, alexander.kachur): when asked whether
+  training a personal draft model from the vLLM speculators GitHub repo is worth the effort,
+  the advice was to use the already-existing DFlash drafter (`z-lab/Qwen3.6-35B-A3B-DFlash`)
+  instead — DSpark is "only marginally better" and custom training "will cost a couple
+  hundred [dollars] with uncertain benefits." This corroborates the existing DFlash ecosystem
+  finding (S-forum-dflash-qwen122) and the DFlash drafter approach documented on
+  `[[wiki/engines.md]]`. Single source → [conjecture]. No new durable technical finding
+  beyond reinforcing the existing DFlash-over-custom-draft recommendation.
 
 ## See also
 `[[wiki/engines.md]]` · `[[wiki/quantization-on-gb10.md]]` · `[[wiki/models/holo-3.1.md]]` (Qwen3.5 VL MoE)

@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal
-> **updated:** 2026-07-30
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal, S-forum-vllm-2607-xgrammar
+> **updated:** 2026-07-31
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -538,3 +538,34 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   thermal and power monitoring beyond what `nvidia-smi` reports (which shows
   GPU power only, not total SoC). Single source → [conjecture]. Relevant to
   the existing power/thermal monitoring findings on platform-gb10.md.
+
+## Forum ingest: nvcr.io/nvidia/vllm:26.07-py3 tool-calling 500 — xgrammar dependency mismatch (2026-07-31)
+
+- **[conjecture]** **nvcr.io/nvidia/vllm:26.07-py3 tool-calling returns HTTP 500 —
+  xgrammar version mismatch** (S-forum-vllm-2607-xgrammar, rp_37716): the 26.07
+  NGC container ships vLLM `0.24.0+092c4842.nv26.7` with `xgrammar==0.2.0`, but
+  the vLLM build calls `xgrammar.normalize_tool_choice` which was only added in
+  **xgrammar 0.2.4**. The container's vLLM has outrun its own bundled dependency.
+  **Symptom:** any request with `tools`/`tool_choice` set returns:
+  `{"error": {"message": "cannot import name 'normalize_tool_choice' from 'xgrammar'",
+  "type": "InternalServerError", "code": 500}}`. Requests without tools work fine.
+  **Workaround (verified on DGX Spark GB10):** two-line derived Dockerfile:
+  ```dockerfile
+  FROM nvcr.io/nvidia/vllm:26.07-py3
+  RUN pip install -q -U xgrammar && pip install -q transformers==5.6.1
+  ```
+  `pip install -U xgrammar` bumps to 0.2.4 (fixes the import) but silently
+  downgrades `transformers` from 5.6.1 to 4.57.6 (xgrammar 0.2.4 declares
+  `transformers<5,>=4.38.0`). Re-pinning `transformers==5.6.1` is required —
+  it's technically outside xgrammar's declared support, but basic tool-calling,
+  `response_format: {"type": "json_schema"}`, and `guided_regex` all tested clean
+  post-patch. `guided_grammar` (CFG) and `guided_choice` not tested. NVIDIA
+  (Neill) confirmed an internal ticket and acknowledged the workaround but
+  cannot officially validate it due to the dependency-constraint override.
+  **Ask:** bump xgrammar to ≥0.2.4 in the next 26.xx container build with
+  transformers re-verified against it. Tested on both
+  `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8` and `Qwen/Qwen3.6-35B-A3B-FP8`.
+  Single source + NVIDIA staff confirmation → [conjecture]. This is the same
+  class of NGC-container dependency mismatch as the 26.06-py3 FastAPI break
+  (S-forum-vllm-2606-broken) — the NGC vLLM container line has a pattern of
+  bundled dependencies lagging behind the vLLM build's actual requirements.

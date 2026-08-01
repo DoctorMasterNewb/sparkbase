@@ -1626,3 +1626,34 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
 - **Evidence promotions:** gpt-oss-120B 59 tok/s → [reported] (2 independent sources agree).
   Laguna-S-2.1 "not new king" → [reported] (8+ independent users). No promotions past [reported].
 - No new wiki pages created. No index.md update needed (no new pages).
+
+## 2026-07-31 — Forum ingest: 2 new topics (Batch 46)
+
+- **Sources:** 2 new forum topics from forums.developer.nvidia.com. 2 new sources
+  registered (S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train). 2 topic IDs
+  added to processed_topics.txt (total now 501).
+- **Pages touched:** containers-and-tooling (nvcr.io/nvidia/vllm:26.07-py3 tool-calling
+  500 — xgrammar 0.2.0 missing normalize_tool_choice, added in 0.2.4; two-line Dockerfile
+  workaround pip install -U xgrammar + re-pin transformers==5.6.1; NVIDIA confirmed
+  internal ticket; json_schema + guided_regex also fixed post-patch; NGC container
+  dependency-mismatch pattern [conjecture]), models/qwen (Qwen3.6-35B-A3B-FP8 DeepGEMM
+  layout.hpp:59 assertion on 26.07 patched image — new GB10-specific model-load failure
+  [conjecture]; ~50 tok/s sustained decode with MTP nst=3 on vLLM [conjecture]; community
+  advice: use existing DFlash drafter over training custom DSpark [conjecture]),
+  sources/README, log.
+- **Key findings:**
+  1. **nvcr.io/nvidia/vllm:26.07-py3 tool-calling 500** — the 26.07 NGC container ships
+     xgrammar 0.2.0 but its vLLM build requires xgrammar ≥0.2.4 (normalize_tool_choice).
+     Two-line Dockerfile workaround verified on DGX Spark: `pip install -U xgrammar &&
+     pip install transformers==5.6.1`. NVIDIA confirmed internal ticket. This is the
+     same class of NGC dependency mismatch as the 26.06-py3 FastAPI break — a pattern
+     of bundled dependencies lagging behind the vLLM build. [conjecture].
+  2. **Qwen3.6-35B-A3B-FP8 DeepGEMM assertion** — `RuntimeError: Assertion error
+     .../layout.hpp:59: Unknown SF transformation` during FP8 MoE weight-layout
+     conversion on GB10. Same image loads Nemotron-3-Nano-30B-A3B-FP8 fine. New
+     GB10-specific model-load failure in DeepGEMM. [conjecture].
+  3. **~50 tok/s with MTP nst=3 on vLLM** — a forum user reports ~50 tok/s sustained
+     decode for Qwen3.6-35B-A3B with MTP=3 on single Spark for agentic coding.
+     Consistent with proven bandwidth-bound decode range. [conjecture].
+- No evidence promotions past [reported]. All new findings [conjecture] (single source each).
+- No new wiki pages created. No index.md update needed.
