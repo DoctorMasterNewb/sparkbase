@@ -1699,3 +1699,30 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
      PEFT adapters servable via `vllm serve --enable-lora`. [conjecture].
 - No evidence promotions past [reported]. All new findings [conjecture] (single sources).
 - No new wiki pages created. Index.md updated (Inkling description + new ingest section).
+
+## 2026-08-02 — Scheduled forum ingest: Batch 47 — 2 new topics processed
+- 2 new forum topics found, both technically relevant.
+- 2 new sources registered (Batch 47). 2 topic IDs added to `sources/processed_topics.txt`
+  (total now 507).
+- **Findings:**
+  1. **Nemotron-3-Super NVFP4 dual-node corroborates cross-node-is-slower** — 13.67–14.33
+     tok/s on 2-node TP=2 (Ray) vs ~15 tok/s single-node. Full vLLM recipe documented
+     (TRITON_ATTN, cutlass MoE, fp8 KV, `--mamba_ssm_cache_dtype float32`,
+     `--load-format fastsafetensors`). Models must be pre-downloaded (`hf-download.sh`),
+     `launch-cluster.sh` does not auto-download. FP8 attention scaling-factor warnings
+     (uncalibrated q/prob_scale 1.0) are expected for this checkpoint — may cause accuracy
+     issues but don't block serving. [conjecture] (single source, but corroborates proven
+     cross-node latency finding).
+  2. **DSV4-Flash-DSpark 3-draft-beats-5 tuning** — full YAML recipe via eugr's
+     spark-vllm-docker: FlashInfer PR 3817 required, `--load-format safetensors`
+     mandatory (default loader crashes). Tuning sweep: 3 draft tokens beats 4/5/6 at
+     50-concurrent (71.63 vs 48.60 tok/s output, 48.35% vs 27.65% acceptance).
+     `max_num_batched_tokens=10240` slightly better than 8192 for 3-draft; 16384 doesn't
+     fit at 262K ctx. Consistent with DSpark confidence-scheduled verification mechanism.
+     [conjecture] (single-source A/B sweep, well-documented).
+- Pages touched: models/nemotron-3 (2-node cluster recipe + performance + fp8 warnings +
+  pre-download requirement), engines (DSV4-Flash-DSpark full recipe + FlashInfer PR 3817 +
+  3-draft tuning A/B), benchmarks (2 new [conjecture] rows: Nemotron-3-Super 2-node,
+  DSV4-Flash-DSpark 3-draft), sources/README, index, log.
+- No evidence promotions past [reported]. All new findings [conjecture] (single forum
+  sources). No new wiki pages created.

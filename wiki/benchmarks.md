@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-glm52-iq4xs-4x, S-forum-roce-397b-mtp, S-forum-gemma4-mtp-4x, S-forum-qwen122-nvfp4-redhat, S-forum-qwen122-nvfp4-quant, S-forum-nemotron-super-abi, S-forum-ds4f-hybrid-1x, S-forum-step37-llamacpp, S-forum-gemma4-assistant, S-forum-qwen36-27b-fp8, S-forum-llama-benchy, S-forum-flux2-nvfp4-compute, S-forum-mimo-sglang-4x, S-forum-m27-recipe, S-forum-diffusion-speeds, S-forum-mimo-2x-opt, S-forum-4node-crs504, S-forum-tokenspeed, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-colibri-glm52, S-forum-nvfp4-broken, S-forum-dsv4-abliterated, S-forum-nemotron-ollama, S-forum-glm52-8x, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-laguna-v251-bench, S-forum-mistral-s4-119b, S-forum-qwen36-fp8-2x, S-forum-solar-open2, S-forum-woolyai, S-forum-solar-open2-nvfp4, S-forum-qwen122-king, S-forum-glm52-hybrid, S-forum-qwen122-v26-dflash, S-forum-llamacpp-fastest, S-forum-speedycolibri, S-forum-gemma4-26b-bench, S-forum-unsloth-b12x, S-forum-nvfp4-kv, S-forum-dsv4-reap25, S-forum-acer-thermal, S-forum-sm121-4bugs, S-forum-velogb10, S-forum-hy3-1bit, S-forum-laguna-king
-> **updated:** 2026-07-31
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr
+> **updated:** 2026-08-02
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
 anchor the rules on
@@ -708,3 +708,13 @@ S-forum-velogb10, S-forum-hy3-1bit, S-forum-laguna-king.
 | Qwen3.6-9B (dense) | NVFP4-full (100%) | veloGB10 | 1 | ~80 | — | pure NVFP4 | S-forum-velogb10 |
 | Hy3-295B | 1-bit GGUF | llama.cpp | 1 | ~15 | — | tight fit even at 1-bit; very intelligent but slow | S-forum-hy3-1bit |
 | Laguna-S-2.1 | NVFP4 (updated) | vLLM 0.25.1 | 1 | 19-50 | 256K | wide range: Schampuswerner 19-24, nuk3s 22.6, vr8vr8 40-50, robert287 45.5 code/27.2 structured | S-forum-laguna-king |
+
+## Batch 47 forum ingest (2026-08-02)
+
+**[conjecture]** — all single-source forum benchmarks. S-forum-nemotron-2node,
+S-forum-dsv4-dspark-eugr.
+
+|| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+||---|---|---|---|---|---|---|---||
+|| Nemotron-3-Super-120B-A12B | NVFP4 | vLLM TP=2 (Ray) | 2 | 13.67–14.33 | 262K | dual-node slightly slower than single-node (15 tok/s); TRITON_ATTN, cutlass MoE, fp8 KV, mamba_ssm_cache_dtype float32, fastsafetensors | S-forum-nemotron-2node ||
+|| DeepSeek-V4-Flash-DSpark | NVFP4 (`nvfp4_ds_mla` KV) | vLLM+DSpark spec=3 TP=2 (Ray) | 2 | 71.63 (c50 output) | 262K | 3 draft tokens beats 5; 48.35% acceptance, 52.52 ms TPOT; max_num_batched_tokens 10240; FlashInfer PR 3817 | S-forum-dsv4-dspark-eugr ||

@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-nemotron-rpc, S-swapper, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-nemotron-super-abi, S-forum-nemotron-ollama, S-forum-nvfp4-broken
-> **updated:** 2026-07-16
+> **sources:** S-nemotron-rpc, S-swapper, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-nemotron-super-abi, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-nemotron-2node
+> **updated:** 2026-08-02
 
 NVIDIA Nemotron-3 — **hybrid Mamba-2 + attention MoE** (`nemotron_h_moe`). Most layers are SSM with a
 few attention layers (2 KV heads), so KV is cheap and native context is huge. Two paths on GB10.
@@ -79,3 +79,32 @@ few attention layers (2 KV heads), so KV is cheap and native context is huge. Tw
   ~200 GB/s cluster bandwidth, measured 24 tok/s (vs ~34 tok/s theoretical at that bandwidth).
   The gap is software/kernel efficiency, not hardware. See
   `[[wiki/quantization-on-gb10.md]]` → NVFP4 meta-analysis for full context.
+
+## Forum ingest: Nemotron-3-Super NVFP4 on 2-node cluster (2026-08-02)
+
+- **[conjecture]** **Nemotron-3-Super-120B-A12B-NVFP4 dual-node is slightly slower than single-node**
+  (S-forum-nemotron-2node, elvis.dowson): on a 2-node DGX Spark cluster (TP=2, Ray), `llama-benchy`
+  reports **13.67–14.33 tok/s** vs a prior single-node measurement of **~15 tok/s**. This corroborates
+  the proven finding that cross-node TP=2 decode is latency-bound (host-staged all-reduce, no
+  GPUDirect) and does not beat single-node for models that fit on one Spark. The model
+  (`nvidia/nvidia-nemotron-3-super-120b-a12b-nvfp4`) fits on a single 128 GB node at NVFP4.
+- **[conjecture]** **Full 2-node vLLM recipe flags** (S-forum-nemotron-2node): `vllm serve` with
+  `--tensor-parallel-size 2 --distributed-executor-backend ray --kv-cache-dtype fp8
+  --attention-backend TRITON_ATTN --moe-backend cutlass --mamba_ssm_cache_dtype float32
+  --load-format fastsafetensors --max-model-len 262144 --max-num-seqs 10
+  --gpu-memory-utilization 0.8 --reasoning-parser nemotron_v3 --tool-call-parser qwen3_coder
+  --enable-auto-tool-choice --enable-prefix-caching`. Env: `VLLM_FLASHINFER_ALLREDUCE_BACKEND=trtllm`,
+  `VLLM_ALLOW_LONG_MAX_MODEL_LEN=1`. Launched via eugr's `launch-cluster.sh` (spark-vllm-docker)
+  with `--apply-mod mods/nemotron-super`. The `--mamba_ssm_cache_dtype float32` flag is notable —
+  the hybrid Mamba-2 SSM state pool needs explicit float32 cache dtype on GB10.
+- **[conjecture]** **Models must be pre-downloaded before launch** (S-forum-nemotron-2node, eugr):
+  `launch-cluster.sh` does not auto-download models. Use `./hf-download.sh
+  nvidia/nvidia-nemotron-3-super-120b-a12b-nvfp4 -c "$HOSTS" --copy-parallel` to download and
+  distribute to both nodes. Without pre-download, vllm launches but no network activity occurs.
+- **[conjecture]** **FP8 attention scaling-factor warnings are expected for this checkpoint**
+  (S-forum-nemotron-2node): vLLM emits warnings on startup — `Checkpoint does not provide a q
+  scaling factor. Setting it to k_scale`, `Using KV cache scaling factor 1.0 for fp8_e4m3`,
+  `Using uncalibrated q_scale 1.0 and/or prob_scale 1.0 with fp8 attention. This may cause
+  accuracy issues`. These indicate the NVFP4 checkpoint lacks calibrated q/prob/kv scaling
+  factors for the fp8 attention path — defaults to 1.0. May cause accuracy issues but does not
+  block serving. No fix reported; treat as a known checkpoint limitation.

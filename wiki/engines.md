@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10
-> **updated:** 2026-07-31
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr
+> **updated:** 2026-08-02
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -458,3 +458,38 @@ Three engines run on the Spark pair; pick by arch support and quant.
   — most NVFP4 checkpoints leave ~half layers in BF16 (see `[[wiki/quantization-on-gb10.md]]` →
   NVFP4 meta-analysis). Whether veloGB10's custom kernels extract more from the full-NVFP4 path
   on sm_121 is uncharacterized.
+
+## Forum ingest: DeepSeek-V4-Flash-DSpark recipe + draft-token tuning (2026-08-02)
+
+- **[conjecture]** **DSV4-Flash-DSpark on 2× Spark via eugr spark-vllm-docker — full recipe**
+  (S-forum-dsv4-dspark-eugr, davidbarnesguildford): a complete YAML recipe for serving
+  `deepseek-ai/DeepSeek-V4-Flash-DSpark` on a 2-node DGX Spark cluster. Key flags:
+  `--tensor-parallel-size 2 --distributed-executor-backend ray --kv-cache-dtype fp8
+  --block-size 256 --max-model-len 262144 --max-num-seqs 4 --max-num-batched-tokens 8192
+  --gpu-memory-utilization 0.8 --enable-prefix-caching --load-format safetensors
+  --tokenizer-mode deepseek_v4 --tool-call-parser deepseek_v4 --reasoning-parser deepseek_v4
+  --speculative-config '{"method":"dspark","num_speculative_tokens":5}'
+  --hf-overrides '{"dspark_noise_token_id":128799}'
+  --reasoning-config '{"reasoning_parser":"deepseek_v4","reasoning_start_str":"","reasoning_end_str":""}'
+  --default-chat-template-kwargs.thinking=true
+  --default-chat-template-kwargs.reasoning_effort=high`. Env: `DG_JIT_USE_NVRTC=0`,
+  `VLLM_ALLOW_LONG_MAX_MODEL_LEN=1`, `VLLM_USE_BREAKABLE_CUDAGRAPH=0`.
+  **`--load-format safetensors` is mandatory** — the default loader crashes on this checkpoint.
+- **[conjecture]** **FlashInfer PR 3817 is required** (S-forum-dsv4-dspark-eugr,
+  davidbarnesguildford): the stock `vllm-node` image must be patched via
+  `./build-and-copy.sh --apply-flashinfer-pr 3817` before serving DSV4-Flash-DSpark. Without it
+  the recipe fails. `build-and-copy.sh -c` copies the patched image to the worker node over
+  InfiniBand (faster than the manual `docker save` + `rsync` alternative).
+- **[conjecture]** **3 draft tokens beats 5 on DSV4-Flash-DSpark at 50-concurrent** (S-forum-dsv4-dspark-eugr,
+  johndaly): tuning the `num_speculative_tokens` from 5 (the posted recipe default) down to 3
+  gives a significant throughput improvement on the same 50-concurrent `vllm bench serve`
+  workload shape (random 244-in/200-out, 50 prompts, max-concurrency 50):
+  - **3 draft tokens:** 71.63 tok/s output, 52.52 ms TPOT, 48.35% acceptance, accept_len 2.45
+  - **5 draft tokens (posted):** 48.60 tok/s output, 85.64 ms TPOT, 27.65% acceptance, accept_len 2.38
+  - **5 draft tokens (local reproduction):** 65.46 tok/s, 57.09 ms TPOT, 34.12% acceptance
+  `max_num_batched_tokens=10240` was slightly better than 8192 for the 3-draft run. A 16384
+  batch-token attempt did not fit at `max_model_len=262144` on the 2-node setup. The main
+  tuning result: **3 draft tokens beat 4, 5, and 6 draft tokens on this workload.** Single
+  source (one user's sweep) → [conjecture], but a well-documented A/B with full benchmark
+  numbers. Consistent with the DSpark mechanism (confidence-scheduled verification truncates
+  block length as concurrency rises — fewer drafts at high concurrency can be more efficient).

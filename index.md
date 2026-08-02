@@ -616,3 +616,18 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   registered source for provenance only).
 - No evidence promotions past [reported]. All new findings [conjecture]. No new wiki pages
   created.
+
+## Forum ingest 2026-08-02 (Batch 47)
+- 2 new forum topics found, both technically relevant.
+- 2 new sources registered (Batch 47). 2 topic IDs added to processed_topics.txt (total now 507).
+- Pages touched: models/nemotron-3 (Nemotron-3-Super-120B NVFP4 2-node cluster — full vLLM
+  recipe with `--mamba_ssm_cache_dtype float32`, model pre-download requirement, fp8 attention
+  scaling-factor warnings, 13.67–14.33 tok/s dual-node vs 15 single-node corroborates
+  cross-node-is-slower [conjecture]), engines (DeepSeek-V4-Flash-DSpark full YAML recipe via
+  eugr spark-vllm-docker — FlashInfer PR 3817 required, `--load-format safetensors` mandatory,
+  3-draft-beats-5 tuning A/B: 71.63 vs 48.60 tok/s at c50, 48.35% vs 27.65% acceptance,
+  `max_num_batched_tokens=10240` optimal, 16384 doesn't fit at 262K [conjecture]),
+  benchmarks (2 new [conjecture] rows: Nemotron-3-Super 2-node, DSV4-Flash-DSpark 3-draft),
+  sources/README, index, log.
+- No evidence promotions past [reported]. All new findings [conjecture]. No new wiki pages
+  created.

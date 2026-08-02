@@ -515,6 +515,13 @@ sources cite the experiment (what/config/when), never a private path.
 | S-forum-hy3-1bit | forum | Hy3 1-bit GGUF on single DGX Spark — tight fit even at 1-bit, ~15 tok/s via llama.cpp, very intelligent but painfully slow; TurboQuant + llama.cpp fork pending to speed up and leave MTP headroom (branislav.djalic, phyo.arkarlwin) | https://forums.developer.nvidia.com/t/376870 | 2026-07-21 |
 | S-forum-laguna-king | forum | Laguna-S-2.1 "new king?" — 63-post thread; mixed results: vr8vr8 40-50 tok/s c=1, 80-100 tok/s c=2; nuk3s 22.6 tok/s; Schampuswerner 19-24 tok/s decode, tool-eval 97/100 (vs Qwen 100/100), 86/100 hardmode (vs 91); robert287 updated NVFP4 45.5 t/s code / 27.2 structured; nuk3s temp sweep: updated quant flattens curve, +20% decode at temp 0.7; Poolside updated NVFP4 weights; PrismaQuant-GridBook 6-bit release pending; community consensus: not "new king," quality below Qwen3.6-35B-A3B for agentic (kyrylo.gorbachov, vr8vr8, nuk3s, Schampuswerner, robert287, mangosq, tenari, jwarner) | https://forums.developer.nvidia.com/t/377662 | 2026-07-30 |
 
+## Batch 47 forum sources (2026-08-02 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-nemotron-2node | forum | Nemotron-3-Super-120B-A12B-NVFP4 on 2-node cluster — full vLLM recipe (TRITON_ATTN, cutlass MoE, fp8 KV, mamba_ssm_cache_dtype float32, fastsafetensors load), fp8 attention scaling-factor warnings (uncalibrated q/prob_scale 1.0), model pre-download required (launch-cluster.sh does not auto-download), 13.67-14.33 tok/s dual-node vs 15 tok/s single-node — dual-node slightly slower (elvis.dowson, eugr, mashie) | https://forums.developer.nvidia.com/t/378575 | 2026-07-30 |
+| S-forum-dsv4-dspark-eugr | forum | DeepSeek-V4-Flash-DSpark on 2× Spark via Eugr's spark-vllm-docker — DSpark spec-decode recipe YAML, FlashInfer PR 3817 required, --load-format safetensors (or crash), 3 draft tokens beats 5 (71.63 vs 48.60 tok/s, 48.35% vs 27.65% acceptance), max_num_batched_tokens 10240 > 8192 for 3-draft, build-and-copy.sh -c uses IB (davidbarnesguildford, johndaly, Zambonilli, eugr_nv) | https://forums.developer.nvidia.com/t/376220 | 2026-07-09 |
+
 ## Batch 46 forum sources (2026-08-01 ingest)
 
 || ID | type | What it is | Reference | Date |
