@@ -1725,4 +1725,31 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   3-draft tuning A/B), benchmarks (2 new [conjecture] rows: Nemotron-3-Super 2-node,
   DSV4-Flash-DSpark 3-draft), sources/README, index, log.
 - No evidence promotions past [reported]. All new findings [conjecture] (single forum
-  sources). No new wiki pages created.
+  sources).
+
+## 2026-08-02 — Scheduled forum ingest: Batch 48 — 3 new topics (1 processed, 2 skipped)
+- 3 new forum topics found by fetch_new_topics.py. 1 technically relevant, 2 skipped.
+- 1 new source registered (Batch 48) in `sources/README.md`: S-forum-depfree-dashboard.
+  3 topic IDs added to `sources/processed_topics.txt` (total now 510).
+- **Skipped:**
+  - 378782 (DGX Spark Login Loop) — Thunderbolt dock capability issue causes login loop;
+    resolved by NVIDIA support. User-specific peripheral incompatibility, no durable GB10
+    inference finding.
+  - 356275 (DGX Spark frozen and won't startup) — Device froze under heavy load, won't boot;
+    RMA candidate. Second user reports NVMe fails to mount / goes to BIOS every power-on.
+    Hardware-failure/RMA path with no reproducible cause, no flags/env vars, no inference
+    finding.
+- **Findings:**
+  1. **DGX-Spark-Dashboard — dependency-free monitoring dashboard** (S-forum-depfree-dashboard,
+     angads25): third independent community monitoring dashboard for DGX Spark. FastAPI +
+     vanilla HTML/CSS/JS, no DB/agent/CDN. Footprint measured on GB10: ~190 MB image,
+     ~42 MiB RAM, ~0.2% one core idle — vs DCGM+Prometheus+Grafana ~600 MiB RAM / ~2.5 GB
+     images (~14× mem, ~13× disk). Demand-driven (no background collector). **NVML over
+     nvidia-smi** (durable GB10 finding): switched from nvidia-smi polling to NVML after
+     community feedback that nvidia-smi polling is a "performance killer" for monitoring
+     tools — on UMA, constant subprocess spawning adds measurable overhead. Single-node
+     only (CX-7 ports not monitored). [conjecture] (single source).
+- Pages touched: containers-and-tooling (new dashboard + NVML-over-nvidia-smi finding),
+  sources/README, log, index.
+- No evidence promotions past [reported]. All new findings [conjecture] (single forum source).
+- No new wiki pages created.

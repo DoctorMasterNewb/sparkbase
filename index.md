@@ -631,3 +631,14 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   sources/README, index, log.
 - No evidence promotions past [reported]. All new findings [conjecture]. No new wiki pages
   created.
+
+## Forum ingest 2026-08-02 (Batch 48)
+- 3 new forum topics found (1 technically relevant, 2 skipped: login loop / Thunderbolt dock,
+  frozen-won't-boot / RMA).
+- 1 new source registered (Batch 48). 3 topic IDs added to processed_topics.txt (total now 510).
+- Pages touched: containers-and-tooling (DGX-Spark-Dashboard — third independent community
+  monitoring dashboard, dependency-free, ~190 MB image / ~42 MiB RAM on GB10 vs ~600 MiB
+  DCGM+Prometheus+Grafana; **NVML over nvidia-smi** for low-overhead GPU monitoring on UMA
+  [conjecture]), sources/README, index, log.
+- No evidence promotions past [reported]. All new findings [conjecture]. No new wiki pages
+  created.

@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal, S-forum-vllm-2607-xgrammar
-> **updated:** 2026-07-31
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal, S-forum-vllm-2607-xgrammar, S-forum-depfree-dashboard
+> **updated:** 2026-08-02
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -569,3 +569,40 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   class of NGC-container dependency mismatch as the 26.06-py3 FastAPI break
   (S-forum-vllm-2606-broken) — the NGC vLLM container line has a pattern of
   bundled dependencies lagging behind the vLLM build's actual requirements.
+
+## Forum ingest: dependency-free DGX Spark dashboard (2026-08-02)
+
+- **[conjecture]** **DGX-Spark-Dashboard — lightweight single-node monitoring
+  dashboard** (S-forum-depfree-dashboard, angads25): a third independent
+  community-built monitoring dashboard for DGX Spark (after sparkDash by
+  brainchillz / S-forum-sparkdash and sparkDash by MiaAI-Lab /
+  S-forum-sparkdash-mia). Distinct design philosophy: **dependency-free** —
+  FastAPI + vanilla HTML/CSS/JS, no database, no agent daemon, no frontend
+  framework, no CDN. One Docker Compose service.
+  - **Footprint (measured on GB10):** ~190 MB image, ~42 MiB RAM, ~0.2% of one
+    core when idle. Author measured the standard DCGM Exporter + Prometheus +
+    Grafana stack on the same Spark at ~600 MiB RAM across 3 always-on
+    containers and ~2.5 GB of images — roughly 14× the memory and 13× the
+    disk. The full stack does more (history, alerting, full DCGM field set);
+    this dashboard is a live-only glance at a single box.
+  - **Demand-driven:** runs no background collector; reads metrics only when a
+    browser asks. Idle overhead is effectively zero. Any category can be
+    disabled in Settings.
+  - **NVML, not nvidia-smi** (durable GB10 finding): the dashboard switched
+    from `nvidia-smi` polling to **NVML** for GPU data after community
+    feedback (elsaco) that `nvidia-smi` polling is a "performance killer" for
+    a monitoring tool. On GB10, where the GPU and CPU share a unified memory
+    pool, constant `nvidia-smi` subprocess spawning adds measurable overhead;
+    NVML (the C library behind `nvidia-smi`) is the correct data source for
+    low-overhead monitoring. GitHub: `singhangadin/DGX-Spark-Dashboard`.
+  - **Security model:** read-only host `/proc` mounts, read-only Docker socket,
+    host networking for real interface counters; runs non-root,
+    `cap_drop: ALL`, `no-new-privileges`, read-only root filesystem.
+  - **Single-node only:** CX-7 ports not monitored (author lacks a multi-node
+    setup to test).
+  Single source → [conjecture]. Reinforces the pattern of community-built
+  Spark dashboards (cf. S-forum-sparkdash, S-forum-cluster-dashboard,
+  S-forum-spark-studio, S-forum-sparkdash-mia). The NVML-over-nvidia-smi
+  finding is the most broadly applicable takeaway — relevant to any GB10
+  monitoring tooling. See also `[[wiki/platform-gb10.md]]` → operating
+  constraints (nvidia-smi shows GPU power only, not total SoC).
