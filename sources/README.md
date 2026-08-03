@@ -536,3 +536,10 @@ sources cite the experiment (what/config/when), never a private path.
 || ID | type | What it is | Reference | Date |
 |---|---|---|---|---|
 | S-forum-depfree-dashboard | forum | DGX-Spark-Dashboard — dependency-free monitoring dashboard built for single DGX Spark; FastAPI + vanilla HTML/CSS/JS, no DB/agent/CDN; ~190 MB image, ~42 MiB RAM, ~0.2% one core idle (measured on GB10); vs DCGM+Prometheus+Grafana ~600 MiB RAM, ~2.5 GB images (~14× mem, ~13× disk); demand-driven (no background collector); NVML for GPU data (not nvidia-smi — nvidia-smi polling is a performance killer); read-only /proc + Docker socket, non-root, cap_drop:ALL; single-node only (CX-7 ports not monitored) (angads25, mashie, elsaco) | https://forums.developer.nvidia.com/t/377085 | 2026-07-16 |
+
+## Batch 49 forum sources (2026-08-03 ingest)
+
+| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-cooler-temps | forum | Cooler GB10 Temps — 38-post thread, 2618 views; quantitative clock-cap A/B: 2000 MHz decode ≈0% loss, 55-69% power reduction, 8-22°C temp drop across 5+ independent users; cuBLAS SGEMM sweep shows -23% clock = -9% throughput (bandwidth-bound working set); systemd persistent clock-cap unit; KojiChou 3-node A/B (LLM ≈0% loss, diffusion +2.6-7.5%); whpthomas 12h quantization 0.6% loss at 1982 MHz; diffusion compute-bound ~12.5% loss (azampatti, whpthomas, KojiChou, ijontichy, paxren2020, g6.67300) | https://forums.developer.nvidia.com/t/372662 | 2026-06-15 |
+| S-forum-grm32-sky | forum | OrionLLM/GRM-3.2-Sky (70 GB bf16, fits single Spark) — identified as Qwen3.5-35B/Ornith finetune; tool-eval-bench 86/100; tester finds worse than whpthomas/Ornith-1.0-35B-int4-AutoRound; no GB10-specific flags or configs (DannyTup, emX0r, stefan132) | https://forums.developer.nvidia.com/t/378777 | 2026-08-01 |

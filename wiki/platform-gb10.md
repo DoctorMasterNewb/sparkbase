@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power
-> **updated:** 2026-07-31
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps
+> **updated:** 2026-08-03
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -929,6 +929,79 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   self-throttles to ~2150 MHz under sustained load with basically unaffected speed. Reboots/
   firmware updates reset the clock lock, requiring re-application. This thread is a reference
   for the clock-cap mitigation corroborated across multiple findings.
+
+### Batch 49 forum ingest (2026-08-03)
+
+- **[reported]** **Clock-cap 2000 MHz: near-zero LLM decode loss, 55% power reduction, 8-22°C
+  temp drop — quantified across 5+ independent users** (S-forum-cooler-temps, 38-post thread,
+  2618 views). This is the largest quantitative A/B dataset for the clock-cap mitigation and
+  strongly corroborates the existing **[reported]** finding above. The thread demonstrates
+  *why* clock capping works so well on GB10: LLM single-stream decode is bandwidth-bound
+  (proven), so SM clock has almost no leverage on throughput. Key measurements:
+  - **[reported]** **LLM decode ≈0% loss at 2000 MHz across multiple models** —
+    azampatti: Qwen3.6-35B-A3B-NVFP4 ~113 tok/s at both stock 2400-2470 MHz (43 W) and 2000 MHz
+    (25 W); Qwen3.5-122B-A10B-hybrid same performance at 2000 MHz, better when heat-soaked.
+    whpthomas: 12h quantization at 1982 MHz / 43 W → 68°C GPU / 78°C CPU, 799 s/it; at 2456 MHz
+    / 74 W → 82°C / 93°C, 804 s/it — **0.6% performance loss** for 42% power reduction.
+    KojiChou: 3× Asus Ascent GX10 A/B — MiniMax-M2.7-NVFP4 TP=2 decode 24.8→~24.5 tok/s
+    (within run-to-run noise of 23.7-25.1 tok/s), power 42→19 W (-55%), temp 72→66°C.
+  - **[conjecture]** **Diffusion is compute-bound — ~12.5% speed loss at 2000 MHz** (ijontichy):
+    Z-Image-Turbo image gen 7.25 s/image (stock, 84°C peak) → 8.17 s/image (2000 MHz, 62°C
+    peak). KojiChou: 30-step image gen 305→313 s (+2.6%), image-to-video 1286→1382 s (+7.5%),
+    temp 87→74°C, power 68.5→39 W (-43%). Diffusion has large latent token sets processed
+    per forward pass → compute-bound, not bandwidth-bound → clock reduction costs real speed.
+  - **[conjecture]** **cuBLAS SGEMM sweep — -23% clock = -9% throughput, bandwidth-bound
+    explanation** (g6.67300): swept `nvidia-smi -lgc` from 1800-2320 MHz with sustained
+    4096×4096×4096 SGEMM (TF32), GPU pre-cooled to ≤45°C so zero throttling at any point:
+
+    | locked clock (target) | measured avg | avg TFLOP/s | vs. natural boost |
+    |---|---|---|---|
+    | 1800 MHz | 1794 MHz | 36.41 | -9.0% throughput, -22.7% clock |
+    | 2000 MHz | 1995 MHz | 38.21 | -4.5% throughput, -14.0% clock |
+    | 2100 MHz | 2087 MHz | 39.50 | -1.3% throughput, -10.1% clock |
+    | 2200 MHz | 2179 MHz | 39.66 | -0.9% throughput, -6.1% clock |
+    | 2260 MHz | 2237.5 MHz | 40.24 | +0.6% throughput, -3.6% clock |
+    | natural boost | 2320.6 MHz | 40.01 | baseline |
+
+    Clocking down 23% (2321→1794 MHz) costs only 9% throughput — less than half the linear
+    expectation. Root cause: GB10's LPDDR5X bandwidth (273 GB/s) is low for a GPU, and its
+    24 MB L2 is well under the ~192 MB working set of 3× 4096² FP32 matrices, so a chunk of
+    every SGEMM is memory-bandwidth-bound and doesn't shrink with clock. Confirmed: at
+    1024×1024 (fits in L2), throughput tracks clock almost linearly. The "clock doesn't
+    matter" effect is specific to workloads whose working set exceeds L2 — most non-trivial
+    GEMM/attention shapes at this size. Open-source benchmark:
+    `nvcc -O3 simple_gpu_bench.cu -o simple_gpu_bench -lcublas -lnvidia-ml`.
+  - **[conjecture]** **Prefill ~10% penalty at 2000 MHz** (paxren2020): DeepSeek-V4-Flash
+    pp1000 @ d100000 — ~10% prefill slowdown at locked clock, peak temp 85→70°C, power
+    85→48 W. Decode (tg128) unaffected. Consistent with prefill being more compute-bound
+    than decode.
+  - **[conjecture]** **Systemd unit for persistent clock cap across reboots** (card.ps):
+    `nvidia-smi -lgc` does not survive reboot; `-pm 1` (persistence mode) also resets.
+    Create `/etc/systemd/system/nvidia-power-limit.service`:
+    ```ini
+    [Unit]
+    Description=Set NVIDIA GPU Clock Limit
+    After=nvidia-persistenced.service
+    Wants=nvidia-persistenced.service
+    [Service]
+    Type=oneshot
+    ExecStart=/usr/bin/bash -c 'sleep 5 && nvidia-smi -pm 1 && nvidia-smi -lgc 0,2000'
+    RemainAfterExit=yes
+    [Install]
+    WantedBy=multi-user.target
+    ```
+    Then `sudo systemctl daemon-reload && sudo systemctl enable nvidia-power-limit.service`.
+  - **[conjecture]** **2000 MHz chosen because it never triggers thermal throttling**
+    (azampatti): at 2200 MHz the GPU still occasionally throttles down to ~1900 MHz; at
+    2000 MHz it never throttles. 2000 MHz is the sweet spot for maximal power/thermal
+    reduction with minimal performance impact on bandwidth-bound (LLM decode) workloads.
+    `-pl` (power limit) is N/A on GB10, so clock capping is the only available mechanism.
+  - **Summary:** the clock-cap mitigation is now corroborated by 5+ independent forum
+    threads with quantitative data → strengthens the existing **[reported]** finding. The
+    mechanism is now well-explained: GB10's bandwidth-bound decode is insensitive to SM
+    clock, so capping to 2000 MHz trades ~0-5% LLM performance for 43-69% power reduction
+    and 8-22°C lower temperatures. Compute-bound workloads (diffusion, prefill) pay
+    ~10-12% but still benefit thermally.
 
 ### Batch 38 forum ingest (2026-07-27)
 

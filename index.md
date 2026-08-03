@@ -642,3 +642,20 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   [conjecture]), sources/README, index, log.
 - No evidence promotions past [reported]. All new findings [conjecture]. No new wiki pages
   created.
+
+## Forum ingest 2026-08-03 (Batch 49)
+- 3 new forum topics found (2 technically relevant, 1 skipped: Chrome ARM64 announcement).
+- 2 new sources registered (Batch 49). 3 topic IDs added to processed_topics.txt (total now 513).
+- **Headline finding:** Clock-cap 2000 MHz quantitative A/B — largest dataset yet (38-post
+  thread, 5+ independent users). LLM decode ≈0% loss (bandwidth-bound), 55-69% power
+  reduction, 8-22°C temp drop. cuBLAS SGEMM sweep explains *why*: -23% clock = -9%
+  throughput because working set exceeds 24 MB L2 → memory-bandwidth-bound fraction
+  doesn't shrink with clock. Diffusion (compute-bound) pays ~12.5%. Systemd persistent
+  clock-cap unit documented. Strongly corroborates existing [reported] clock-cap mitigation.
+- Pages touched: platform-gb10 (quantitative clock-cap A/B data, cuBLAS sweep table,
+  systemd persistent unit, diffusion-vs-LLM compute-bound distinction, prefill ~10%
+  penalty — [reported]/[conjecture]), sources/README, index, log.
+- Skipped: 378852 (Chrome ARM64 browser announcement — no GB10 technical content).
+- No evidence promotions past [reported]. GRM-3.2-Sky source registered for provenance only
+  (model evaluation, no GB10-specific flags/configs — identified as Qwen3.5-35B/Ornith
+  finetune, tool-eval 86/100, worse than existing Ornith-1.0-35B-int4-AutoRound).

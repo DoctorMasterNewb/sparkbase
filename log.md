@@ -1753,3 +1753,29 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   sources/README, log, index.
 - No evidence promotions past [reported]. All new findings [conjecture] (single forum source).
 - No new wiki pages created.
+
+## 2026-08-03 — Scheduled forum ingest: 3 new topics (Batch 49)
+
+- **Sources:** S-forum-cooler-temps, S-forum-grm32-sky (2 new forum sources registered).
+- **Topics processed:** 378777, 378852, 372662 (3 topic IDs added to processed_topics.txt,
+  total now 513).
+- **Skipped:** 378852 (Chrome ARM64 browser announcement — no GB10 technical content).
+- **Findings:**
+  1. **Clock-cap 2000 MHz quantitative A/B** (S-forum-cooler-temps, 38-post thread, 2618
+     views, 5+ independent users): the largest quantitative dataset for the clock-cap
+     mitigation. LLM decode ≈0% loss at 2000 MHz across Qwen3.6-35B-A3B-NVFP4 (~113 tok/s
+     both stock/locked), Qwen3.5-122B-A10B-hybrid, MiniMax-M2.7-NVFP4 TP=2 (24.8→~24.5
+     tok/s). Power reduction 43-69%, temp drop 8-22°C. whpthomas: 0.6% perf loss at 1982 MHz
+     over 12h quantization. cuBLAS SGEMM sweep (g6.67300): -23% clock = -9% throughput
+     (bandwidth-bound working set exceeds 24 MB L2). Diffusion compute-bound: ~12.5% loss
+     (ijontichy). Prefill ~10% penalty (paxren2020). Systemd persistent clock-cap unit
+     (card.ps). 2000 MHz chosen because it never triggers thermal throttling (azampatti).
+     Strongly corroborates existing [reported] clock-cap mitigation → [reported] maintained.
+  2. **GRM-3.2-Sky model evaluation** (S-forum-grm32-sky): identified as Qwen3.5-35B/Ornith
+     finetune, tool-eval-bench 86/100, tester finds worse than Ornith-1.0-35B-int4-AutoRound.
+     No GB10-specific flags/configs — source registered for provenance only, no wiki edit.
+- Pages touched: platform-gb10 (new Batch 49 section — quantitative clock-cap A/B data,
+  cuBLAS SGEMM sweep table, systemd persistent unit, diffusion-vs-LLM compute-bound
+  distinction, prefill penalty, 2000 MHz sweet-spot rationale), sources/README, index, log.
+- No evidence promotions past [reported]. All new findings [reported] (multi-user
+  corroboration of existing finding) or [conjecture] (single-user sub-findings).
