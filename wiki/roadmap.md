@@ -3,8 +3,8 @@
 > **area:** roadmap
 > **status:** open-problem
 > **evidence:** mixed
-> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-inkling, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-intern-s2, S-forum-pmu-amu, S-forum-6x-ring-rdma, S-forum-gridbook, S-forum-ling3-flash, S-forum-glm52-vision, S-forum-sm121-support, S-forum-inkling-small-2x
-> **updated:** 2026-08-01
+> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-inkling, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-intern-s2, S-forum-pmu-amu, S-forum-6x-ring-rdma, S-forum-gridbook, S-forum-ling3-flash, S-forum-glm52-vision, S-forum-sm121-support, S-forum-inkling-small-2x, S-forum-dsv4-0731-caching, S-forum-powerstress
+> **updated:** 2026-08-03
 
 The unsolved stuff. Each item links to the page with the detail. Close an item by moving its finding
 onto the relevant page and deleting it here.
@@ -369,3 +369,24 @@ onto the relevant page and deleting it here.
   should: (1) re-ingest the forum thread when weights release; (2) quant to NVFP4 + AutoRound
   INT4; (3) benchmark decode/prefill/quality vs. Qwen3.5-122B-A10B and DSV4-Flash; (4) probe
   KDA attention kernel support. See `[[wiki/benchmarks.md]]` → Announced / upcoming models.
+
+## Forum-sourced open problems (2026-08-03 ingest, Batch 50)
+
+- **[conjecture]** **DSV4-Flash-0731 prefix cache unreliability on 2× Spark — isolate the
+  cause** (S-forum-dsv4-0731-caching, Sa0lence): prefix cache on DSV4-Flash-0731 on 2-node Spark
+  is non-deterministic — sometimes 1-2s prefill (cache hit), sometimes minutes to tens of
+  minutes (cache miss), with no identifiable trigger. May relate to the known MTP+prefix-cache
+  interaction bugs (S-forum-mtp-lossless) or to multi-node KV cache eviction under UMA memory
+  pressure (S-forum-uvm-livelock). Hardware agent should: (1) run DSV4-Flash-0731 on 2× Spark
+  with prefix cache ON, same prompt repeated 10×, log prefill time + cache hit/miss for each;
+  (2) try with `MTP_NUM_TOKENS=0` (MTP off) to isolate MTP+cache interaction; (3) monitor
+  `vllm` logs for cache eviction events; (4) try with `--gpu-memory-utilization 0.80` (more
+  headroom) vs `0.90`. See `[[wiki/engines.md]]` → Batch 50 section.
+- **[conjecture]** **Thermal sensor zone2/zone4 value swap — is it unit-specific or systemic?**
+  (S-forum-powerstress, digiegg): the zone2/zone4 sensor swap anomaly (two ACPI thermal zones
+  exchanging values over ~3s while zone0/zone5 sit at 97.6°C) persisted across EC + SoC firmware
+  updates on one unit, suggesting a sensor mapping/calibration problem rather than a control-loop
+  bug. RMA was approved for this unit. Hardware agent should: (1) run a 1Hz `acpitz` thermal
+  sampler during sustained GPU load on a healthy Spark and check whether zone2/zone4 ever
+  exchange values; (2) if yes, this is a systemic sensor mapping issue; if no, it was a
+  unit-specific hardware fault. See `[[wiki/platform-gb10.md]]` → Batch 50 section.

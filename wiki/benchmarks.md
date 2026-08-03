@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr
-> **updated:** 2026-08-02
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-laguna-yaml
+> **updated:** 2026-08-03
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
 anchor the rules on
@@ -718,3 +718,13 @@ S-forum-dsv4-dspark-eugr.
 ||---|---|---|---|---|---|---|---||
 || Nemotron-3-Super-120B-A12B | NVFP4 | vLLM TP=2 (Ray) | 2 | 13.67–14.33 | 262K | dual-node slightly slower than single-node (15 tok/s); TRITON_ATTN, cutlass MoE, fp8 KV, mamba_ssm_cache_dtype float32, fastsafetensors | S-forum-nemotron-2node ||
 || DeepSeek-V4-Flash-DSpark | NVFP4 (`nvfp4_ds_mla` KV) | vLLM+DSpark spec=3 TP=2 (Ray) | 2 | 71.63 (c50 output) | 262K | 3 draft tokens beats 5; 48.35% acceptance, 52.52 ms TPOT; max_num_batched_tokens 10240; FlashInfer PR 3817 | S-forum-dsv4-dspark-eugr ||
+
+## Batch 50 forum ingest (2026-08-03)
+
+**[conjecture]** — all single-source forum benchmarks. S-forum-4node-qrs812,
+S-forum-laguna-yaml.
+
+|| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+||---|---|---|---|---|---|---|---||
+|| DeepSeek-V4-Flash-0731 | NVFP4 (`nvfp4_ds_mla` KV) + DSpark spec=3 | vLLM 0.21.1rc1.dev339 TP=4 | 4 (QRS812) | ~90 (C=1) / ~40.4 (C=6 per-req) | 512K | cold prefill ~2500 tok/s; KV cache hit effective prefill ~193K tok/s; QRS812 switch fabric; mashie challenges: C12 2-node=230 vs 4-node=209 | S-forum-4node-qrs812 ||
+|| Laguna-S-2.1-NVFP4 | NVFP4 W4A4 + DFlash spec=15 | vLLM (eugr spark-vllm-docker) TP=2 | 2 | 122.63 (aggregate output, c50) | 262K | 268.58 tok/s total throughput; DFlash acceptance 11.71%, accept_len 2.76; per-pos: pos0=64.89% → pos14=0.78%; TP=1 option for single Spark; --kv-cache-memory=32449423258 override; model is retired (see models/laguna-s-2.1.md) | S-forum-laguna-yaml ||

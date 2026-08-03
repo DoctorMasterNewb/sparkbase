@@ -3,7 +3,7 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale
 > **updated:** 2026-08-03
 
 The hardware facts every model bring-up assumes. Read this first.
@@ -1196,3 +1196,56 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   load with `gloo Connection closed by peer` — the worker node crashes. Fix was found via
   the NCCL all-reduce deadlock thread. Concurrent requests stall 20-30s before generation
   starts. Single source → [conjecture].
+
+### Batch 50 forum ingest (2026-08-03)
+
+- **[conjecture]** **partnerdiag PowerStress reproducibly hard-powers-off the box — thermal sensor
+  swap anomaly persists across firmware updates** (S-forum-powerstress, digiegg): A DGX Spark
+  running always-on LLM inference experienced repeated hard power-offs during scheduled GPU
+  workload windows (4 times in 5 days, zero forensic trace — no vmcore, empty pstore, no Xid,
+  journal stops mid-line). NVIDIA's `partnerdiag` field diagnostic reproduces the failure
+  **every time** on the PowerStress test: GpuStress, C2CStress, CpuStress1, CpuStress2 all PASS;
+  PowerStress never returns — the machine powers off mid-test (~3m20s in).
+  - **External 1 Hz thermal sampler caught the event**: zone0/zone5 hold a flat 88.7°C plateau for
+    ~6 min, then jump +9.8°C in 4 seconds (88.0→97.8°C) while zone4 simultaneously collapses
+    85.6→~70°C. The power loss follows 2 s later. A 9°C rise in 2 s is not thermal mass — reads
+    as a sensor handoff/miscalibration or a real unmanaged hotspot nothing reacts to.
+  - **Zone2/zone4 sensor value swap anomaly**: in both pre- and post-firmware runs, zone2 and
+    zone4 exchange values over ~3 s (zone2 drops 81.4→65.6°C while zone4 rises 68.0→81.4°C)
+    while zone0/zone5 sit flat at ~97.6°C. This anomaly **survived both EC and SoC firmware
+    capsule updates**, suggesting a sensor-side issue rather than a control-loop bug.
+  - **Firmware update stops the hard power-off but not the thermal fault**: after updating
+    EC 0x03000302→0x03000508 and SoC FW 0x0200980f→0x02009b0b (via fwupdmgr capsule-on-disk),
+    PowerStress now completes: `FAILED [8:11s]`, error code **082-000-1-020000600139**
+    ("Acceptable temperature limits exceeded or the thermal sensor is broken or miscalibrated").
+    The box stays up instead of dying, but reaches the same ~97.8°C peak. This is a **new
+    variant** of the thermal-shutdown class — the firmware update converts a hard power-off
+    into a graceful FAIL with error code, but does not fix the underlying thermal/sensor fault.
+  - **RMA approved** by NVIDIA (Neill) after collecting field diagnostic logs. First documented
+    case of partnerdiag PowerStress yielding a clean MODS error code on a unit that previously
+    hard-powered-off.
+  - **fieldiag install requires Secure Boot disabled** (mashie): Secure Boot prevents loading
+    drivers and possibly the dgx-spark-fieldiag package installation itself.
+  - **Corroborates**: the hard-power-off-with-zero-forensic-trace pattern
+    (S-forum-thermal-shutdown, S-forum-host-freeze-tp2, S-forum-power-90w, S-forum-uvm-livelock),
+    the fieldiag ofed-scripts dependency gap (S-forum-ec-fan-asus — same `ofed-scripts` missing
+    dependency hit by DannyTup in this thread), and the 97-98°C ACPI zone thermal threshold
+    (S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-temps-normal).
+  - **New durable finding**: the zone2/zone4 sensor value swap is a **sensor mapping/calibration
+    problem**, not a thermal-mass phenomenon — it persists across firmware updates and is
+    consistent across runs. First published thermal sensor anomaly fingerprint on GB10. Tagged
+    [conjecture] (single source, single unit — may be unit-specific hardware fault). RMA approved,
+    so the unit may be replaced rather than the issue fixed in firmware.
+
+- **[conjecture]** **DGX Dashboard stale firmware metadata — shows nvidia-firmware-580-580.159.03
+  as available update when 580.173.02 is already installed** (S-forum-dashboard-fw-stale,
+  kafej666, sggin1, elsaco): The DGX Dashboard Updates page presents `nvidia-firmware-580-
+  580.159.03` as a pending update even on systems already running driver 580.173.02. The
+  `nvidia-firmware-580` apt package (from `noble-updates/restricted arm64`) contains the
+  kernel-module firmware blobs `nvidia/580.173.02/gsp_tu10x.bin` and `gsp_ga10x.bin` — the
+  installed driver loads the correct 580.173.02 firmware, but the dashboard's OTA metadata is
+  stale (references the older .159 version). The GPU is healthy (`nvidia-smi` reports 580.173.02,
+  no issues). This is the same class of OTA metadata staleness as S-forum-ota-loop and
+  S-forum-fwupd-mismatch. Workaround: ignore the stale Update button while the GPU is functioning
+  correctly; verify with `uname -r; nvidia-smi --query-gpu=driver_version --format=csv,noheader`.
+  3 users in the same thread confirm the pattern → [conjecture] (root cause unstated).

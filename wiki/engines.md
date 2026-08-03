@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr
-> **updated:** 2026-08-02
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching
+> **updated:** 2026-08-03
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -493,3 +493,19 @@ Three engines run on the Spark pair; pick by arch support and quant.
   source (one user's sweep) → [conjecture], but a well-documented A/B with full benchmark
   numbers. Consistent with the DSpark mechanism (confidence-scheduled verification truncates
   block length as concurrency rises — fewer drafts at high concurrency can be more efficient).
+
+### Batch 50 forum ingest (2026-08-03)
+
+- **[conjecture]** **vLLM prefix cache inconsistency on DSV4-Flash-0731 on 2× Spark** (S-forum-dsv4-0731-caching,
+  Sa0lence): when running DeepSeek-V4-Flash-0731 on a 2-node Spark cluster with vLLM, prefix
+  cache behavior is non-deterministic: sometimes the prefill phase hits the cache and completes
+  in 1–2 seconds; other times the cache is missed completely and prefill takes several minutes
+  to tens of minutes. No deterministic cause identified — "it feels random." The user is on the
+  `anemell` image. A second user (dashtotherock) recommends `aidendle94/sparkrun-vllm-ds4-gb10`
+  (production-hybrid-1.1) instead, which works on both DSpark and 0731 variants, and reports 0731
+  is slightly better than DSpark in benchmarks (not a big jump). This is the first report of
+  prefix cache unreliability specific to the 0731 model variant on multi-node Spark — may relate
+  to the known vLLM+llama.cpp MTP+prefix-cache interaction bugs (S-forum-mtp-lossless) or to
+  multi-node KV cache eviction under memory pressure (S-forum-uvm-livelock). Single source →
+  [conjecture]. Flagged for hardware verification: does prefix cache reliably hit on 2× Spark
+  with DSV4-Flash-0731 under controlled conditions?

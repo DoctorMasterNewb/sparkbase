@@ -659,3 +659,22 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - No evidence promotions past [reported]. GRM-3.2-Sky source registered for provenance only
   (model evaluation, no GB10-specific flags/configs — identified as Qwen3.5-35B/Ornith
   finetune, tool-eval 86/100, worse than existing Ornith-1.0-35B-int4-AutoRound).
+
+## Forum ingest 2026-08-03 (Batch 50)
+- 6 new forum topics found (5 technically relevant, 1 skipped as social/entitlement).
+- 5 new sources registered (Batch 50). 6 topic IDs added to processed_topics.txt (total now 519).
+- **Headline findings:** (1) partnerdiag PowerStress reproducibly hard-powers-off DGX Spark —
+  thermal sensor zone2/zone4 value swap anomaly persists across firmware updates; post-firmware
+  box survives with MODS error 082-000-1-020000600139; RMA approved; first published thermal
+  sensor anomaly fingerprint on GB10. (2) 4-node QRS812 switch fabric — first published QRS812
+  RDMA latency matrix + DSV4-Flash-0731 DSpark TP=4 benchmark (decode ~90 tok/s, prefill ~2500
+  tok/s cold, `nvfp4_ds_mla` KV cache dtype). (3) vLLM prefix cache non-deterministic on
+  DSV4-Flash-0731 on 2× Spark. (4) Laguna-S-2.1 2× Spark DFlash spec=15 full acceptance curve.
+  (5) DGX Dashboard stale firmware metadata (580.159.03 shown as update when 580.173.02 installed).
+- Pages touched: platform-gb10 (PowerStress sensor swap anomaly + dashboard stale firmware),
+  multinode-tp-and-networking (QRS812 4-node RDMA latency matrix + DSV4-Flash-0731 TP=4),
+  engines (prefix cache inconsistency on 0731), benchmarks (2 new rows),
+  models/laguna-s-2.1 (DFlash spec=15 acceptance curve), roadmap (2 new open problems:
+  prefix cache isolation, thermal sensor swap systemic-vs-unit-specific), sources/README, index, log.
+- Skipped: 378500 (50-post "not suitable for professional workloads" — social/entitlement/RMA).
+- No evidence promotions past [reported]. All new findings [conjecture] (single-source forum).

@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** retired
 > **evidence:** proven
-> **sources:** S-laguna-v251-bench, S-forum-laguna-dflash, S-forum-laguna-quality, S-forum-laguna-king
-> **updated:** 2026-07-31
+> **sources:** S-laguna-v251-bench, S-forum-laguna-dflash, S-forum-laguna-quality, S-forum-laguna-king, S-forum-laguna-yaml
+> **updated:** 2026-08-03
 
 Laguna-S-2.1 — 117.6B MoE, 8.5B active, 256 experts (top-10 + 1 shared), 48 layers (36 SWA +
 12 global), `sliding_window=512`, 256K context. NVFP4 W4A4 ~67 GB. Custom architecture
@@ -140,3 +140,29 @@ Key findings:
 - [[wiki/quantization-on-gb10.md]] — NVFP4 FLASHINFER_CUTLASS path
 - [[wiki/cudagraphs-and-compile.md]] — PIECEWISE fallback with spec-decode
 - [[wiki/models/mimo-v2.5.md]] — DFlash spec-decode acceptance patterns on prose vs structured
+
+## Forum ingest: 2× Spark YAML recipe with DFlash spec=15 (2026-08-03)
+
+- **[conjecture]** **Laguna-S-2.1-NVFP4 on 2× Spark via eugr's spark-vllm-docker — DFlash spec=15
+  recipe with full acceptance curve** (S-forum-laguna-yaml, davidbarnesguildford): a complete YAML
+  recipe for serving Laguna-S-2.1-NVFP4 on 2× Spark (TP=2) or single Spark (TP=1) with DFlash
+  speculative decoding at `num_speculative_tokens=15`. Config: `gpu_memory_utilization=0.85`,
+  `max_model_len=262144`, `CUTE_DSL_ARCH=sm_121a`, `MAX_JOBS=4`,
+  `--enable-auto-tool-choice`, `--tool-call-parser poolside_v1`, `--reasoning-parser poolside_v1`,
+  `--override-generation-config {"temperature":0.7,"top_p":0.95}`, `--max-num-seqs 32`.
+  `--kv-cache-memory=32449423258` can replace `gpu_memory_utilization` for precise KV sizing.
+  Benchmark (50 concurrent reqs, vllm bench serve):
+  - Output throughput: 122.63 tok/s aggregate, 268.58 tok/s total
+  - Mean TTFT 3287ms, median 1034ms, P99 14485ms
+  - Mean TPOT 167ms, mean ITL 368ms
+  - **DFlash acceptance: 11.71% overall, acceptance length 2.76**
+  - Per-position acceptance: pos0=64.89%, pos1=37.77%, pos2=22.33%, pos3=13.80%, pos4=9.25%,
+    pos5=6.43%, pos6=4.90%, pos7=3.98%, pos8=2.99%, pos9=2.34%, pos10=2.02%, pos11=1.67%,
+    pos12=1.35%, pos13=1.16%, pos14=0.78%
+  - This per-position curve corroborates the [reported] finding that positions 6-15 are near-zero
+    acceptance — here pos6 is already <5% and pos14 is <1%. The 15-token draft is effectively a
+    5-token draft in practice (pos0-pos5 account for almost all accepted tokens).
+  - The `--kv-cache-memory=32449423258` flag (~30.2 GB) is a durable config detail — explicit KV
+    cache sizing as an alternative to `gpu_memory_utilization` on GB10. Single source → [conjecture].
+  - Model is **retired** (see proven retirement above); this recipe is recorded for the DFlash
+    acceptance curve and config patterns, not as a recommendation to deploy.

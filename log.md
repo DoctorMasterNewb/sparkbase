@@ -1779,3 +1779,49 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   distinction, prefill penalty, 2000 MHz sweet-spot rationale), sources/README, index, log.
 - No evidence promotions past [reported]. All new findings [reported] (multi-user
   corroboration of existing finding) or [conjecture] (single-user sub-findings).
+
+## 2026-08-03 — Scheduled forum ingest: Batch 50 — 6 new topics, 5 processed, 1 skipped
+
+- 6 new forum topics found. 5 technically relevant (ingested), 1 skipped as social/entitlement
+  (378500 — "DGX Spark not suitable for professional workloads," 50 posts, primarily complaint/
+  RMA discussion; thermal findings already documented in platform-gb10).
+- 5 new sources registered (Batch 50). 6 topic IDs added to processed_topics.txt (total now 519).
+- **Headline findings:**
+  1. **partnerdiag PowerStress hard power-off with thermal sensor swap anomaly**
+     (S-forum-powerstress, digiegg) — first documented case of NVIDIA's field diagnostic
+     reproducing the hard-power-off on demand. External 1Hz thermal sampler caught zone0
+     88→97.8°C in 4s before power loss. Zone2/zone4 sensor value swap anomaly persists across
+     EC+SoC firmware updates (sensor mapping/calibration problem, not thermal mass). Post-firmware
+     update: box survives, returns MODS error 082-000-1-020000600139. RMA approved. Corroborates
+     existing thermal-shutdown pattern + fieldiag ofed-scripts dependency gap + 97-98°C ACPI zone
+     threshold. All [conjecture] — single source, single unit.
+  2. **4-node QRS812 switch fabric with DSV4-Flash-0731 DSpark TP=4 benchmark**
+     (S-forum-4node-qrs812, jeffery2011.jc) — first published QRS812-based 4-node cluster with
+     full RDMA latency matrix (write 2.93-3.49µs, read 5.64-6.34µs, send 2.55-3.44µs). DSV4-Flash-
+     0731 + DSpark on TP=4: decode ~90 tok/s C=1, ~40.4 tok/s/req C=6, prefill ~2500 tok/s cold.
+     First documented use of `nvfp4_ds_mla` KV cache dtype on 4-node cluster. mashie challenges
+     scaling: C12 2-node=230 vs 4-node=209. All [conjecture].
+  3. **vLLM prefix cache inconsistency on DSV4-Flash-0731 on 2× Spark** (S-forum-dsv4-0731-caching,
+     Sa0lence) — non-deterministic prefix cache behavior (1-2s hit vs minutes-to-tens-of-minutes
+     miss). First report of cache unreliability specific to 0731 variant. May relate to MTP+prefix-
+     cache interaction bugs or UMA memory pressure eviction. Flagged for hardware verification.
+     [conjecture].
+  4. **Laguna-S-2.1-NVFP4 2× Spark YAML recipe with DFlash spec=15** (S-forum-laguna-yaml,
+     davidbarnesguildford) — full per-position DFlash acceptance curve (pos0=64.89% → pos14=0.78%,
+     overall 11.71%, accept_len 2.76). Corroborates [reported] finding that positions 6-15 are
+     near-zero acceptance. `--kv-cache-memory=32449423258` explicit KV sizing flag documented.
+     Model is retired; recipe recorded for DFlash acceptance data. [conjecture].
+  5. **DGX Dashboard stale firmware metadata** (S-forum-dashboard-fw-stale, kafej666, sggin1,
+     elsaco) — dashboard shows nvidia-firmware-580-580.159.03 as pending update when 580.173.02
+     already installed. Same OTA metadata staleness class as S-forum-ota-loop. [conjecture].
+- Pages touched: platform-gb10 (Batch 50 — PowerStress sensor swap anomaly + dashboard stale
+  firmware), multinode-tp-and-networking (Batch 50 — QRS812 4-node RDMA latency matrix +
+  DSV4-Flash-0731 TP=4 benchmark), engines (Batch 50 — prefix cache inconsistency on 0731),
+  benchmarks (Batch 50 — 2 new rows: DSV4-Flash-0731 4-node TP=4, Laguna-S-2.1 2× DFlash spec=15),
+  models/laguna-s-2.1 (2× Spark YAML recipe with DFlash spec=15 acceptance curve), roadmap (2 new
+  open problems: prefix cache unreliability isolation, thermal sensor swap systemic-vs-unit-
+  specific), sources/README (Batch 50), index, log.
+- No evidence promotions past [reported]. All new findings [conjecture] (single-source forum).
+- Skipped: 378500 (50-post "not suitable for professional workloads" — primarily social/
+  entitlement/RMA discussion; thermal instability, no WoL, missing enterprise features all
+  already documented in platform-gb10).

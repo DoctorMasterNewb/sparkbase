@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3, S-forum-mikrotik-cr804-042, S-forum-nfs-modelshare, S-forum-cx7-pcie-power
-> **updated:** 2026-07-31
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3, S-forum-mikrotik-cr804-042, S-forum-nfs-modelshare, S-forum-cx7-pcie-power, S-forum-4node-qrs812
+> **updated:** 2026-08-03
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -813,3 +813,44 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
   Fix was found via the NCCL all-reduce deadlock thread (helm's post #14). Concurrent requests stall
   20-30s before generation starts. Single source → [conjecture]. Reinforces: use `ib_write_bw`, not
   `iperf3`, to diagnose CX-7 fabric health on Spark.
+
+### Batch 50 forum ingest (2026-08-03)
+
+- **[conjecture]** **4-node QRS812 switch fabric — full-mesh RDMA latency matrix + DSV4-Flash-0731
+  4-node TP=4 benchmark** (S-forum-4node-qrs812, jeffery2011.jc): a 4-node DGX Spark cluster
+  wired through a **QRS812** switch fabric using 2× MK-TW-QDD-20x QSFP56 400G breakout DAC cables
+  on Spark port2. Build cost ~USD $20.5K-$21.1K. This is the first published QRS812-based 4-node
+  cluster with full RDMA latency characterization — previously only MikroTik CRS812 (6-node) and
+  CRS504 (4-node) and direct-mesh (4-node) had been documented.
+  - **RDMA latency matrix** (device `roceP2p1s0f1`, GID index 11, 2B messages, 10000 iterations):
+
+    | Test | Avg Latency Range | p99 Range | Notes |
+    |---|---:|---:|---|
+    | RDMA write (`ib_write_lat`) | 2.93–3.49 µs | 4.17–4.94 µs | Tight across full mesh |
+    | RDMA read (`ib_read_lat`) | 5.64–6.34 µs | 8.27–10.45 µs | Higher than write/send, stable |
+    | RDMA send (`ib_send_lat`) | 2.55–3.44 µs | 2.95–4.65 µs | Most consistent p99 |
+
+    These latencies are consistent with the proven 2-node `ib_write_lat` ~1.5 µs baseline
+    (the 4-node numbers are ~2× higher due to switch traversal vs direct cable). The fabric is
+    clean — write/send in low single-digit microseconds, read ~6 µs.
+  - **Fabric throughput**: TCP iperf2 (16 streams) ~105 Gbit/s; RDMA `ib_write_bw` 107.66 Gbit/s
+    (matching direct QSFP112 baseline); NIC PHY errors all zero (CRC, symbol, discard, link-down).
+    Full-mesh ICMP RTT 0.49–1.26 ms.
+  - **DSV4-Flash-0731 + DSpark on 4-node TP=4**: model `deepseek-ai/DeepSeek-V4-Flash-0731`,
+    vLLM + DSpark, TP=4, max_model_len=512000, KV cache dtype `nvfp4_ds_mla` (experimental
+    NVFP4 DS-MLA KV path — not plain FP8 KV), prefix cache enabled, async scheduling + chunked
+    prefill, `MTP_NUM_TOKENS=3`, vLLM fingerprint `vllm-0.21.1rc1.dev339+g1967a5627bc3-tp4-d2211cb5`.
+    Benchmark results:
+    - C=1, 50K ctx, cold: TTFT ~20s, prefill ~2,500 tok/s, decode ~90 tok/s
+    - C=1, 150K ctx, KV cache hit: TTFT ~0.776s, effective prefill ~193,280 tok/s, decode ~90 tok/s
+    - C=6, 150K ctx, KV cache hit: TTFT ~4.334s, decode ~40.4 tok/s per request (avg)
+  - **Scaling challenge** (mashie): at C=12, 2-node TP=2 achieves 230 tok/s while this 4-node
+    TP=4 only reaches 209 tok/s — 50% more compute yields a 10% *reduction* in aggregate tok/s,
+    suggesting the TP=4 communication overhead is not amortized at C=12. Consistent with the
+    proven no-GPUDirect host-staged collective overhead. Single rebuttal → not enough data to
+    determine if this is a config issue or fundamental scaling limit.
+  - **Why it bites on Spark**: the QRS812 is a new switch option for 4-node clusters (alongside
+    CRS504 and direct-mesh). The `nvfp4_ds_mla` KV cache dtype is the first documented use of
+    NVFP4 DS-MLA KV on a 4-node cluster — all prior DSV4-Flash recipes used FP8 KV. The 90 tok/s
+    decode at 512K ctx on 4 nodes is a new data point for the bandwidth-bound decode ceiling.
+    Single source → [conjecture].
