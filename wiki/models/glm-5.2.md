@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** evolving
 > **evidence:** conjecture
-> **sources:** S-forum-glm52-4x, S-forum-glm52-mtp-fix, S-forum-glm52-1bit, S-forum-glm52-reapless, S-forum-glm52-800k, S-forum-glm52-iq4xs-4x, S-forum-glm52-8x, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-flashinfer-livelock, S-forum-colibri-glm52, S-forum-6x-cluster
-> **updated:** 2026-07-27
+> **sources:** S-forum-glm52-4x, S-forum-glm52-mtp-fix, S-forum-glm52-1bit, S-forum-glm52-reapless, S-forum-glm52-800k, S-forum-glm52-iq4xs-4x, S-forum-glm52-8x, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-flashinfer-livelock, S-forum-colibri-glm52, S-forum-6x-cluster, S-forum-glm52-3x-aqlm
+> **updated:** 2026-08-04
 
 **GLM-5.2** is a 744B-parameter / ~40B-active MoE with sparse-MLA (DeepSeek-V4-class) attention and
 MTP speculative decoding support. It is one of the most-discussed large models on the DGX Spark forums
@@ -152,12 +152,119 @@ GLM-5.2 exercises three GB10-specific pressure points simultaneously:
     swaps." Single source + one skeptic → [conjecture].
   - Consistent with the existing S-forum-glm52-4x finding (~22 tok/s at TP=4 with AWQ-INT4 + pruning).
 
+## NVFP4+AQLM hybrid checkpoint on 3× Spark (2026-08-04 ingest)
+
+- **[conjecture]** **GLM-5.2 full 753B (no expert pruning) fits 3× Spark via NVFP4+AQLM hybrid
+  checkpoint** (S-forum-glm52-3x-aqlm, karol.spark): a community checkpoint by jarrelscy
+  (`jarrelscy` NVFP4+AQLM, 272 GB total, ~3.1 bits/param) combines NVFP4 weights with AQLM
+  codebook compression on the expert layers, making the unpruned 753B model fit across 3× 121 GB
+  nodes (~91 GB/node). Built on MiaAI-Lab's recipe + container images + vLLM fork (SM120 sparse-MLA
+  path). TP=3, DCP=1, RoCE mesh. Full top-8 of 256 experts — no pruning.
+  - **Benchmark (OP, code-like content, temp 0, thinking off, 400 tokens, n=8, 3 warmups):**
+    decode 15.2–15.4 tok/s (LRU prompt), 13.5 tok/s (asyncio prompt); prefill 357 tok/s @31k,
+    366 tok/s @98k; TTFT 270s @98k; context 235,392 tokens.
+  - **After v3 kernel optimizations (see below):** decode 16.13 tok/s (+5.5%), prefill 367.9
+    @31k / 379.5 @98k (+3.1–3.7%), TTFT 258s (−12s), context 215,040 (−8.6% due to vision graft).
+  - **Methodology note:** OP measures `t/s ÷ acceptance` (normalized decode) rather than raw
+    tok/s — `VLLM_MARLIN_USE_ATOMIC_ADD=1` means no bitwise reproducibility even at temp 0, so
+    acceptance wanders 2.8–3.6 between server instances. Raw t/s can show ±8% where the normalized
+    figure is unchanged. Also: measure decode *before* prefill (decode after 100k-token prefills
+    reads ~1.7% low with 2× sigma). See `[[wiki/engines.md]]` → MTP quality section.
+  - Single source (one thread, multiple users in same thread using same image) → [conjecture].
+
+- **[conjecture]** **Virtual head padding for TP=3: 66 heads (22/rank), not 96 — FlashInfer
+  dispatch table determines the cost** (S-forum-glm52-3x-aqlm, karol.spark + MiaAI-Lab): GLM-5.2
+  has 64 attention heads — not divisible by 3. The prior TP=3 technique (S-forum-mimo-3x) padded
+  to 96 (32/rank), costing 32 ghost heads per step. MiaAI-Lab found that padding to **66 (22/rank)**
+  is sufficient because FlashInfer's `_DECODE_DSV3_2_DISPATCH` table only carries
+  `{8, 16, 32, 64, 128} × {128, 512, 1024, 2048}` — local head count 22 is not in the table, so
+  it falls through to the generic `sparse_mla_sm120_paged_attention` which tiles heads in groups
+  of 16. Since `ceil(22/16) == ceil(32/16) == 2`, the attention cost is identical to 32 heads,
+  while the q_b/kv_b/o_proj GEMMs shrink by 31%. **This is the key GB10 kernel-dispatch insight:**
+  the FlashInfer specialized decode kernel only instantiates specific head counts; non-matching
+  counts fall through to a generic paged-attention path tiled in groups of 16, so the effective
+  attention cost is `ceil(local_heads/16)` tiles, not `local_heads`.
+  - **TP padding table (from `pad_attention_heads()` in `glm_tp_pad.py`):**
+
+    | TP | padded heads | local | MoE interm. | per-rank pad loss |
+    |---|---|---|---|---|
+    | 3 | 66 | 22 | 2112 | +3.1% |
+    | 4 | 64 | 16 | 2048 | 0% |
+    | 5 | 65 | 13 | 2240 | +9.4% |
+    | 7 | 70 | 10 | 2240 | +9.4% |
+
+  - **TP=4 is the only clean split** — 64/4=16 heads/rank, 2048/4=512 MoE intermediate, no waste,
+    and local 16 lands exactly on the FlashInfer specialized decode kernel.
+  - **TP=5 is feasible but meaningfully weaker than 3→4:** 65 heads (13/rank) passes the
+    wrapper-pad admissibility rule (`local ≤ 32`), but reintroduces 9.4% MoE padding (2240 vs
+    2048). Padding to 80 (16/rank) instead would hit the fast kernel at the cost of 25% ghost
+    heads — whether 65 or 80 wins is unmeasured. The dense MLP `intermediate_size=12288` is not
+    divisible by 5 (12288/5=2457.6) → hard exception at startup; needs padding to 12480 at
+    `lcm(5,64)=320` (per-rank 2496). The pattern (`pad_moe_intermediate()` +
+    `copy_tp_shard_with_pad`/`copy_gateup_tp_shard_with_pad`) already exists for MoE — ~1 day of
+    work to apply to the dense layers. Zero-padding is mathematically exact (SiLU(0)×0=0).
+  - **GB10 relevance:** the FlashInfer dispatch table head-count tiling rule is a durable kernel
+    insight that applies to any sparse-MLA model on GB10 when considering non-power-of-2 TP.
+    See `[[wiki/attention-and-kv-cache.md]]`.
+  - Single source → [conjecture].
+
+- **[conjecture]** **v3 kernel L1/L2 stream optimizations: +6.2% normalized decode** (S-forum-
+  glm52-3x-aqlm, karol.spark): MiaAI-Lab's v3 (`k12l1`) image shipped three bit-exact, env-gated
+  kernel changes:
+  1. `GLM_MOE_AQLM_CB=l1` + `GLM_MOE_AQLM_STREAM=1` — routes AQLM codebook gathers through L1,
+     marks code/activation streams evict-first. Microbench: w13 +2.7%, w2 +22.5% sector throughput.
+  2. `GLM_NVFP4_STREAM=1` — stops the large NVFP4 weight stream thrashing the 1 MB codebook out of L2.
+     Microbench: w13 +7%.
+  3. **Draft cudagraph capture fix** — capture lists sized for the target (4, 8, 12 … for MTP k=3)
+     never produced a pure `decode_query_len=1` shape, so MTP draft steps stayed eager. The fix
+     unions the pure-decode shapes in automatically.
+  - **Measured (same protocol):** normalized decode 4.520 ± 0.054 vs 4.257 ± 0.039 baseline = +6.2%
+    (~5 combined standard deviations). Raw decode 14.78 vs 14.35 t/s (+3.0%). Acceptance unchanged
+    (3.27 vs ~3.3) → improvement is in raw step time. Caveat: three changes landed at once; not
+    attributed individually.
+  - Single source → [conjecture]. The AQLM L1/L2 streaming finding is GB10-specific (L2 cache size
+    and AQLM codebook working set interact on sm_121).
+
+- **[conjecture]** **v4 vision graft: MoonViT tower + patch-merger projector on unchanged text
+  backbone** (S-forum-glm52-3x-aqlm, karol.spark): MiaAI-Lab's v4 adds a MoonViT vision tower plus
+  patch-merger projector grafted onto the otherwise-unchanged GLM-5.2 text backbone. Same image
+  serves text-only and vision — switching is 3 files (`config.json`, `chat_template.jinja`,
+  `model.safetensors.index.json`), not an image change. Vision index is a superset (5824 vs 5489
+  keys) pointing at `vision_tower.safetensors` + `mm_projector.safetensors` (~934 MB together).
+  - **MM_ENCODER_TP_MODE=data** — MoonViT has 16 attention heads, not divisible by 3, so it
+    cannot be sharded at TP=3. This mode replicates the vision tower per rank (~0.93 GiB/node).
+    The KV pin was reduced (12→11 GiB) to pay for it → context drops 235,392 → 215,040.
+  - **Tag to avoid:** `:20260725-vision` has a bug where flat `--hf-overrides` were written only
+    to the `Glm5vConfig` wrapper while nested `text_config` kept the checkpoint default, silently
+    running ~2× routed-expert traffic and losing ~20% text decode.
+  - This is a **second independent vision graft** for GLM-5.2 (cf. S-forum-glm52-vision,
+    CosmicRaisins' `baseten/GLM-5.2-Vision-NVFP4` 49.5M-param projector). The approaches are
+    similar (frozen backbone + lightweight projector) but from different authors. The vision
+    graft finding (MoonViT 1152-dim → GLM 6144-dim mapping) is now [conjecture] approaching
+    [reported] — two independent implementations agree on the frozen-backbone projector approach.
+  - Single source for the TP=3 vision specifics → [conjecture].
+
+- **[conjecture]** **16 GB swap mandatory for 235K-context 3× recipe** (S-forum-glm52-3x-aqlm,
+  karol.spark): the recipe sits at ~119 GiB used per node and will touch swap. Without it, a
+  deterministic kernel OOM occurs ~3 minutes after engine starts: weights load fine (~22s),
+  compilation takes ~3.5 GiB and never returns it, then KV allocation fails. Fix: 16 GB swapfile
+  per node (`fallocate -l 16G /swapfile && mkswap && swapon`). This is a GB10 UMA-specific
+  finding — the unified memory pool means compilation workspace and KV compete for the same 121 GB.
+
+- **[conjecture]** **NCCL ≥2.30.7 at a hardcoded path — `start.sh` expects `$HOME/nccl-2.30.7`**
+  (S-forum-glm52-3x-aqlm, karol.spark): the worker branch of MiaAI-Lab's launcher does not read
+  `NCCL_HOST_DIR`; it hardcodes `$HOME/nccl-2.30.7`. A version mismatch here produces confusing
+  NCCL failures much later. Verify with `md5sum ~/nccl-2.30.7/libnccl.so.2*` across all nodes.
+  Corroborates the existing [conjecture] NCCL 2.30.4+ mandatory finding
+  (S-forum-ds4f-4x-vllm, S-forum-tokenspeed).
+
 ## Performance across configurations (cross-thread summary)
 
 All numbers are **[conjecture]** or **[reported]** as noted. See `[[wiki/benchmarks.md]]` for full rows.
 
-| Config | Quant | Nodes | Decode tok/s | Ctx | Source |
+|| Config | Quant | Nodes | Decode tok/s | Ctx | Source |
 |---|---|---|---|---|---|
+| TP=3, NVFP4+AQLM, DCP=1 | NVFP4+AQLM (~3.1 bpw) | 3 | 15.2–16.1 | 215K–235K | S-forum-glm52-3x-aqlm |
 | TP=4, AWQ-INT4 + 15% expert prune + MTP | AWQ-INT4 | 4 | ~22 | 256K | S-forum-glm52-4x |
 | TP=4, NVFP4, MTP4 fix | NVFP4 | 4 | 24 | 128K | S-forum-glm52-mtp-fix |
 | TP=4, Hybrid FP8+MXFP4 (v2) | Hybrid | 4 | 20-25 | 800K | S-forum-glm52-hybrid |
@@ -170,7 +277,9 @@ All numbers are **[conjecture]** or **[reported]** as noted. See `[[wiki/benchma
 **[reported]** GLM-5.2 decode on 4× Spark is consistently in the 20-25 tok/s range across multiple
 independent threads and quant formats (AWQ-INT4, NVFP4, Hybrid FP8+MXFP4) — the bottleneck is the
 sparse-MLA attention + bandwidth-bound decode, not the quant choice. The 8× TP=8 run (33-54 tok/s)
-is the outlier, attributed to the DCP collectives + b12x W4A8 backend + 2× the nodes.
+is the outlier, attributed to the DCP collectives + b12x W4A8 backend + 2× the nodes. The 3× TP=3
+run (15.2–16.1 tok/s, NVFP4+AQLM) continues the sublinear scaling trend — fewer nodes, lower
+throughput, same bandwidth-bound regime.
 
 ## See also
 

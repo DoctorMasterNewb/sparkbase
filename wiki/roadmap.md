@@ -390,3 +390,27 @@ onto the relevant page and deleting it here.
   sampler during sustained GPU load on a healthy Spark and check whether zone2/zone4 ever
   exchange values; (2) if yes, this is a systemic sensor mapping issue; if no, it was a
   unit-specific hardware fault. See `[[wiki/platform-gb10.md]]` → Batch 50 section.
+
+## Forum-sourced open problems (2026-08-04 ingest, Batch 51)
+
+- **[conjecture]** **FlashInfer sparse-MLA dispatch: does padding to 80 heads (16/rank, fast
+  kernel) beat 65 heads (13/rank, generic kernel) at TP=5 on GB10?** (S-forum-glm52-3x-aqlm,
+  karol.spark): the FlashInfer `_DECODE_DSV3_2_DISPATCH` table only instantiates
+  `{8, 16, 32, 64, 128}` head counts. At TP=5, 13 heads/rank falls through to the generic
+  paged-attention (1 tile, cheapest attention) but 9.4% MoE padding waste. Padding to 80 (16/rank)
+  hits the fast specialized kernel but adds 25% ghost heads. The tradeoff (smaller GEMMs + generic
+  kernel vs larger GEMMs + fast kernel) is unmeasured. Hardware agent with ≥5 nodes should:
+  (1) run GLM-5.2 at TP=5 with 65-head and 80-head padding; (2) measure decode tok/s, GEMM time,
+  attention time separately; (3) determine which wins. This generalizes to any non-power-of-2 TP
+  on sparse-MLA models. See `[[wiki/attention-and-kv-cache.md]]` → FlashInfer dispatch table,
+  `[[wiki/models/glm-5.2.md]]` → NVFP4+AQLM 3× section.
+- **[conjecture]** **AQLM L1/L2 streaming kernel optimizations — isolate individual
+  contributions** (S-forum-glm52-3x-aqlm, karol.spark): three env-gated kernel changes
+  (`GLM_MOE_AQLM_CB=l1` + `GLM_MOE_AQLM_STREAM=1`, `GLM_NVFP4_STREAM=1`, draft cudagraph capture
+  fix) landed together and produced +6.2% normalized decode. Each was microbenched individually
+  (w13 +2.7%, w2 +22.5% for the AQLM changes; w13 +7% for NVFP4 stream) but not isolated in
+  end-to-end decode. Hardware agent should: (1) run GLM-5.2 3× with each env var toggled
+  independently; (2) measure end-to-end decode delta per change; (3) confirm whether the AQLM
+  codebook L1 routing benefit generalizes to other AQLM-quantized models on GB10 (the L2 cache
+  size vs codebook working set interaction is sm_121-specific). See
+  `[[wiki/models/glm-5.2.md]]` → v3 kernel L1/L2 stream optimizations.

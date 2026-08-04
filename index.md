@@ -678,3 +678,22 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   prefix cache isolation, thermal sensor swap systemic-vs-unit-specific), sources/README, index, log.
 - Skipped: 378500 (50-post "not suitable for professional workloads" — social/entitlement/RMA).
 - No evidence promotions past [reported]. All new findings [conjecture] (single-source forum).
+
+## Forum ingest 2026-08-04 (Batch 51)
+- 2 new forum topics found, both technically dense and GB10-relevant.
+- 2 new sources registered (Batch 51). 2 topic IDs added to processed_topics.txt (total now 521).
+- **Headline finding 1:** GLM-5.2 full 753B (unpruned) on 3× Spark via NVFP4+AQLM hybrid
+  checkpoint (S-forum-glm52-3x-aqlm, karol.spark) — first reported TP=3 run of the unpruned
+  model. 272 GB NVFP4+AQLM checkpoint (~3.1 bits/param). Decode 15.2–16.1 tok/s. Key innovation:
+  virtual head padding to 66 (22/rank) instead of 96 (32/rank) — FlashInfer's dispatch table
+  tiles heads in groups of 16, so 22 and 32 cost the same attention while 22 saves 31% on GEMMs.
+  v3 kernel L1/L2 stream opts (+6.2% normalized decode). v4 MoonViT vision graft. Benchmark
+  methodology: compare t/s÷acceptance, never raw t/s.
+- **Headline finding 2:** ComfyUI setup & patches for DGX Spark (S-forum-comfyui-triplany,
+  Triplany) — UMA memory management fixes, benchmarks across 6 diffusion workflows, comfy-aimdo
+  0.3.0 ARM compile fix, LTX 2.3 22B NVFP4 first reported data point.
+- Pages touched: models/glm-5.2 (NEW NVFP4+AQLM 3× section + performance table + [reported]
+  summary), attention-and-kv-cache (FlashInfer dispatch table head-count tiling), 
+  containers-and-tooling (ComfyUI setup & benchmarks), benchmarks (GLM-5.2 3× row + ComfyUI
+  diffusion table), roadmap (2 new open problems), sources/README, index, log.
+- No evidence promotions past [reported]. All new findings [conjecture] (single-source forum).

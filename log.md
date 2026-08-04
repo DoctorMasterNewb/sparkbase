@@ -1825,3 +1825,59 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
 - Skipped: 378500 (50-post "not suitable for professional workloads" — primarily social/
   entitlement/RMA discussion; thermal instability, no WoL, missing enterprise features all
   already documented in platform-gb10).
+
+
+## 2026-08-04 — Scheduled forum ingest: Batch 51 — 2 new topics
+
+- **Date:** 2026-08-04
+- **Source count:** 2 new forum topics found by `scripts/fetch_new_topics.py`. Both technically
+  dense and GB10-relevant. 2 new sources registered (Batch 51): S-forum-comfyui-triplany (368344),
+  S-forum-glm52-3x-aqlm (378150). 2 topic IDs added to `sources/processed_topics.txt`
+  (total now 521).
+- **Headline finding 1: GLM-5.2 full 753B (unpruned) on 3× Spark via NVFP4+AQLM hybrid checkpoint**
+  (S-forum-glm52-3x-aqlm, karol.spark). First reported TP=3 run of the unpruned 753B model. A 272 GB
+  NVFP4+AQLM checkpoint (~3.1 bits/param) by jarrelscy fits across 3× 121 GB nodes (~91 GB/node).
+  Decode 15.2–16.1 tok/s, prefill 357–380 tok/s, 215K–235K context. Key innovations:
+  (a) **Virtual head padding to 66 (22/rank), not the prior 96 (32/rank)** — FlashInfer's
+  `_DECODE_DSV3_2_DISPATCH` table only carries {8,16,32,64,128} head counts; 22 falls through to
+  the generic `sparse_mla_sm120_paged_attention` which tiles heads in groups of 16, so
+  ceil(22/16)==ceil(32/16)==2 → same attention cost, 31% smaller GEMMs. This FlashInfer dispatch-
+  table head-count tiling rule is a **durable GB10 kernel insight** for any non-power-of-2 TP on
+  sparse-MLA models.
+  (b) **v3 kernel L1/L2 stream optimizations** (+6.2% normalized decode): `GLM_MOE_AQLM_CB=l1` +
+  `GLM_MOE_AQLM_STREAM=1` (AQLM codebook through L1), `GLM_NVFP4_STREAM=1` (stop NVFP4 weight
+  stream thrashing 1MB codebook from L2), draft cudagraph capture fix (pure-decode shapes).
+  (c) **v4 vision graft**: MoonViT tower + patch-merger projector on unchanged text backbone;
+  16 vision heads not divisible by 3 → `MM_ENCODER_TP_MODE=data` replicates per rank (~0.93 GiB);
+  context drops 235K→215K. Second independent vision graft (cf. S-forum-glm52-vision).
+  (d) **Benchmark methodology**: compare t/s÷acceptance, never raw t/s
+  (VLLM_MARLIN_USE_ATOMIC_ADD=1 → no bitwise reproducibility at temp 0; acceptance wanders
+  2.8–3.6 between instances); measure decode before prefill.
+  (e) 16GB swap mandatory; NCCL ≥2.30.7 at hardcoded `/home/daniel/nccl-2.30.7` path.
+  (f) TP padding table for TP=3/4/5/7 documented; TP=4 is the only clean split; TP=5 needs dense
+  MLP padding (12288 not divisible by 5) — ~1 day of work, zero-padding is mathematically exact.
+- **Headline finding 2: ComfyUI setup & patches for DGX Spark** (S-forum-comfyui-triplany,
+  Triplany). UMA memory management fixes for recurring ComfyUI problems (double-VRAM, model
+  eviction, memory spikes, OOM bricking). Benchmarks across 6 workflows (Z-Image 96→44s, Flux2-dev
+  fp8 300→50s, LTX 2.3 180→82s, Wan2.2 645→565s, Flux2 full 408→80s, Flux1 full 113→33s).
+  comfy-aimdo 0.3.0 ARM compile fix confirmed by multiple users (AoE, joey28). LTX 2.3 22B NVFP4
+  ~12min/20s video — first reported NVFP4 video model data point on GB10 (TheAwakenOne). Docker
+  alternative by jd36.
+- **Pages touched:**
+  - models/glm-5.2 (NEW section: NVFP4+AQLM 3× recipe — full checkpoint details, virtual head
+    padding table, FlashInfer dispatch mechanics, v3 kernel opts, v4 vision graft, swap/NCCL
+    requirements, benchmark methodology; performance table updated with TP=3 row; [reported]
+    scaling summary updated),
+  - attention-and-kv-cache (FlashInfer sparse-MLA decode dispatch table head-count tiling —
+    durable kernel insight for non-power-of-2 TP on GB10),
+  - containers-and-tooling (ComfyUI setup & UMA patches, comfy-aimdo 0.3.0 ARM fix, LTX 2.3 22B
+    NVFP4, Docker alternative),
+  - benchmarks (GLM-5.2 3× TP=3 row + ComfyUI diffusion benchmark table with 7 workflows),
+  - roadmap (2 new open problems: FlashInfer 65-vs-80 head padding at TP=5, AQLM L1/L2 streaming
+    isolation),
+  - sources/README (Batch 51), index, log.
+- **Evidence cap:** All new findings capped at [conjecture] — single forum source each (the GLM-5.2
+  3× thread has multiple users but all use the same MiaAI-Lab image, so not independent). The
+  FlashInfer dispatch-table tiling rule is exceptionally well-characterized (source code inspection,
+  production logs, measurement methodology) but remains [conjecture] per the analysis-agent stack.
+  No evidence promotions past [reported].

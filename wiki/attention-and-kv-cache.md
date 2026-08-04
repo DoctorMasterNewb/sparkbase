@@ -3,8 +3,8 @@
 > **area:** attention
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-m3-vision, S-mimo-results, S-mimo-doc, S-sess-jun5, S-sess-jun4, S-dflash-nvfp4, S-forum-mimo-2x-opt, S-forum-dsv4-kvcache, S-forum-inkling-nvfp4, S-forum-flashinfer-livelock, S-forum-solar-open2-nvfp4, S-forum-glm52-hybrid, S-forum-nvfp4-kv
-> **updated:** 2026-07-29
+> **sources:** S-m3-vision, S-mimo-results, S-mimo-doc, S-sess-jun5, S-sess-jun4, S-dflash-nvfp4, S-forum-mimo-2x-opt, S-forum-dsv4-kvcache, S-forum-inkling-nvfp4, S-forum-flashinfer-livelock, S-forum-solar-open2-nvfp4, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-glm52-3x-aqlm
+> **updated:** 2026-08-04
 
 Which `--attention-backend` to pass is decided by the model's attention type, not preference. Get it
 wrong and KV-cache init fails or numerics are subtly off.
@@ -205,6 +205,25 @@ wrong and KV-cache init fails or numerics are subtly off.
     sparse MLA on GB10 through FlashInfer (GLM-5.2, DeepSeek-V4-class, future MLA models) under
     cold-prefill workloads is at risk. The Triton workaround is drop-in and has no throughput
     penalty, making it the recommended path until the upstream mbarrier bug is fixed.
+
+## Forum ingest: FlashInfer sparse-MLA decode dispatch table — head-count tiling (2026-08-04)
+
+- **[conjecture]** **FlashInfer `_DECODE_DSV3_2_DISPATCH` only instantiates specific head counts;
+  non-matching counts fall through to generic paged-attention tiled in groups of 16**
+  (S-forum-glm52-3x-aqlm, karol.spark + MiaAI-Lab): the FlashInfer sparse-MLA decode dispatch
+  table carries only `{8, 16, 32, 64, 128} × {128, 512, 1024, 2048}` (head count × head dim).
+  Local head counts not in this table (e.g. 22 at TP=3, 13 at TP=5) fall through to the generic
+  `sparse_mla_sm120_paged_attention` kernel, which **tiles heads in groups of 16**. The effective
+  attention cost is therefore `ceil(local_heads/16)` tiles, not `local_heads` — so `ceil(22/16) ==
+  ceil(32/16) == 2` means 22 padded heads cost the same attention time as 32, while the
+  q_b/kv_b/o_proj GEMMs shrink by 31%. **Why it bites on Spark:** this dispatch rule determines
+  the cost of non-power-of-2 TP padding for any sparse-MLA model on GB10. At TP=3, padding to 66
+  (22/rank) instead of 96 (32/rank) saves 31% on GEMMs at zero attention cost. At TP=5, 13/rank
+  means `ceil(13/16) = 1` tile (even cheaper attention) but 9.4% MoE padding waste. Padding to 80
+  (16/rank) would land on the fast specialized kernel — but at 25% ghost heads. Which wins (fewer
+  ghost heads + generic kernel vs more ghost heads + fast kernel) is unmeasured. See
+  `[[wiki/models/glm-5.2.md]]` → NVFP4+AQLM 3× section for the full TP padding table.
+  Single source → [conjecture].
 
 ## Forum ingest: b12x sparse-MLA KV format constraint (2026-07-27)
 

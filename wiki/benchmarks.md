@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-laguna-yaml
-> **updated:** 2026-08-03
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-laguna-yaml, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany
+> **updated:** 2026-08-04
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
 anchor the rules on
@@ -728,3 +728,25 @@ S-forum-laguna-yaml.
 ||---|---|---|---|---|---|---|---||
 || DeepSeek-V4-Flash-0731 | NVFP4 (`nvfp4_ds_mla` KV) + DSpark spec=3 | vLLM 0.21.1rc1.dev339 TP=4 | 4 (QRS812) | ~90 (C=1) / ~40.4 (C=6 per-req) | 512K | cold prefill ~2500 tok/s; KV cache hit effective prefill ~193K tok/s; QRS812 switch fabric; mashie challenges: C12 2-node=230 vs 4-node=209 | S-forum-4node-qrs812 ||
 || Laguna-S-2.1-NVFP4 | NVFP4 W4A4 + DFlash spec=15 | vLLM (eugr spark-vllm-docker) TP=2 | 2 | 122.63 (aggregate output, c50) | 262K | 268.58 tok/s total throughput; DFlash acceptance 11.71%, accept_len 2.76; per-pos: pos0=64.89% → pos14=0.78%; TP=1 option for single Spark; --kv-cache-memory=32449423258 override; model is retired (see models/laguna-s-2.1.md) | S-forum-laguna-yaml ||
+
+## Batch 51 forum ingest (2026-08-04) — ComfyUI diffusion benchmarks
+
+**[conjecture]** — single-source forum benchmarks via ComfyUI (not diffusers). S-forum-comfyui-triplany.
+
+|||| Model | Steps | Time (BF16/fp8) | Time (NVFP4/full) | Mem | Notes | Source |||
+||||---|---|---|---|---|---|---|||
+|||| Z-Image-Turbo t2i | (template) | 96.17s cold / 43.73s warm | — | 43.5 GB | bf16; stock ComfyUI template; single Spark | S-forum-comfyui-triplany |||
+|||| Flux2-dev t2i | (template) | 300.38s cold / 50.14s warm | — | 68 GB | fp8mixed; stock template | S-forum-comfyui-triplany |||
+|||| Flux2-dev (full) + mistral3_small | (template) | — | 407.52s cold / 80.25s warm | 93.80 GB | full quant + bf16 text encoder; highest memory workflow | S-forum-comfyui-triplany |||
+|||| LTX 2.3 t2v | (template) | 179.55s cold / 81.83s warm | — | 44.73 GB | fp8; 1280×720, 5s duration | S-forum-comfyui-triplany |||
+|||| LTX 2.3 22B | (video) | — | ~12 min | — | NVFP4; 20s video; quality "not too bad" | S-forum-comfyui-triplany |||
+|||| Wan2.2 14b t2i | (template) | 644.75s cold / 565.24s warm | — | 18 GB | fp8; 640², 5s duration | S-forum-comfyui-triplany |||
+|||| Flux1-dev (full) + t5xxl | (template) | — | 113.17s cold / 32.61s warm | 32.16 GB | full quant + fp16 text encoder | S-forum-comfyui-triplany |||
+
+> **[conjecture]** **ComfyUI benchmarks on DGX Spark** (S-forum-comfyui-triplany, Triplany):
+> cold-vs-warm timing across 6 diffusion workflows on a single Spark, via a patched ComfyUI
+> setup targeting UMA memory management. The warm/cold ratio ranges from ~2.2× (Z-Image) to
+> ~6× (Flux2-dev fp8mixed) — the first warm run benefits from models staying resident in UMA.
+> Flux2-dev full quant + mistral3_small peaks at 93.80 GB (near the 121 GB ceiling). LTX 2.3
+> 22B NVFP4 is the first reported NVFP4 video model data point on GB10. See
+> `[[wiki/containers-and-tooling.md]]` → Batch 51 for the full setup details.

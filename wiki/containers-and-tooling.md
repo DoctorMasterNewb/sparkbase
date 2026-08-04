@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal, S-forum-vllm-2607-xgrammar, S-forum-depfree-dashboard
-> **updated:** 2026-08-02
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal, S-forum-vllm-2607-xgrammar, S-forum-depfree-dashboard, S-forum-comfyui-triplany
+> **updated:** 2026-08-04
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -606,3 +606,39 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   finding is the most broadly applicable takeaway — relevant to any GB10
   monitoring tooling. See also `[[wiki/platform-gb10.md]]` → operating
   constraints (nvidia-smi shows GPU power only, not total SoC).
+
+### Batch 51 forum ingest (2026-08-04)
+
+- **[conjecture]** **ComfyUI setup & patches for DGX Spark — UMA memory management
+  fixes and benchmarks** (S-forum-comfyui-triplany, Triplany): a community install
+  script + launch script + patch set (`Triplany/comfyui-dgx-spark`) that addresses
+  the recurring ComfyUI UMA problems on GB10: double memory usage, not seeing all
+  free VRAM and aborting (Wan 2.2 and Flux1 at full quant), models not unloading
+  from VRAM when switching workflows, opposite problem of unloading after every
+  run (every run cold), huge memory spikes on load, OOMs that brick the system.
+  The setup claims stable, consistent memory usage across workflow switches
+  (Flux2 → Wan2.2 properly evicts old models).
+  - **Benchmark (stock ComfyUI templates, cold/warm, single Spark):**
+
+    | Workflow | Quant | Mem | Resolution | Cold | Warm |
+    |---|---|---|---|---|---|
+    | Z-Image t2i | bf16 | 43.5 GB | 1024² | 96.17s | 43.73s |
+    | Flux2-dev t2i | fp8mixed | 68 GB | 1024² | 300.38s | 50.14s |
+    | LTX 2.3 t2v | fp8 | 44.73 GB | 1280×720, 5s | 179.55s | 81.83s |
+    | Wan2.2 14b t2i | fp8 | 18 GB | 640², 5s | 644.75s | 565.24s |
+    | Flux2-dev (full) + mistral3_small bf16 | full | 93.80 GB | 1024² | 407.52s | 80.25s |
+    | Flux1-dev (full) + t5xxl fp16 | full | 32.16 GB | 1024² | 113.17s | 32.61s |
+
+  - **comfy-aimdo 0.3.0 ARM compile fix** (AoE, joey28): `comfy-aimdo` 0.3.0
+    compiles on ARM and fixes most model-loading-related problems on GB10.
+    Multiple users confirm significant memory usage improvement after updating.
+  - **LTX 2.3 22B NVFP4** (TheAwakenOne): `ltx-2.3-22b-dev-nvfp4.safetensors`
+    runs ~12 min for a 20-second video — quality "not too bad." First reported
+    LTX 2.3 22B NVFP4 data point on GB10.
+  - **Docker alternative** (jd36): `jdaln/ComfyUI-DGX-Spark-Docker-opinionated`
+    — a fork of an existing repo with auto-provisioning and workflow support.
+  - Reinforces existing ComfyUI UMA findings (S-forum-comfyui-optimized,
+    S-forum-comfyui-crash, S-forum-comfyui-container): the UMA memory management
+    problems (double-VRAM, model eviction, memory spikes) are a persistent theme
+    across independent ComfyUI setups on GB10. Single source for the benchmark
+    numbers + multiple corroborating users for the comfy-aimdo fix → [conjecture].
