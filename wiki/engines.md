@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching
-> **updated:** 2026-08-03
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench
+> **updated:** 2026-08-04
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -509,3 +509,50 @@ Three engines run on the Spark pair; pick by arch support and quant.
   multi-node KV cache eviction under memory pressure (S-forum-uvm-livelock). Single source →
   [conjecture]. Flagged for hardware verification: does prefix cache reliably hit on 2× Spark
   with DSV4-Flash-0731 under controlled conditions?
+
+### Batch 52 forum ingest (2026-08-04)
+
+- **[conjecture]** **DSML tool-call wrapper tag leaks at >60K context on DSV4-Flash-0731**
+  (S-forum-dsv4-0731-bench, Teason2026, penguinchang): the `<｜DSML｜tool_calls>` wrapper
+  marker sometimes gets skipped by the model at long context (>60K), causing the entire
+  tool call to leak to the user as raw text instead of being parsed. The issue reproduces
+  deterministically with specific context but occurs sporadically in live agent sessions
+  (~once per 5-6 long-context sessions). A vLLM regression in 0.26.1rc1.dev244 worsens it;
+  the 0.26.1rc1.dev30 (July 28) build did not leak but OOMs when loading DSpark weights.
+  vLLM PR [#49117](https://github.com/vllm-project/vllm/pull/49117) adds recovery for missing
+  wrapper markers (complete invoke marker in plain content starts a tool call, with
+  declared-name guard against false matches), but at 150K context the model enters a
+  completely broken state where no valid tool calls can be produced — the parser fix is
+  necessary but not sufficient at extreme context. Workaround: an OpenAI-compatible proxy
+  ([opencode_compat_proxy](https://github.com/ladiossoop5star/opencode_compat_proxy)) or
+  LiteLLM hook translates raw DSML markup into structured `tool_calls`. Using
+  `AidenProduction-3.75` image with the proxy, one user reports no leaks even after multiple
+  context compactions (trigger ~450K). This is the same class of tool-call-parser issue as
+  the GLM-5.2 `glm45` reasoning-parser leak (see `[[wiki/models/glm-5.2.md]]`) — DeepSeek's
+  DSML format uses non-standard markers that vLLM's `deepseek_v4` parser must handle.
+  Single thread, multiple users → [conjecture].
+- **[conjecture]** **DSV4-Flash-0731 tool-eval-bench: 87/100** (S-forum-dsv4-0731-bench,
+  serapis): Tool-Call Benchmark v2.3.2 on vLLM 0.25.2.dev0+g752a3a504 — 66 passed, 14 partial,
+  4 failed (Prompt Injection Resistance, Async Polling, Simple Schema Compliance, +1).
+  524,288 token max context. DSV4-Flash-0731 is the official GA release of DSV4-Flash,
+  superseding the preview, with the same structure as DSV4-Flash-DSpark (includes
+  speculative decoding module). No vision tower in this variant. Single source → [conjecture].
+- **[conjecture]** **DSV4-Flash-0731 4-config benchmark table** (S-forum-dsv4-0731-bench,
+  vedcsolution): multi-config comparison on Spark cluster (config and node count not fully
+  specified in post):
+
+  | Metric | TP=2 (2N, ref) | TP4-seqs32 ★ | DP4EP | TP2PP2 (Ray, no spec) |
+  |---|---|---|---|---|
+  | B1 e2e 512 tok | 35.3 | 46.8–48.6 (+33%) | 31.3 | 22.8 |
+  | C4 | 65.6/69.5 | ~101 | 75.7/95.0 | ~56 |
+  | C8 | — | 150–164 | ~105 | ~83 |
+  | C16 | — | ~216 | ~203 | ~83 (saturation) |
+  | C32 | — | 333–344 | ~233 | — |
+  | Acceptance | 40.1% | 39.8–40% | 40–44% | n/a |
+  | KV pool | 345K tok | 1.93–1.98M | 1.59M ×4 | 4.09M (7.81×) |
+
+  TP4 with seqs=32 is the standout: +33% single-stream, 7.81× KV pool vs TP=2 reference,
+  40% MTP acceptance maintained. DP4EP (data parallel × 4, expert parallel) reaches similar
+  C16/C32 aggregate but lower per-stream. TP2PP2 (pipeline parallel) saturates at C16 ~83.
+  Single source → [conjecture]. These numbers are consistent with the known bandwidth-bound
+  decode ceiling and the TP=4 concurrency advantage on Spark.

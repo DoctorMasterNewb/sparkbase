@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale
-> **updated:** 2026-08-03
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config
+> **updated:** 2026-08-04
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -1249,3 +1249,35 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   S-forum-fwupd-mismatch. Workaround: ignore the stale Update button while the GPU is functioning
   correctly; verify with `uname -r; nvidia-smi --query-gpu=driver_version --format=csv,noheader`.
   3 users in the same thread confirm the pattern → [conjecture] (root cause unstated).
+
+### Batch 52 forum ingest (2026-08-04)
+
+- **[conjecture]** **Fan control is entirely firmware — no PWM, no BMC, no OS override**
+  (S-forum-fan-firmware, nvidia3815, Mach_AI, eugr): the 62-post thread confirms what later
+  sources (S-forum-ec-fan-rollback, S-forum-ec-fan-asus) established via firmware regression —
+  the EC isolates fan control from the OS. `fancontrol`/`pwmconfig`/`nvidia-settings` cannot
+  override the fan curve. Fans ramp only at high-80s/90s °C ACPI zone threshold. Under normal
+  load, GPU reaches ~84°C, CPU late-80s. Multiple users report the chassis is hot to touch
+  but functions correctly. This early thread (Oct 2025) is the first forum documentation of
+  the firmware-only fan control constraint — corroborates the later `[reported]` finding
+  that EC firmware changes can break the fan curve (S-forum-ec-fan-rollback → S-forum-ec-fan-asus).
+  All [conjecture] in this thread (no controlled measurements).
+- **[conjecture]** **Swap exhaustion → total system lockup (early corroboration)**
+  (S-forum-fan-firmware, RazielAU, eugr): when vLLM + llama.cpp co-loaded models exhaust
+  unified memory, the system pages to swap → crawls to near-complete stop → SSH commands
+  take minutes to process → X11 session dead. `killall -KILL` eventually works but takes
+  ~5 minutes. Disabling swap (`swapoff -a`) forces OOM-kill instead (process crashes or
+  system resets, but doesn't lock up). This is the earliest forum report of the swap-lockup
+  mechanism, corroborating the later `[conjecture]` bus-saturation diagnosis
+  (S-forum-comfyui-crash) and the `[proven]` "unified-memory OOM = hard reboot" finding.
+- **[conjecture]** **earlyoom -s 80 too aggressive for vLLM startup on Spark** (S-forum-earlyoom-config,
+  helge): sparkrun activates earlyoom with `EARLYOOM_ARGS=-s 80` (trigger when 80% of RAM
+  used), but vLLM model loading has a transient memory peak that temporarily exceeds 80%
+  before settling — even `--gpu-memory-utilization 0.75` doesn't help because the peak is
+  during weight-loading initialization, not steady-state. Fix: `sudo sed -i
+  '/^EARLYOOM_ARGS=/ s/-s 80/-s 20/' /etc/default/earlyoom && sudo systemctl restart earlyoom`
+  — trigger only when <20% of swap is left. Note: sparkrun overwrites this on cluster
+  config, so the fix must be re-applied after sparkrun cluster setup. This is a practical
+  operational finding for anyone using sparkrun's earlyoom safety stack on Spark — the
+  default threshold is calibrated for generic servers, not for the 128 GB UMA memory
+  pattern where transient spikes during model loading are normal. Single source → [conjecture].

@@ -697,3 +697,21 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
   containers-and-tooling (ComfyUI setup & benchmarks), benchmarks (GLM-5.2 3× row + ComfyUI
   diffusion table), roadmap (2 new open problems), sources/README, index, log.
 - No evidence promotions past [reported]. All new findings [conjecture] (single-source forum).
+
+## Forum ingest 2026-08-04 (Batch 52)
+- 6 new forum topics found (3 technically relevant, 3 skipped: social/speculation, A10G project,
+  use-case discussion).
+- 3 new sources registered (Batch 52). 6 topic IDs added to processed_topics.txt (total now 527).
+- **Headline finding:** DSML tool-call wrapper tag leaks at >60K context on DeepSeek-V4-Flash-0731
+  — the `<｜DSML｜tool_calls>` wrapper marker is sometimes skipped by the model at long context,
+  causing raw tool-call markup to leak to output. vLLM PR #49117 adds parser recovery but is
+  insufficient at 150K; opencode_compat_proxy or LiteLLM hook provides reliable workaround.
+  Same tool-call-parser issue class as GLM-5.2 `glm45` reasoning-parser leak.
+- Pages touched: engines (DSML leak + PR #49117 + proxy workaround; tool-eval 87/100; 4-config
+  benchmark table TP2/TP4/DP4EP/TP2PP2), platform-gb10 (fan control firmware-only — earliest
+  forum corroboration of EC fan-curve regression; swap lockup early report; earlyoom -s 80 too
+  aggressive for vLLM startup, fix to -s 20), benchmarks (4 new [conjecture] DSV4-Flash-0731 rows),
+  sources/README, index, log.
+- Skipped: 378958 (Inkling-Small "new king?" — social/speculation), 373658 (Fast Gemma Project —
+  A10G, not GB10-specific), 378891 (What problems are you solving? — social/use-case discussion).
+- No evidence promotions past [reported]. All new findings [conjecture] (single-source forum).

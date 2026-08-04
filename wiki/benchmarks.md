@@ -3,7 +3,7 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-laguna-yaml, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-laguna-yaml, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench
 > **updated:** 2026-08-04
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
@@ -750,3 +750,14 @@ S-forum-laguna-yaml.
 > Flux2-dev full quant + mistral3_small peaks at 93.80 GB (near the 121 GB ceiling). LTX 2.3
 > 22B NVFP4 is the first reported NVFP4 video model data point on GB10. See
 > `[[wiki/containers-and-tooling.md]]` → Batch 51 for the full setup details.
+
+## Batch 52 forum ingest (2026-08-04)
+
+**[conjecture]** — all single-source forum benchmarks. S-forum-dsv4-0731-bench.
+
+|| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+||---|---|---|---|---|---|---|---||
+|| DeepSeek-V4-Flash-0731 | NVFP4 (`nvfp4_ds_mla` KV) + MTP | vLLM 0.25.2.dev0 TP=2 | 2 | 35.3 (B1 e2e) / 65.6–69.5 (C4) | 524K | TP=2 reference config; 40.1% MTP acceptance; KV pool 345K tok | S-forum-dsv4-0731-bench ||
+|| DeepSeek-V4-Flash-0731 | NVFP4 + MTP | vLLM TP=4 seqs=32 | 4 | 46.8–48.6 (B1, +33%) / ~101 (C4) / 333–344 (C32) | 524K | best config; 39.8–40% acceptance; KV pool 1.93–1.98M (7.81× vs TP=2) | S-forum-dsv4-0731-bench ||
+|| DeepSeek-V4-Flash-0731 | NVFP4 + MTP | vLLM DP4EP | 4 | 31.3 (B1) / 75.7–95.0 (C4) / ~233 (C32) | 524K | data parallel ×4 expert parallel; 40–44% acceptance; KV pool 1.59M ×4 | S-forum-dsv4-0731-bench ||
+|| DeepSeek-V4-Flash-0731 | NVFP4 | vLLM TP2PP2 (Ray, no spec) | 4 | 22.8 (B1) / ~56 (C4) / ~83 (C16 sat) | 524K | pipeline parallel; saturates at C16; KV pool 4.09M | S-forum-dsv4-0731-bench ||

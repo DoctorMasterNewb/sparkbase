@@ -1881,3 +1881,23 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   FlashInfer dispatch-table tiling rule is exceptionally well-characterized (source code inspection,
   production logs, measurement methodology) but remains [conjecture] per the analysis-agent stack.
   No evidence promotions past [reported].
+
+## 2026-08-04 — Scheduled forum ingest: 6 new topics (Batch 52)
+
+- **Sources:** 3 new forum sources registered (S-forum-fan-firmware, S-forum-dsv4-0731-bench,
+  S-forum-earlyoom-config). 6 topic IDs added to `sources/processed_topics.txt` (total now 527).
+- **Pages touched:** engines (DSML tool-call wrapper leak at >60K context on DSV4-Flash-0731 +
+  vLLM PR #49117 + opencode_compat_proxy workaround; tool-eval-bench 87/100; 4-config benchmark
+  table TP2/TP4/DP4EP/TP2PP2), platform-gb10 (fan control firmware-only — earliest forum
+  documentation corroborating EC fan-curve regression; swap exhaustion lockup early corroboration;
+  earlyoom -s 80 too aggressive for vLLM startup, fix to -s 20), benchmarks (4 new [conjecture]
+  rows: DSV4-Flash-0731 TP2/TP4/DP4EP/TP2PP2), sources/README (Batch 52), index, log.
+- **Skipped:** 378958 (Inkling-Small "new king?" — social/speculation, no durable findings),
+  373658 (Fast Gemma Project — A10G, not GB10-specific), 378891 (What problems are you solving? —
+  social/use-case discussion, no durable technical findings).
+- **Headline finding:** DSML tool-call wrapper tag leaks at >60K context on DeepSeek-V4-Flash-0731.
+  The `<｜DSML｜tool_calls>` wrapper marker is sometimes skipped by the model at long context,
+  causing raw tool-call markup to leak to output. vLLM PR #49117 adds parser recovery but is
+  insufficient at 150K. opencode_compat_proxy or LiteLLM hook provides reliable workaround.
+  Same tool-call-parser issue class as GLM-5.2 `glm45` reasoning-parser leak.
+- **Evidence cap:** All new findings [conjecture] — single thread each. No evidence promotions.
