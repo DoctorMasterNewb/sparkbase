@@ -715,3 +715,15 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - Skipped: 378958 (Inkling-Small "new king?" — social/speculation), 373658 (Fast Gemma Project —
   A10G, not GB10-specific), 378891 (What problems are you solving? — social/use-case discussion).
 - No evidence promotions past [reported]. All new findings [conjecture] (single-source forum).
+
+## Forum ingest 2026-08-05 (Batch 53)
+- 4 new forum topics found (2 technically relevant, 2 skipped: model recommendation, switch fan noise).
+- 2 new sources registered (Batch 53). 4 topic IDs added to processed_topics.txt (total now 531).
+- Pages touched: platform-gb10 (system apt upgrade triggers power-controller wedge — 107→45 tok/s,
+  AC power-cycle restores 84 tok/s; new trigger class for existing [reported] wedge [conjecture]),
+  models/qwen (QLoRA fine-tuning Qwen3.6-35B-A3B on single Spark — train bf16 / serve NVFP4 +
+  --enable-lora hot-attach, NVFP4 has no gradient path; flash-linear-attention 2.52× throughput
+  win; batch_size=1 on MoE severely underutilizes GB10 at ~5.3 TFLOP/s; Claude Code session logs
+  → SFT data pipeline [conjecture]), benchmarks (1 new [conjecture] row: Qwen3.6-35B-A3B wedge
+  107→45→84 tok/s), sources/README, index, log.
+- No evidence promotions past [reported]. All new findings [conjecture] (single-source forum).

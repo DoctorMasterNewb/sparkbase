@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x, S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train, S-forum-moe-lora-vllm
-> **updated:** 2026-08-01
+> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x, S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train, S-forum-moe-lora-vllm, S-forum-qlora-coding
+> **updated:** 2026-08-05
 
 The best-supported family on GB10 — both Atlas (AOT kernels for the MoE variants) and vLLM serve it.
 The recurring lesson: **MoE-A3B NVFP4 + MTP is the fastest regime on Spark; the dense variant of the
@@ -409,6 +409,50 @@ controlled comparison (nvidia+b12x vs Unsloth+b12x) is needed to isolate the var
 
 ## See also
 `[[wiki/engines.md]]` · `[[wiki/quantization-on-gb10.md]]` · `[[wiki/models/holo-3.1.md]]` (Qwen3.5 VL MoE)
+
+## Forum ingest: QLoRA fine-tuning Qwen3.6-35B-A3B on single Spark (2026-08-05)
+
+> **evidence:** conjecture (single forum source)
+> **sources:** S-forum-qlora-coding
+
+- **[conjecture]** **Train bf16, serve NVFP4 with --enable-lora hot-attach** (S-forum-qlora-coding,
+  jake.w.sims): NVFP4 (`compressed-tensors` / `nvfp4-pack-quantized`) is a post-training
+  quantization format with **no gradient path** — you cannot fine-tune the NVFP4 checkpoint
+  directly. Instead: train against the bf16 base, then serve the NVFP4 base with
+  `--enable-lora`, hot-attaching the night's adapter. vLLM reports "MoE model detected.
+  Using fused MoE LoRA implementation" and serves both the base (`Qwen3.6-35B-A3B-NVFP4`)
+  and base+adapter (`Qwen3.6-35B-A3B-Coder-NVFP4`) simultaneously. Attaching an adapter
+  takes seconds and costs a ~27 MB file per night. This avoids the nightly
+  train→merge→re-quantize cycle (hours + hundreds of GB scratch). Single source → [conjecture].
+
+- **[conjecture]** **flash-linear-attention gives 2.52× QLoRA throughput win on GB10**
+  (S-forum-qlora-coding, jake.w.sims): adding `flash-linear-attention` (FLA, v0.5.1) to
+  the training stack reduced per-step time from ~1700 s to **611 s/step** — a **2.52×**
+  throughput improvement. The user ran without it for a month due to a missing package.
+  Training stack: torch 2.10.0+cu128, transformers 5.5.0, triton 3.6.0, unsloth 2026.6.9,
+  FLA 0.5.1. Single source → [conjecture].
+
+- **[conjecture]** **QLoRA on MoE at batch_size=1 is severely compute-underutilized on GB10**
+  (S-forum-qlora-coding, jake.w.sims, emptysands): with `per_device_train_batch_size=1`
+  and `GA=16`, each 256-expert MoE expert sees only a handful of tokens per step.
+  Effective throughput is ~5.3 TFLOP/s on hardware capable of well over 100 TFLOP/s.
+  At a 2.5% trained-token fraction, the setup produces ~5 tokens of real loss signal per
+  second. A 4B dense model with a real batch size would train in hours instead of weeks.
+  The user kept batch_size=1 from an early bitsandbytes OOM workaround and never revisited
+  it. Single source → [conjecture].
+
+- **[conjecture]** **Claude Code session logs → SFT data pipeline for coding agents**
+  (S-forum-qlora-coding, jake.w.sims, emptysands): agentic coding session transcripts
+  (Claude Code `~/.claude/projects/`) can be parsed into supervised fine-tuning data —
+  one example per assistant turn carrying a tool call or final answer. Key gotcha:
+  `cleanupPeriodDays` in Claude Code `settings.json` defaults to 30 days, silently
+  pruning old session transcripts. Set to 365 to avoid data loss. Mean context ~6.3k–9.5k
+  tokens (with tools prefix), mean completion ~230 tokens. 97% of each forward/backward
+  pass is masked context. The user's parser had a hardcoded `MAX_CTX_CHARS=24000` that
+  truncated context at ~half the budget the tokenizer allowed. Community advice: most
+  "behaviors" worth teaching (tool conventions, file layout habits) are better expressed
+  as CLAUDE.md rules or hooks than fine-tuning — fine-tuning's real job is whatever's
+  left after everything writable is written down. Single source → [conjecture].
 
 ## Forum ingest: Qwen3.5-397B architecture & 8× GB10 cluster benchmark (2026-07-15)
 

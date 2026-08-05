@@ -1901,3 +1901,35 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   insufficient at 150K. opencode_compat_proxy or LiteLLM hook provides reliable workaround.
   Same tool-call-parser issue class as GLM-5.2 `glm45` reasoning-parser leak.
 - **Evidence cap:** All new findings [conjecture] — single thread each. No evidence promotions.
+
+## 2026-08-05 — Forum ingest: Batch 53 — 4 new topics (2 processed, 2 skipped)
+
+- **Sources:** 4 new forum topics found by fetch_new_topics.py. 2 technically relevant; 2 skipped.
+  2 new sources registered (Batch 53) in `sources/README.md`. 4 topic IDs added to
+  `sources/processed_topics.txt` (total now 531).
+- **Topics found:**
+  - 379003 (DGX slow after July 31 update) — **processed**: power-controller wedge triggered
+    by routine apt upgrade, AC power-cycle fix. S-forum-jul31-wedge.
+  - 378466 (Best model for single Spark instruction following) — **skipped**: model
+    recommendation (Qwopus3.6-27B-v2-FP8 finetune), no durable GB10-specific findings (no
+    flags, env vars, errors, tok/s numbers, or quant formats beyond naming a finetune).
+  - 378311 (Nightly QLoRA on DGX Spark: fine-tuning Qwen3.6-35B-A3B) — **processed**:
+    highly technical QLoRA + serving pipeline. S-forum-qlora-coding.
+  - 378209 (MikroTik CRS804 - FANS LOUD!) — **skipped**: switch fan noise, not GB10-specific;
+    mike_ber's GLM-5.2 25-26 tok/s data point already covered by S-forum-glm52-hybrid.
+- **Headline finding 1:** System apt upgrade can trigger the power-controller wedge
+  (S-forum-jul31-wedge, unicornxoxo2): Qwen3.6-35B-A3B NVFP4 decode dropped 107→45 tok/s
+  after a July 31 apt upgrade (standard Ubuntu packages, no NVIDIA packages). AC power-cycle
+  (wall unplug + wait) restored 84 tok/s. Corroborates existing [reported] wedge pattern and
+  adds a new trigger class: routine OS-level apt upgrades, not just NVIDIA firmware/driver
+  updates. Post-fix MTP acceptance dropped from 79.81% to 50.02% (different model state).
+- **Headline finding 2:** QLoRA fine-tuning Qwen3.6-35B-A3B on single Spark (S-forum-qlora-coding,
+  jake.w.sims): train bf16, serve NVFP4 with --enable-lora hot-attach (NVFP4 has no gradient
+  path). flash-linear-attention gives 2.52× throughput win (1700→611 s/step). per_device_train_batch_size=1
+  on 256-expert MoE yields ~5.3 TFLOP/s effective (severely underutilized). Claude Code session
+  logs → SFT data pipeline documented (cleanupPeriodDays=365 to prevent transcript pruning).
+- **Pages touched:** platform-gb10 (apt-upgrade-triggered wedge [conjecture]), models/qwen
+  (QLoRA train-bf16/serve-NVFP4 + --enable-lora, FLA 2.52× win, batch_size=1 underutilization,
+  Claude Code SFT pipeline [conjecture]), benchmarks (1 new [conjecture] row: Qwen3.6-35B-A3B
+  wedge 107→45→84 tok/s), sources/README, log, index.
+- No evidence promotions past [reported]. All new findings [conjecture] (single-source forum).

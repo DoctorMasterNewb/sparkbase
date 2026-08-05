@@ -1281,3 +1281,21 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   operational finding for anyone using sparkrun's earlyoom safety stack on Spark — the
   default threshold is calibrated for generic servers, not for the 128 GB UMA memory
   pattern where transient spikes during model loading are normal. Single source → [conjecture].
+
+### Batch 53 forum ingest (2026-08-05)
+
+- **[conjecture]** **System apt upgrade can trigger the power-controller wedge** (S-forum-jul31-wedge,
+  unicornxoxo2): a July 31 `apt upgrade` (standard Ubuntu packages — tar, gawk, krb5,
+  gstreamer, remmina, libgphoto2, etc.; no NVIDIA packages in the log) caused Qwen3.6-35B-A3B
+  NVFP4 decode on vLLM v0.25.0 to drop from **107 tok/s → 45 tok/s** (TPOT 8.55 ms → 21.16 ms,
+  ITL 28.98 ms → 79.15 ms) — a ~2.4× regression with no thermal issue (unit "slightly warm").
+  The wedge was cleared by a full AC power-cycle (unplug from wall socket, wait a few
+  minutes, reconnect), restoring **84 tok/s** (TPOT 11.07 ms, ITL 27.64 ms). Notably the
+  post-fix MTP acceptance dropped from 79.81% to 50.02% — the user attributes this to a
+  different model state after the power-cycle, not the wedge itself. This corroborates the
+  existing [reported] power-controller wedge pattern (pinned low clock, no throttle flag,
+  AC power-cycle fix) and adds a new trigger: a routine OS-level `apt upgrade` can
+  precipitate it, not just NVIDIA firmware/driver updates. Single source → [conjecture].
+  Note: the July 23 update also caused idle overheating ("roasting like hell in stale")
+  on the same unit — see S-forum-typec-thermal for the USB-C PD firmware pending-update
+  pattern.

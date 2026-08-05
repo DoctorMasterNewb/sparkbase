@@ -760,4 +760,12 @@ S-forum-laguna-yaml.
 || DeepSeek-V4-Flash-0731 | NVFP4 (`nvfp4_ds_mla` KV) + MTP | vLLM 0.25.2.dev0 TP=2 | 2 | 35.3 (B1 e2e) / 65.6–69.5 (C4) | 524K | TP=2 reference config; 40.1% MTP acceptance; KV pool 345K tok | S-forum-dsv4-0731-bench ||
 || DeepSeek-V4-Flash-0731 | NVFP4 + MTP | vLLM TP=4 seqs=32 | 4 | 46.8–48.6 (B1, +33%) / ~101 (C4) / 333–344 (C32) | 524K | best config; 39.8–40% acceptance; KV pool 1.93–1.98M (7.81× vs TP=2) | S-forum-dsv4-0731-bench ||
 || DeepSeek-V4-Flash-0731 | NVFP4 + MTP | vLLM DP4EP | 4 | 31.3 (B1) / 75.7–95.0 (C4) / ~233 (C32) | 524K | data parallel ×4 expert parallel; 40–44% acceptance; KV pool 1.59M ×4 | S-forum-dsv4-0731-bench ||
-|| DeepSeek-V4-Flash-0731 | NVFP4 | vLLM TP2PP2 (Ray, no spec) | 4 | 22.8 (B1) / ~56 (C4) / ~83 (C16 sat) | 524K | pipeline parallel; saturates at C16; KV pool 4.09M | S-forum-dsv4-0731-bench ||
+||| DeepSeek-V4-Flash-0731 | NVFP4 | vLLM TP2PP2 (Ray, no spec) | 4 | 22.8 (B1) / ~56 (C4) / ~83 (C16 sat) | 524K | pipeline parallel; saturates at C16; KV pool 4.09M | S-forum-dsv4-0731-bench ||
+
+## Batch 53 forum ingest (2026-08-05)
+
+**[conjecture]** — single-source forum benchmarks. S-forum-jul31-wedge.
+
+|| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+||---|---|---|---|---|---|---|---||
+|| Qwen3.6-35B-A3B | NVFP4 + MTP | vLLM v0.25.0 | 1 | 107 (pre-wedge) → 45 (wedged) → 84 (post-fix) | — | Power-controller wedge triggered by July 31 apt upgrade; MTP acceptance 79.81% → 50.02% post-fix; AC power-cycle fix | S-forum-jul31-wedge ||
