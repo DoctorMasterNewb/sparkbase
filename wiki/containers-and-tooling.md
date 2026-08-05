@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal, S-forum-vllm-2607-xgrammar, S-forum-depfree-dashboard, S-forum-comfyui-triplany
-> **updated:** 2026-08-04
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal, S-forum-vllm-2607-xgrammar, S-forum-depfree-dashboard, S-forum-comfyui-triplany, S-forum-acestep-v15-comfyui
+> **updated:** 2026-08-05
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -642,3 +642,26 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
     problems (double-VRAM, model eviction, memory spikes) are a persistent theme
     across independent ComfyUI setups on GB10. Single source for the benchmark
     numbers + multiple corroborating users for the comfy-aimdo fix → [conjecture].
+
+### Batch 54 forum ingest (2026-08-05) — ACE-Step v1.5 + LTX-2.3 audio VAE flag
+
+- **[conjecture]** **`--no-bf16-vae` required for LTX-2.3 audio workflows on GB10**
+  (S-forum-acestep-v15-comfyui, Turrican): LTX-2.3's audio VAE never casts the incoming
+  waveform to the VAE dtype, so under `--bf16-vae` every audio workflow dies with
+  `Input type (float) and bias type (c10::BFloat16) should be the same`. This breaks
+  stock ComfyUI LTX-2.3 audio templates and even a plain LoadAudio node. `--no-bf16-vae`
+  takes only the VAE off bf16 while keeping the unet and text-encoder speedups. Passing
+  `--fp32-vae` instead does **not** work — ComfyUI's VAE precision flags are mutually
+  exclusive and one has already been added by the spark-comfyui build by then. Single
+  source → [conjecture]. This is a GB10-specific gotcha for the spark-comfyui ComfyUI
+  stack (bjarkebolding/spark-comfyui).
+
+- **[conjecture]** **ACE-Step v1.5 + LTX-2.3 full lip-synced music video on single Spark**
+  (S-forum-acestep-v15-comfyui, Turrican): end-to-end ComfyUI workflow on a single Spark
+  generates a 2:28 music video (1280×704, 24fps, 3552 frames, 37 chained segments) —
+  ACE-Step 1.5 XL for the song (2m05s), LTX-2.3 22B dev fp8 + distilled LoRA for video
+  (30m11s, ~49s per 4s segment), total 32m16s. Uses the spark-comfyui build (cu130
+  PyTorch, SageAttention for sm_121, GPU onnxruntime). Nine model files totaling ~59 GB.
+  Single source → [conjecture]. Outside core LLM-inference scope (music + video
+  generation, not vLLM/llama.cpp/sglang), but the `--no-bf16-vae` flag and the
+  spark-comfyui stack details are GB10-specific. Source registered for provenance.

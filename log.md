@@ -1933,3 +1933,49 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   Claude Code SFT pipeline [conjecture]), benchmarks (1 new [conjecture] row: Qwen3.6-35B-A3B
   wedge 107→45→84 tok/s), sources/README, log, index.
 - No evidence promotions past [reported]. All new findings [conjecture] (single-source forum).
+
+## 2026-08-05 — Forum ingest: Batch 54 — 6 new topics (4 processed, 2 skipped)
+
+- **Sources:** 6 new forum topics found by fetch_new_topics.py. 4 technically relevant; 2 skipped.
+  4 new sources registered (Batch 54) in `sources/README.md`. 6 topic IDs added to
+  `sources/processed_topics.txt` (total now 537).
+- **Topics found:**
+  - 378824 (DeepSeek-v4-Flash-0731-DSpark-1M-NVFP4-KV-2x-DGX-Spark) — **processed**: DSpark
+    draft loader weight-mapping bug + draft quant-config inheritance bug. S-forum-dsv4-0731-dspark-loader.
+  - 378436 (Macaron-V1-Tall) — **processed**: 50B Qwen3.6-35B-A3B + LoRA specialists on single
+    Spark. S-forum-macaron-v1-tall.
+  - 379105 (Token Generation dropping to 0.1 for Qwen3.6-35b-a3b) — **processed**: bf16 TP=2 Ray
+    decode stall. S-forum-qwen36-tp2-stall.
+  - 378352 (ACE-Step v1.5 on DGX Spark) — **processed** (source registered, partial wiki
+    ingestion): `--no-bf16-vae` flag for LTX-2.3 audio VAE on spark-comfyui. S-forum-acestep-v15-comfyui.
+  - 379155 (Tailscale 1.102.1 breaks Funnel) — **skipped**: Tailscale software regression, not
+    GB10-specific.
+  - 379113 (Will IsaacLab Livestreaming be supported on DGX Spark?) — **skipped**: Isaac Sim/
+    Isaac Lab robotics question, not LLM inference on GB10.
+- **Headline finding 1:** DSV4-Flash-0731-DSpark draft loader drops 12 shared-expert tensors
+  silently (shared_experts.w1/w3 never mapped to gate_up_proj → invisible at INFO level).
+  Fix: 32.7→55.4 tok/s (+69%), acceptance 25.7%→60.2%, 2× Spark TP=2 k=5 NVFP4 KV 1M ctx.
+  SSE streaming under spec-decode measures steps/s not tok/s (14.7 vs 60.1) — benchmark with
+  stream:false. Second user (srivatsa1) hit a separate draft quant-config inheritance bug
+  (vLLM PR #49133): draft inherits target's NVFP4 config → ModelOptNvFp4FusedMoE on FP8
+  draft weights → acceptance collapses to 1.5-4.5% (12 tok/s). Fix: strip target-only ModelOpt
+  keys from draft quantization_config. Both are vLLM config-plumbing bugs that bite every
+  Spark user running DSV4-Flash-DSpark.
+- **Headline finding 2:** Macaron-V1-Tall (50B: 35B Qwen3.6-35B-A3B base + 4× 3.7B Rank-64
+  LoRA specialists) on single Spark: 25-27 tok/s bf16, fp8 KV. MTP nst=3 gives 71.5%
+  acceptance but only +2% throughput (41.93→42.79 tok/s) — consistent with proven finding
+  that MTP on this model family can be marginal. Tool-eval: base Qwen 90/100, full Macaron
+  router 82/100 (routing sends most to L0 general chat, not tool specialist L1). bf16 ~110 GB,
+  no lower quants yet, OOM with all LoRA specialists active.
+- **Headline finding 3:** Qwen3.6-35B-A3B bf16 on 2× Spark TP=2 Ray: decode collapses to
+  0.1-0.2 tok/s under concurrent requests. Both GPUs at 105 GB (only ~16 GB for KV+workspace
+  on 121 GB UMA). Single post, no replies — may be UMA memory pressure or Ray cross-node
+  scheduling issue. Flagged for hardware-agent verification.
+- **Pages touched:** engines (DSpark loader bugs — shared_experts weight mapping, SSE
+  streaming trap, draft quant-config inheritance [conjecture]), models/qwen (Macaron-V1-Tall
+  recipe + MTP + tool-eval + bf16 memory pressure; Qwen3.6-35B-A3B TP=2 Ray decode stall
+  [conjecture]), benchmarks (3 new [conjecture] rows: DSV4-Flash-0731-DSpark post-fix 55.4
+  tok/s, pre-fix 12.03 tok/s, Macaron-V1-Tall 25-27 tok/s), containers-and-tooling
+  (--no-bf16-vae flag for LTX-2.3 audio VAE on spark-comfyui [conjecture]), sources/README,
+  log, index.
+- No evidence promotions past [reported]. All new findings [conjecture] (single-source forum).

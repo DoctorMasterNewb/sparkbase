@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-laguna-yaml, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench
-> **updated:** 2026-08-04
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-laguna-yaml, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall
+> **updated:** 2026-08-05
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
 anchor the rules on
@@ -768,4 +768,32 @@ S-forum-laguna-yaml.
 
 || Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
 ||---|---|---|---|---|---|---|---||
-|| Qwen3.6-35B-A3B | NVFP4 + MTP | vLLM v0.25.0 | 1 | 107 (pre-wedge) → 45 (wedged) → 84 (post-fix) | — | Power-controller wedge triggered by July 31 apt upgrade; MTP acceptance 79.81% → 50.02% post-fix; AC power-cycle fix | S-forum-jul31-wedge ||
+||| Qwen3.6-35B-A3B | NVFP4 + MTP | vLLM v0.25.0 | 1 | 107 (pre-wedge) → 45 (wedged) → 84 (post-fix) | — | Power-controller wedge triggered by July 31 apt upgrade; MTP acceptance 79.81% → 50.02% post-fix; AC power-cycle fix | S-forum-jul31-wedge ||
+
+## Batch 54 forum ingest (2026-08-05)
+
+**[conjecture]** — all single-source forum benchmarks. S-forum-dsv4-0731-dspark-loader,
+S-forum-macaron-v1-tall.
+
+||| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+|||---|---|---|---|---|---|---|---||
+||| DeepSeek-V4-Flash-0731-DSpark | NVFP4 (`nvfp4_ds_mla` KV) + DSpark k=5 | vLLM TP=2 (Ray) | 2 | 55.4 mean / 66.1 peak (post-fix) / 32.7 (pre-fix) | 1M | DSpark draft loader fix: shared_experts.w1/w3 → gate_up_proj mapping; acceptance 25.7%→60.2%; SSE stream:false required for accurate tok/s | S-forum-dsv4-0731-dspark-loader ||
+||| DeepSeek-V4-Flash-0731-DSpark | NVFP4 + DSpark k=5 | vLLM TP=2 (Ray) | 2 | 12.03 (srivatsa1, pre-fix) | — | Draft quant-config inheritance bug: draft inherits target NVFP4 config → ModelOptNvFp4FusedMoE on FP8 draft weights → 1.5-4.5% acceptance; fix: strip target-only keys from draft quant_config (vLLM PR #49133) | S-forum-dsv4-0731-dspark-loader ||
+||| Macaron-V1-Tall (50B) | bf16 + fp8 KV | vLLM (spark-vllm-docker vllm-node) | 1 | 25-27 (no MTP) / 41.93-42.79 (MTP nst=3, +2%) | 229376 | 35B Qwen3.6-35B-A3B base + 4× 3.7B LoRA specialists; TP=1, util 0.7; MTP 71.5% acceptance but only +2% throughput; tool-eval base 90/100, full router 82/100 | S-forum-macaron-v1-tall ||
+
+> **[conjecture]** **DSV4-Flash-0731-DSpark with loader fix: 55.4 tok/s mean, 66.1 peak**
+> (S-forum-dsv4-0731-dspark-loader, tonyd615): the DSpark draft loader weight-mapping fix
+> (shared_experts.w1/w3 → gate_up_proj) restores acceptance from 25.7% to 60.2% and
+> throughput from 32.7 to 55.4 tok/s (+69%) on 2× Spark TP=2 k=5 NVFP4 KV 1M context.
+> This is the highest reported DSV4-Flash-0731 throughput on 2× Spark. A second user
+> (srivatsa1) hit a different draft-quant-config-inheritance bug (vLLM PR #49133) that
+> collapsed acceptance to 1.5-4.5% (12 tok/s) — fixed by stripping target-only ModelOpt
+> keys from the draft's quantization_config. Both are vLLM config-plumbing bugs, not
+> GB10 hardware issues, but they bite every Spark user running DSV4-Flash-DSpark.
+>
+> **[conjecture]** **Macaron-V1-Tall at 25-27 tok/s bf16** (S-forum-macaron-v1-tall,
+> TheAwakenOne): ~half the speed of NVFP4 Qwen3.6-35B-A3B because it runs bf16 (no quant).
+> MTP nst=3 adds only +2% throughput despite 71.5% acceptance — consistent with the
+> proven finding that MTP on this model family can be marginal. Tool-eval: the Macaron
+> routing system scores *lower* (82/100) than the bare Qwen base (90/100) because
+> routing sends most requests to L0 general chat instead of the tool specialist.

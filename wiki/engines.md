@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench
-> **updated:** 2026-08-04
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader
+> **updated:** 2026-08-05
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -556,3 +556,49 @@ Three engines run on the Spark pair; pick by arch support and quant.
   C16/C32 aggregate but lower per-stream. TP2PP2 (pipeline parallel) saturates at C16 ~83.
   Single source → [conjecture]. These numbers are consistent with the known bandwidth-bound
   decode ceiling and the TP=4 concurrency advantage on Spark.
+
+### Batch 54 forum ingest (2026-08-05) — DSV4-Flash-0731 DSpark loader bugs
+
+- **[conjecture]** **DSpark draft loader drops 12 shared-expert tensors silently —
+  shared_experts.w1/w3 never mapped to gate_up_proj** (S-forum-dsv4-0731-dspark-loader,
+  tonyd615): the vLLM DSpark draft loader renames `shared_experts.w2 → down_proj` but
+  never maps `w1` / `w3 → gate_up_proj`. They match nothing →
+  `logger.debug("Skipping unknown DSpark weight")` → invisible at INFO level. 12 tensors
+  (the always-on shared expert, in all 3 draft stages) are lost — uninitialized. The
+  target model's own loader has the two missing rows; they were dropped when the mapping
+  was narrowed to dodge a `markov_w1` name collision. **Fix:**
+  ```python
+  ("shared_experts.gate_up_proj", ".shared_experts.w1", 0),
+  ("shared_experts.gate_up_proj", ".shared_experts.w3", 1),
+  ```
+  Result: **32.7 → 55.4 tok/s mean (+69%), 66.1 peak**; acceptance 25.7% → 60.2%;
+  per-position 0.63/0.28/0.18/0.11/0.07 → 0.83/0.73/0.57/0.47/0.40. Config: 2× Spark,
+  TP=2, k=5, NVFP4 KV, 1M context. Single source → [conjecture]. This is a GB10-relevant
+  finding because the DSpark spec-decode path is the primary high-throughput recipe for
+  DSV4-Flash on 2× Spark — a silent draft-loader bug that halves throughput is a major
+  operational trap.
+
+- **[conjecture]** **SSE streaming under spec-decode measures steps/s, not tok/s**
+  (S-forum-dsv4-0731-dspark-loader, tonyd615): under speculative decoding, vLLM emits at
+  most one SSE chunk per decode step, carrying every token accepted that step. Counting
+  stream deltas measures steps/s, not tok/s — the same request reads 14.7 (streaming)
+  vs 60.1 (non-streaming) tok/s. **Benchmark with `stream: false`.** This is a general
+  spec-decode measurement trap, not GB10-specific, but it bites every Spark user
+  benchmarking DSpark/DSV4-Flash. Single source → [conjecture].
+
+- **[conjecture]** **DSpark draft quantization-config inheritance collapses acceptance
+  to ~1%** (S-forum-dsv4-0731-dspark-loader, srivatsa1): the DeepSeek-V4-Flash-0731-NVFP4
+  checkpoint is a hybrid — target trunk uses ModelOpt NVFP4 experts (requiring
+  `flashinfer_b12x` + `ModelOptNvFp4FusedMoE`), while MTP/DSpark draft stages use native
+  FP8/MXFP4 experts (int8 weights + UE8M0 scales, requiring `Mxfp4MoEMethod`). vLLM PR
+  [#49133](https://github.com/vllm-project/vllm/pull/49133) addresses this: the DSpark
+  model-type rewrite can leave the draft `model_config.quantization` stuck at plain
+  `"fp8"`, and the draft VllmConfig inherits the target's `quant_config`. The draft MoE
+  is then built with `ModelOptNvFp4FusedMoE` even though the draft weights are not in
+  ModelOpt format → `w1_weight_scale_2 must match w3_weight_scale_2` warnings, draft
+  acceptance collapses to ~1.0–1.15 tokens/step, throughput capped at 14–18 tok/s.
+  **Fix:** strip target-only ModelOpt keys (`moe_quant_algo`, `quantized_layers`, `ignore`,
+  `modules_to_not_convert`) from the deep-copied draft `quantization_config` before the
+  draft `quant_config` is derived; rewrite draft quantization from `"fp8"` to
+  `"deepseek_v4_fp8"`. Single source → [conjecture]. This is a vLLM config-plumbing bug
+  that bites on any mixed-quant DSpark checkpoint on Spark (and elsewhere).

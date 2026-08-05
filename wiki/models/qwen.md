@@ -3,7 +3,7 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x, S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train, S-forum-moe-lora-vllm, S-forum-qlora-coding
+> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x, S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train, S-forum-moe-lora-vllm, S-forum-qlora-coding, S-forum-macaron-v1-tall, S-forum-qwen36-tp2-stall
 > **updated:** 2026-08-05
 
 The best-supported family on GB10 — both Atlas (AOT kernels for the MoE variants) and vLLM serve it.
@@ -474,3 +474,71 @@ controlled comparison (nvidia+b12x vs Unsloth+b12x) is needed to isolate the var
   full_attention_interval 4, MTP 1 layer, vision encoder 27 layers/1152 hidden.
   "Qwen3.6-397B" (proposed upcycle) would require matching the 397B's expert count with
   the 3.6 architecture — feasibility is constrained by the interconnect, not memory.
+
+## Forum ingest: Macaron-V1-Tall — Qwen3.6-35B-A3B base + LoRA specialists (2026-08-05)
+
+> **evidence:** conjecture (single forum thread, multiple users in same thread)
+> **sources:** S-forum-macaron-v1-tall
+
+A forum thread (378436) on `mindlab-research/Macaron-V1-Tall` — a 50B-parameter model
+composed of a 35B Qwen3.6-35B-A3B base and four 3.7B Rank-64 LoRA specialists (L0
+general/chat, L1 personal-agent/tool, L2 coding, L3 UI/A2UI). Designed to fit a single
+GB10 box at bf16 (~110 GB).
+
+- **[conjecture]** **Macaron-V1-Tall on single Spark: 25-27 tok/s bf16, fp8 KV**
+  (S-forum-macaron-v1-tall, TheAwakenOne): working spark-vllm-docker `vllm-node` recipe,
+  TP=1, `--gpu-memory-utilization 0.7 --max-model-len 229376 --max-num-batched-tokens
+  16384 --max-num-seqs 128 --kv-cache-dtype fp8 --enable-prefix-caching
+  --tool-call-parser qwen3_coder --reasoning-parser qwen3`. Single source → [conjecture].
+  Speed is ~half of Qwen3.6-35B-A3B-NVFP4 (which is ~50-90+ tok/s depending on quant /
+  MTP), because Macaron runs bf16 (no NVFP4 quant). No lower-bit quants exist yet.
+
+- **[conjecture]** **MTP nst=3 on Macaron: 71.5% acceptance but only +2% throughput**
+  (S-forum-macaron-v1-tall, TheAwakenOne): adding `--speculative-config
+  '{"method":"mtp","num_speculative_tokens":3}'` gives 71.5% draft acceptance (pos0
+  84.7%, pos1 70.6%, pos2 59.2%), but actual throughput improvement is only +2% (41.93
+  → 42.79 tok/s avg). The main benefit is reduced latency variance (std dev 5.67 → 4.30,
+  -24%). The implied speedup from acceptance (~3.1×) is much higher than actual —
+  because prefill cost is unchanged, MTP overhead adds forward passes, and acceptance
+  <100% means many tokens still need full decode. Single source → [conjecture]. This
+  corroborates the existing finding that MTP on Qwen3.6-35B-A3B can be a net negative
+  or marginal depending on the quant and draft acceptance (see the proven MTP sweep
+  above where NVFP4 with poor acceptance was strictly worse).
+
+- **[conjecture]** **Macaron tool-eval: base Qwen 90/100, full Macaron router 82/100**
+  (S-forum-macaron-v1-tall, jetspark): the Macaron routing system (L0 → specialist →
+  answer → hidden summary) scores *lower* than the bare Qwen base on tool-eval-bench
+  because most requests are routed to L0 (general chat, 91/105 routing decisions) rather
+  than the tool specialist L1 (7/105). Direct base Qwen without LoRA = 90/100; full
+  Macaron proxy = 82/100. The LoRA specialists add overhead without improving
+  tool-calling. Single source → [conjecture]. Also: the `mods/fix-qwen3.6-chat-template`
+  mod and `--chat-template fixed_chat_template.jinja` improve output quality (emX0r,
+  jomark). Running all LoRA specialists simultaneously causes OOM on a single Spark
+  (emX0r).
+
+- **[conjecture]** **bf16 Macaron at ~110 GB leaves no room for lower quants or
+  co-hosting** (S-forum-macaron-v1-tall, 0rand): at bf16 the model consumes ~110 GB of
+  the 121 GB pool. 8-bit (FP8) Qwen3.6-35B-A3B gives 93/100 on tool-eval hardmode —
+  "difference to bf16 is expected to be minimal if noticeable at all, but 4 bit is
+  significant downgrade from 8 bits." No FP8 or NVFP4 Macaron checkpoint exists yet.
+  Single source → [conjecture].
+
+## Forum ingest: Qwen3.6-35B-A3B TP=2 Ray decode stall (2026-08-05)
+
+> **evidence:** conjecture (single forum post, no replies)
+> **sources:** S-forum-qwen36-tp2-stall
+
+- **[conjecture]** **Qwen3.6-35B-A3B bf16 on 2× Spark TP=2 Ray: decode collapses to
+  0.1-0.2 tok/s under concurrent requests** (S-forum-qwen36-tp2-stall, ammarabbaxi13):
+  serving `Qwen/Qwen3.6-35B-A3B` (bf16, not NVFP4) on 2× Spark with TP=2, Ray executor,
+  `--gpu-memory-utilization 0.85 --max-num-seqs 8 --max-num-batched-tokens 16384
+  --attention-backend flashinfer --enable-prefix-caching --tool-call-parser qwen3_xml
+  --reasoning-parser qwen3 --distributed-executor-backend ray`. Both GPUs consume 105 GB
+  each. vLLM logs show generation throughput dropping to 0.1-0.2 tok/s with KV cache
+  usage <12% — the model is alive but producing almost no tokens. The initial burst hits
+  32.4 tok/s, then collapses. Single post, no replies → [conjecture]. This may be a
+  Ray + cross-node scheduling issue, a UMA memory pressure stall (cf. S-forum-uvm-livelock),
+  or a bf16 MoE load issue on 2× Spark. The bf16 (non-quantized) checkpoint at 105 GB/node
+  leaves only ~16 GB for KV cache + workspace — a very tight margin on 121 GB UMA.
+  Flagged for hardware-agent verification: does bf16 Qwen3.6-35B-A3B on 2× Spark TP=2
+  Ray reliably stall under concurrency, and does NVFP4 avoid it?

@@ -38,6 +38,19 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-05 (Batch 54)
+- 6 new NVIDIA DGX Spark forum topics found (4 technically relevant, 2 skipped: Tailscale
+  regression, IsaacLab robotics question).
+- 4 new sources registered (Batch 54). 6 topic IDs added to processed_topics.txt (total now 537).
+- Pages touched: engines (DSV4-Flash-0731-DSpark draft loader weight-mapping bug —
+  shared_experts.w1/w3 → gate_up_proj missing, 12 tensors silently dropped, fix +69% tok/s;
+  SSE streaming measures steps/s not tok/s; draft quant-config inheritance bug vLLM PR #49133),
+  models/qwen (Macaron-V1-Tall 50B Qwen+LoRA on single Spark 25-27 tok/s bf16, MTP +2%
+  throughput despite 71.5% acceptance, tool-eval router <base; Qwen3.6-35B-A3B bf16 TP=2
+  Ray decode stall to 0.1 tok/s), benchmarks (3 new [conjecture] rows), containers-and-tooling
+  (--no-bf16-vae flag for LTX-2.3 audio VAE on spark-comfyui).
+- All [conjecture] — single-source forum. No evidence promotions.
+
 ## Forum ingest 2026-07-08
 - 184 total NVIDIA DGX Spark forum threads processed (20 high-priority + 164 remaining from main + projects forums).
 - See `sources/README.md` → Forum sources (Batch 1 + Batch 2) for all registered sources.
