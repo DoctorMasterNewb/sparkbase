@@ -3,7 +3,7 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu
 > **updated:** 2026-08-06
 
 The hardware facts every model bring-up assumes. Read this first.
@@ -1312,3 +1312,50 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   after software unbind), and now S-forum-cx7-idle-temp (10°C higher, 17 W/node quantified).
   Three independent forum threads agree → **promoted to [reported]**. The ~17 W figure is
   consistent with the ~100 W "rest" budget allocation noted above (CX-7 + SSD + USB).
+
+### Batch 56 forum ingest (2026-08-06)
+
+- **[conjecture]** **Non-DGX OS possible on Spark — ACPI (not DT), NVIDIA-maintained kernels
+  needed** (S-forum-nondgx-os, NVES + hiroshiya + elsaco): NVIDIA staff confirms DGX OS is
+  the officially supported, optimized, and validated environment; users may install other
+  OS but support will be limited and NVIDIA may ask for a reimage to factory for hardware
+  triage. Key technical findings for running alternative distros:
+  - **ACPI, not Device Tree**: the DGX Spark uses ACPI, so any newer Linux distro will
+    work (unlike Jetson-style DT-based systems). This is a structural platform fact.
+  - **NVIDIA-maintained kernels needed**: you must compile kernels yourself or rely on
+    community builds (e.g. `graham33/nixos-dgx-spark` for NixOS). Distro package maintainers
+    are unlikely to provide compatible kernels.
+  - **Fedora 44 confirmed working** on GX10 (hiroshiya): kernel `7.0.12-nv-1016.16`,
+    driver 595.84, CUDA 13.2, 121.63 GB RAM, btrfs. `nvidia-smi` reports GB10 at 43°C,
+    3W idle, CUDA 13.2.
+  - **Toolchain caution**: some distros ship newer toolchains that may make the CUDA stack
+    unhappy — most distros provide older toolchains for compatibility.
+  - **Software limitations**: NVIDIA Workbench and Field Diagnostics suite are built
+    specifically for Ubuntu 24.04; they won't run on other distros. elsaco: "if you enjoy
+    tinkering, any distro will do; if you look for stability and convenience, DGX OS is best."
+  - **Red Hat semi-official support**: a community guide for building a custom RHEL kernel
+    for DGX Spark exists (referenced in the thread).
+  Single source for most details (NVIDIA staff + 2 community users) → [conjecture]. The
+  ACPI-not-DT fact is a durable platform finding. Relevant to users who need a specific
+  distro for compliance/infrastructure reasons but want to use Spark hardware.
+
+- **[conjecture]** **vLLM x86_64 Docker images trigger QEMU emulation on Grace CPU → 3.7 tok/s**
+  (S-forum-vllm-qemu, rithinsundar87): standard Docker Hub `vllm/vllm-openai` images default
+  to **x86_64**, which triggers QEMU emulation on the Grace (ARM64) CPU. This "starves the
+  GPU" due to translation overhead — Qwen2.5-Coder-32B-Instruct via vLLM measured only
+  **3.7 tok/s** (vs expected 20-40+ on native ARM64). Three issues identified:
+  1. **Instruction set mismatch**: x86_64 image → QEMU → massive CPU overhead before GPU
+     even sees the workload.
+  2. **CUDA 13 library pathing**: on `nvcr.io/nvidia/pytorch:25.01-py3` base, `pip install
+     vllm` leads to `ImportError: libcudart.so.13 not found` — the runtime is installed in
+     a nested Python directory, not in `/usr/lib` or `/usr/local/cuda/lib64`.
+  3. **pip overwrites NVIDIA-optimized PyTorch**: bare `pip install vllm` uninstalls the
+     NVIDIA-optimized `+nv` PyTorch wheel, replacing it with a generic build lacking
+     Blackwell (SM 10.0) math kernels. The poster incorrectly refers to sm_121 as "SM 10.0."
+  Single post, no replies → [conjecture]. **Why it bites on Spark:** this is the most
+  common trap for new Spark users — pulling the default vLLM Docker image gives QEMU
+  emulation, not native execution. The fix is to use ARM64-native images (e.g.
+  `spark-vllm-docker`, NGC ARM64 tags, or community-built ARM64 images). Corroborates the
+  existing `[conjecture]` stock vLLM hang finding (S-forum-vllm-stock-hang) — both are
+  "wrong image on ARM64" failure modes. The 3.7 tok/s figure is a useful baseline for
+  "how slow QEMU emulation is" vs native ARM64.

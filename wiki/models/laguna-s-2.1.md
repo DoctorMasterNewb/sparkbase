@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** retired
 > **evidence:** proven
-> **sources:** S-laguna-v251-bench, S-forum-laguna-dflash, S-forum-laguna-quality, S-forum-laguna-king, S-forum-laguna-yaml
-> **updated:** 2026-08-03
+> **sources:** S-laguna-v251-bench, S-forum-laguna-dflash, S-forum-laguna-quality, S-forum-laguna-king, S-forum-laguna-yaml, S-forum-laguna-modelopt
+> **updated:** 2026-08-06
 
 Laguna-S-2.1 — 117.6B MoE, 8.5B active, 256 experts (top-10 + 1 shared), 48 layers (36 SWA +
 12 global), `sliding_window=512`, 256K context. NVFP4 W4A4 ~67 GB. Custom architecture
@@ -166,3 +166,14 @@ Key findings:
     cache sizing as an alternative to `gpu_memory_utilization` on GB10. Single source → [conjecture].
   - Model is **retired** (see proven retirement above); this recipe is recorded for the DFlash
     acceptance curve and config patterns, not as a recommendation to deploy.
+
+## Forum ingest: ModelOpt NVFP4 W4A4 variant (2026-08-06)
+
+- **[conjecture]** **Laguna-S-2.1-ModelOpt-NVFP4-W4A4 — 28 tok/s, 88/100 tool calls**
+  (S-forum-laguna-modelopt, JW2026): a new ModelOpt W4A4 quant variant
+  (`JasonW2025/Laguna-S-2.1-ModelOpt-NVFP4-W4A4-vllm` on HuggingFace). Reports 28 tok/s
+  decode and 88/100 agent tool calls on single Spark. The 28 tok/s figure is consistent
+  with the existing Laguna-S-2.1 range (19-50 tok/s depending on quant/config — see
+  benchmark table above). Model is **retired** — this data point is recorded for
+  completeness and to note the existence of a ModelOpt W4A4 quant variant alongside the
+  original NVFP4 and INT4 releases. Single source → [conjecture].

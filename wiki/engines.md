@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader
-> **updated:** 2026-08-05
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda
+> **updated:** 2026-08-06
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -601,4 +601,30 @@ Three engines run on the Spark pair; pick by arch support and quant.
   `modules_to_not_convert`) from the deep-copied draft `quantization_config` before the
   draft `quant_config` is derived; rewrite draft quantization from `"fp8"` to
   `"deepseek_v4_fp8"`. Single source → [conjecture]. This is a vLLM config-plumbing bug
-  that bites on any mixed-quant DSpark checkpoint on Spark (and elsewhere).
+ that bites on any mixed-quant DSpark checkpoint on Spark (and elsewhere).
+
+ ## Forum ingest: DSV4-Flash-0731 on ds4 CUDA engine — single Spark 40 tok/s (2026-08-06)
+
+ - **[conjecture]** **DSV4-Flash-0731 on ds4 CUDA engine (Entrpi/ds4 fork v0.5.4) — single
+ Spark 40 tok/s decode, 131K context, IQ2XXS quant** (S-forum-dsv4-0731-ds4-cuda, styles01):
+ a sparkrun-recipes runbook for serving DeepSeek-V4-Flash-0731 on a single DGX Spark via
+ the ds4 custom CUDA engine (Bleys Goodson / antirez). This is a **native C/CUDA binary**
+ (no Python/PyTorch), the same engine family as the original ds4/DwarfStar 4 (S-forum-ds4-cuda),
+ now at fork v0.5.4. Key config:
+ - **Quant:** IQ2XXS (2-bit) weights + Q2K KV + Q8 attention projection + Q8 shared experts
+ - **Spec decode:** DSpark MTP k=2 (lossless speculative decoding)
+ - **Context:** 131,072 tokens (configurable up to 1M)
+ - **Decode:** ~40 tok/s single-stream
+ - Env: `DS4_BATCH_FIT_HEADROOM_MB=8192`, `DS4_SERVER_COALESCE_MAX=32`,
+   `DS4_CONT_DSPARK=1`, `DS4_CONT_MTP_MODE=2`, `DS4_METAL_GRAPH_RAW_CAP=131072`
+ - **[conjecture]** coder543 (same thread) reports 1M context fits in ~107 GB with
+   `DS4_CUDA_NO_HBM_CACHE=1`, `DS4_BATCH_FIT_HEADROOM_MB=6272`,
+   `DS4_BATCH_VMM_BUDGET_MB=6144`, `DS4_SERVER_COALESCE_MAX=8`,
+   `DS4_CONT_PREFILL_CHUNK=2048`, `DS4_CONT_CAPTURE=1`, `--kv-disk-dir` for KV cache
+   offload (32 GB disk space). Command: `./ds4-server --cuda -m <model.gguf>
+   --dspark <drafter.gguf> -c 1048576 --kv-disk-dir <path> --kv-disk-space-mb 32768`.
+ This corroborates the existing ds4 engine finding (S-forum-ds4-cuda, ~28 tok/s Q2 on
+ single Spark) — the v0.5.4 fork with DSpark k=2 and IQ2XXS quant achieves 40 tok/s, a
+ ~43% improvement over the original Q2 baseline. The 1M-context single-Spark recipe is
+ notable — DSV4-Flash at 1M context on a single 121 GB node is at the edge of feasibility
+ with 2-bit quant + KV disk offload. Single source (one thread, 2 users) → [conjecture].

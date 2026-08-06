@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3, S-forum-mikrotik-cr804-042, S-forum-nfs-modelshare, S-forum-cx7-pcie-power, S-forum-4node-qrs812
-> **updated:** 2026-08-03
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3, S-forum-mikrotik-cr804-042, S-forum-nfs-modelshare, S-forum-cx7-pcie-power, S-forum-4node-qrs812, S-forum-crs812-4node
+> **updated:** 2026-08-06
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -854,3 +854,30 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
     NVFP4 DS-MLA KV on a 4-node cluster — all prior DSV4-Flash recipes used FP8 KV. The 90 tok/s
     decode at 512K ctx on 4 nodes is a new data point for the bandwidth-bound decode ceiling.
     Single source → [conjecture].
+
+### Batch 56 forum ingest (2026-08-06)
+
+- **[conjecture]** **MikroTik CRS812 DDQ for 4-node Spark cluster — practical setup guide**
+  (S-forum-crs812-4node, bhehe + urbanspr1nter): a 4-node DGX Spark cluster using the
+  **MikroTik CRS812** switch (CRS812-8DS-2DQ-2DDQ). Key practical findings:
+  - **Disable auto-negotiation for 200G DAC**: if using 200G DAC breakout cables, disable
+    auto-negotiation on the switch ports and explicitly set speed to 200G. The rest is
+    standard practice — ensure all nodes can reach each other via SSH without password.
+  - **Static RoCE IPs in netplan**: set static IPs for the RoCE interfaces in netplan.
+    Dynamic IP allocation is tempting but if IPs change after a reboot, NCCL will not be
+    friendly when launching vLLM.
+  - **MTU 9000 on switch + netplan**: set MTU 9000 on the switch ports AND in netplan on
+    each Spark. This is the same MTU 9000 guidance documented in the proven fabric setup
+    above.
+  - **eugr's docker image for vLLM**: urbanspr1nter recommends using eugr's
+    spark-vllm-docker image to get vLLM working on the cluster.
+  - **AI-generated RouterOS commands are unreliable**: the OP tried using AI (Qwen model)
+    to generate RouterOS CLI commands for the CRS812 — the commands looked legitimate but
+    failed on execution. RouterOS syntax is not well-known to AI models. Use the WinBox GUI
+    for initial configuration instead.
+  - **Breakout mode**: `breakout-mode=2x200G` on `qsfp56-dd-1` and `qsfp56-dd-2` ports
+    enables 4× 200G breakout lanes per port module.
+  This corroborates the existing S-forum-mikrotik finding (CRS812 for 4× Spark) and
+  S-forum-6x-cluster (CRS812 for 6× Spark) with practical setup details. The static-IP
+  and MTU-9000 guidance is consistent with the proven fabric setup on this page. Single
+  source (2 users in one thread) → [conjecture].

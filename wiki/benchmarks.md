@@ -3,7 +3,7 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-laguna-yaml, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-laguna-yaml, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt
 > **updated:** 2026-08-06
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
@@ -817,3 +817,31 @@ S-forum-macaron-v1-tall.
 > duration. easycache (native ComfyUI) + KJNodes SageAttention nodes used for speedup.
 > Consistent with the broader ComfyUI-on-GB10 pattern (compute-bound video diffusion, UMA
 > memory management). See `[[wiki/containers-and-tooling.md]]` → Batch 55.
+
+## Batch 56 forum ingest (2026-08-06)
+
+**[conjecture]** — all single-source forum benchmarks. S-forum-dsv4-0731-ds4-cuda,
+S-forum-laguna-modelopt, S-forum-vllm-qemu.
+
+|| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+||---|---|---|---|---|---|---|---||
+|| DeepSeek-V4-Flash-0731 | IQ2XXS + Q2K KV + Q8 attn/shared | ds4 CUDA (Entrpi/ds4 fork v0.5.4) + DSpark k=2 | 1 | ~40 | 131K | native C/CUDA binary; DSpark MTP k=2; 1M ctx fits ~107GB with kv-disk-dir offload (coder543) | S-forum-dsv4-0731-ds4-cuda ||
+|| Laguna-S-2.1 | ModelOpt NVFP4 W4A4 | vLLM | 1 | 28 | — | 88/100 agent tool calls; JasonW2025/Laguna-S-2.1-ModelOpt-NVFP4-W4A4-vllm; model is retired (see models/laguna-s-2.1.md) | S-forum-laguna-modelopt ||
+|| Qwen2.5-Coder-32B-Instruct | (via x86_64 Docker → QEMU) | vLLM (x86_64 image) | 1 | 3.7 | — | QEMU emulation trap — x86_64 Docker image on Grace ARM64 CPU; baseline for "how slow QEMU is" vs native ARM64 | S-forum-vllm-qemu ||
+
+> **[conjecture]** **DSV4-Flash-0731 on ds4 CUDA engine — 40 tok/s single Spark** (S-forum-dsv4-0731-ds4-cuda,
+> styles01): the ds4 custom CUDA engine (Entrpi/ds4 fork v0.5.4) achieves 40 tok/s on a single
+> Spark with IQ2XXS quant + DSpark MTP k=2 at 131K context — a ~43% improvement over the original
+> ds4 Q2 baseline (~28 tok/s, S-forum-ds4-cuda). coder543 reports 1M context fits in ~107 GB with
+> `DS4_CUDA_NO_HBM_CACHE=1` + `--kv-disk-dir` for KV cache offload. See `[[wiki/engines.md]]` →
+> Batch 56 for the full recipe and env vars.
+>
+> **[conjecture]** **Laguna-S-2.1 ModelOpt NVFP4 W4A4 — 28 tok/s, 88/100 tool calls** (S-forum-laguna-modelopt,
+> JW2026): a new ModelOpt W4A4 quant variant of the retired Laguna-S-2.1 model. The 28 tok/s figure
+> is consistent with the existing Laguna-S-2.1 range (19-50 tok/s depending on quant/config, see
+> models/laguna-s-2.1.md). The model is retired — this data point is recorded for completeness only.
+>
+> **[conjecture]** **QEMU emulation baseline: 3.7 tok/s** (S-forum-vllm-qemu, rithinsundar87):
+> Qwen2.5-Coder-32B-Instruct via x86_64 vLLM Docker image on Grace CPU = 3.7 tok/s. This is the
+> "wrong architecture" baseline — native ARM64 images should be 5-10×+ faster. See
+> `[[wiki/platform-gb10.md]]` → Batch 56 for the full QEMU emulation trap finding.

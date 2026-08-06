@@ -38,6 +38,23 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-06 (Batch 56)
+- 5 new NVIDIA DGX Spark forum topics found, all technically relevant.
+- 5 new sources registered (Batch 56). 5 topic IDs added to processed_topics.txt (total now 544).
+- Pages touched: engines (DSV4-Flash-0731 on ds4 CUDA engine v0.5.4 — single Spark 40 tok/s
+  IQ2XXS + DSpark MTP k=2, 131K ctx; 1M ctx fits ~107GB with kv-disk-dir offload; full env
+  vars documented — [conjecture]), platform-gb10 (non-DGX OS on Spark — ACPI not DT, Fedora 44
+  confirmed on GX10, NVIDIA-maintained kernels needed, Workbench/Field Diagnostics Ubuntu-only
+  — [conjecture]; vLLM x86_64 Docker → QEMU emulation on Grace CPU → 3.7 tok/s, CUDA 13
+  library pathing, pip overwrites +nv PyTorch — [conjecture]), multinode-tp-and-networking
+  (MikroTik CRS812 DDQ 4-node practical setup — disable auto-neg for 200G DAC, static RoCE
+  IPs, MTU 9000, AI-generated RouterOS commands unreliable — [conjecture]), benchmarks (3 new
+  [conjecture] rows: DSV4-Flash-0731 ds4 CUDA 40 tok/s, Laguna-S-2.1 ModelOpt W4A4 28 tok/s,
+  Qwen2.5-Coder-32B QEMU emulation 3.7 tok/s baseline), models/laguna-s-2.1 (ModelOpt NVFP4
+  W4A4 variant — 28 tok/s, 88/100 tool calls; model retired, recorded for completeness —
+  [conjecture]).
+- All [conjecture] — single-source forum. No evidence promotions.
+
 ## Forum ingest 2026-08-06 (Batch 55)
 - 2 new NVIDIA DGX Spark forum topics found, both technically relevant.
 - 2 new sources registered (Batch 55). 2 topic IDs added to processed_topics.txt (total now 539).

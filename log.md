@@ -2010,3 +2010,55 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
 - **Evidence promotion:** CX-7 active thermal/power penalty [conjecture] → [reported]
   (3 independent forum threads agree: S-forum-cx7-hotplug, S-forum-cx7-dac-power,
   S-forum-cx7-idle-temp). All other new findings [conjecture] (single-source forum).
+
+## 2026-08-06 — Forum ingest: Batch 56 — 5 new topics (all processed)
+
+- **Sources:** 5 new forum topics found by fetch_new_topics.py. All 5 were technically
+  relevant (no social/buying/RMA to skip). 5 new sources registered as `S-forum-*` in
+  `sources/README.md` (Batch 56 section). 5 topic IDs added to `sources/processed_topics.txt`
+  (total now 544).
+- **Topics found:**
+  - 379085 (non-DGX OS on Spark) — NVIDIA confirms DGX OS officially supported, other OS
+    possible but limited support; ACPI (not DT) means newer Linux distros work; Fedora 44
+    confirmed on GX10 (kernel 7.0.12-nv, driver 595.84, CUDA 13.2); NixOS image available;
+    NVIDIA-maintained kernels needed; Workbench/Field Diagnostics Ubuntu 24.04 only.
+  - 379192 (DSV4-Flash-0731 on ds4 CUDA engine) — single Spark 40 tok/s, IQ2XXS quant,
+    DSpark MTP k=2, 131K ctx; coder543: 1M ctx fits ~107GB with kv-disk-dir offload;
+    full env vars documented (DS4_BATCH_FIT_HEADROOM_MB, DS4_CONT_DSPARK, etc.).
+  - 378773 (vLLM QEMU emulation trap) — x86_64 Docker Hub vllm-openai images trigger
+    QEMU on Grace CPU → 3.7 tok/s; CUDA 13 libcudart.so.13 not found; pip install vllm
+    overwrites NVIDIA-optimized +nv PyTorch with generic build.
+  - 378431 (MikroTik CRS812 DDQ 4-node) — disable auto-neg for 200G DAC, static RoCE
+    IPs in netplan, MTU 9000 on switch + netplan, eugr docker image for vLLM; AI-generated
+    RouterOS commands unreliable.
+  - 378501 (Laguna-S-2.1 ModelOpt NVFP4 W4A4) — 28 tok/s, 88/100 agent tool calls; new
+    ModelOpt W4A4 quant variant; model is retired, recorded for completeness.
+- **Pages touched:**
+  - engines (DSV4-Flash-0731 on ds4 CUDA engine v0.5.4 — single Spark 40 tok/s, IQ2XXS +
+    DSpark MTP k=2, 131K ctx; 1M ctx fits ~107GB with kv-disk-dir offload; full env vars
+    — [conjecture]; corroborates existing ds4/DwarfStar 4 finding, ~43% improvement over
+    original Q2 baseline),
+  - platform-gb10 (non-DGX OS on Spark — ACPI not DT, Fedora 44 confirmed, NVIDIA-maintained
+    kernels needed, Workbench/Field Diagnostics Ubuntu-only — [conjecture]; vLLM x86_64
+    Docker → QEMU emulation on Grace CPU → 3.7 tok/s, CUDA 13 library pathing, pip
+    overwrites +nv PyTorch — [conjecture]; corroborates existing stock vLLM hang finding),
+  - multinode-tp-and-networking (MikroTik CRS812 DDQ 4-node practical setup — disable
+    auto-neg for 200G DAC, static RoCE IPs, MTU 9000, AI-generated RouterOS commands
+    unreliable — [conjecture]; corroborates existing S-forum-mikrotik and S-forum-6x-cluster),
+  - benchmarks (3 new [conjecture] rows: DSV4-Flash-0731 ds4 CUDA 40 tok/s, Laguna-S-2.1
+    ModelOpt W4A4 28 tok/s, Qwen2.5-Coder-32B QEMU emulation 3.7 tok/s baseline),
+  - models/laguna-s-2.1 (ModelOpt NVFP4 W4A4 variant — 28 tok/s, 88/100 tool calls; model
+    retired, recorded for completeness — [conjecture]),
+  - sources/README, index, log.
+- **Key findings:**
+  1. DSV4-Flash-0731 on the ds4 custom CUDA engine achieves 40 tok/s on a single Spark
+     with IQ2XXS quant + DSpark MTP k=2 — a ~43% improvement over the original ds4 Q2
+     baseline (~28 tok/s). The 1M-context single-Spark recipe (with kv-disk-dir offload)
+     is at the edge of feasibility on 121 GB unified memory.
+  2. The DGX Spark uses ACPI (not Device Tree), meaning any newer Linux distro can work
+     — but NVIDIA-maintained kernels are required, and NVIDIA software (Workbench, Field
+     Diagnostics) is built for Ubuntu 24.04 only. Fedora 44 confirmed working on GX10.
+  3. The most common trap for new Spark users: pulling the default x86_64 vLLM Docker image
+     triggers QEMU emulation on the Grace ARM64 CPU, yielding only 3.7 tok/s. The fix is
+     to use ARM64-native images (spark-vllm-docker, NGC ARM64, or community builds).
+- All [conjecture] — single-source forum. No evidence promotions.
