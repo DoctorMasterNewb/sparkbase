@@ -1979,3 +1979,34 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   (--no-bf16-vae flag for LTX-2.3 audio VAE on spark-comfyui [conjecture]), sources/README,
   log, index.
 - No evidence promotions past [reported]. All new findings [conjecture] (single-source forum).
+
+## 2026-08-06 — Forum ingest: Batch 55 — 2 new topics (2 processed)
+
+- **Sources:** 2 new forum topics found by fetch_new_topics.py. Both technically relevant.
+  2 new sources registered (Batch 55) in `sources/README.md`. 2 topic IDs added to
+  `sources/processed_topics.txt` (total now 539).
+- **Topics found:**
+  - 379139 (MiniMax-H3 video generation on DGX Spark, 6 min for 5s 480p) — **processed**:
+    ComfyUI video generation timings on single Spark. S-forum-minimax-h3-comfyui.
+  - 379157 (Idle temperature ~10°C higher with ConnectX connection) — **processed**:
+    CX-7 active thermal penalty, 3rd independent corroboration. S-forum-cx7-idle-temp.
+- **Headline finding 1:** MiniMax-H3 video diffusion on single Spark via ComfyUI — first
+  reported MiniMax-H3 data points on GB10. t2v 143s, i2v 174s, r2v 215s for 5s/0.2M video;
+  ~235s at 768² with easycache + SageAttention KJ nodes; 432s for 10s video. Models from
+  Comfy-Org/MiniMax-H3. Outside core LLM-inference scope but ComfyUI-on-GB10 context is
+  relevant. [conjecture] — single thread, multiple users reporting similar magnitudes.
+- **Headline finding 2:** CX-7 connection raises idle temperature ~10°C (42→52°C) with
+  no load, fresh from boot — CX-7 chip powered off when disconnected, adds ~17 W/node
+  when active. This is the **3rd independent source** corroborating the CX-7 thermal/power
+  penalty (S-forum-cx7-hotplug, S-forum-cx7-dac-power, S-forum-cx7-idle-temp) →
+  **promoted to [reported]**. The ~17 W/node figure is consistent with the ~100 W "rest"
+  budget (CX-7 + SSD + USB). This is an evidence promotion from [conjecture] to [reported]
+  for the CX-7 active thermal penalty.
+- **Pages touched:** platform-gb10 (CX-7 idle temp → [reported], Batch 30 CX7 DAC entry
+  updated with promotion note — sources, updated, Batch 55 section), containers-and-tooling
+  (MiniMax-H3 ComfyUI video gen [conjecture] — sources, updated, Batch 55 section), benchmarks
+  (5 new [conjecture] MiniMax-H3 video diffusion rows — sources, updated, Batch 55 section),
+  sources/README (Batch 55 — 2 new sources), processed_topics (2 new IDs), log, index.
+- **Evidence promotion:** CX-7 active thermal/power penalty [conjecture] → [reported]
+  (3 independent forum threads agree: S-forum-cx7-hotplug, S-forum-cx7-dac-power,
+  S-forum-cx7-idle-temp). All other new findings [conjecture] (single-source forum).

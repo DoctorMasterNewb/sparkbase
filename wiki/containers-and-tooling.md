@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal, S-forum-vllm-2607-xgrammar, S-forum-depfree-dashboard, S-forum-comfyui-triplany, S-forum-acestep-v15-comfyui
-> **updated:** 2026-08-05
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal, S-forum-vllm-2607-xgrammar, S-forum-depfree-dashboard, S-forum-comfyui-triplany, S-forum-acestep-v15-comfyui, S-forum-minimax-h3-comfyui
+> **updated:** 2026-08-06
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -665,3 +665,22 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   Single source → [conjecture]. Outside core LLM-inference scope (music + video
   generation, not vLLM/llama.cpp/sglang), but the `--no-bf16-vae` flag and the
   spark-comfyui stack details are GB10-specific. Source registered for provenance.
+
+### Batch 55 forum ingest (2026-08-06) — MiniMax-H3 video generation
+
+- **[conjecture]** **MiniMax-H3 video generation on DGX Spark via ComfyUI** (S-forum-minimax-h3-comfyui,
+  wxhpad + cx77 + TheAwakenOne): MiniMax-H3 runs on a single Spark via ComfyUI with models from
+  `Comfy-Org/MiniMax-H3` (HuggingFace). Three ComfyUI templates available (image-to-video,
+  text-to-video, reference-to-video). Measured timings for **5-second, 0.2M-pixel** video on a
+  single Spark:
+  - **i2v:** 174s (image-to-video, 5s/0.2M)
+  - **t2v:** 143s (text-to-video, 5s/0.2M)
+  - **r2v:** 215s (reference-to-video, 2 reference images, 5s/0.2M)
+  - **768×768** (megapixel 0.6, 1:1 aspect): ~235s for 5s video; 432s for 10s video (with easycache
+    + SageAttention KJ nodes)
+  - easycache (native to ComfyUI) + KJNodes SageAttention nodes provide speedup; setup: unpack
+    the i2v subgraph, attach easycache to model, attach KJ to basic scheduler/guider.
+  Single thread, multiple users reporting similar order-of-magnitude timings → [conjecture].
+  Outside core LLM-inference scope (video diffusion, not vLLM/llama.cpp/sglang), but the
+  ComfyUI-on-GB10 UMA management context and SageAttention/easycache flags are GB10-relevant.
+  Models sourced from `huggingface.co/Comfy-Org/MiniMax-H3`.

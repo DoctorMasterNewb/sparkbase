@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config
-> **updated:** 2026-08-04
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp
+> **updated:** 2026-08-06
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -765,9 +765,9 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   (0000:01:00.0, 0000:01:00.1, 0002:01:00.0, 0002:01:00.1). **Only physical DAC ejection** brings
   temperatures down. This means the CX7 PHY/serdes draws power whenever a cable is physically
   inserted, independent of driver state — software unbind is insufficient. Relevant for users running
-  long hot jobs who don't need 200GbE (and have 10GbE redundant paths). Single source → [conjecture].
-  Corroborates existing [conjecture] that CX7 idle power nearly doubles when a cable is connected
-  (S-forum-cx7-hotplug, mashie).
+  long hot jobs who don't need 200GbE (and have 10GbE redundant paths). **Now [reported] — see
+  Batch 55 below** (3 independent sources agree: S-forum-cx7-hotplug, S-forum-cx7-dac-power,
+  S-forum-cx7-idle-temp).
 - **[conjecture]** **dgx-spark-mlnx-hotplug package manages CX7 via udev + ACPI hotplug driver**
   (S-forum-cx7-dac-power, raphael.amorim): the `dgx-spark-mlnx-hotplug` package installs udev rules
   (`/lib/udev/rules.d/90-mtk-hotplug.rules`) and a handler script
@@ -1299,3 +1299,16 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   Note: the July 23 update also caused idle overheating ("roasting like hell in stale")
   on the same unit — see S-forum-typec-thermal for the USB-C PD firmware pending-update
   pattern.
+
+### Batch 55 forum ingest (2026-08-06)
+
+- **[reported]** **CX-7 connection raises idle temperature ~10°C (42→52°C) with no load**
+  (S-forum-cx7-idle-temp, elvisnwh + mashie): connecting two Sparks via CX-7 raises idle
+  temperature ~10°C (from 42°C to 52°C) even with nothing loaded, fresh from boot, minimal
+  traffic. mashie explains: the CX-7 chip is powered off when no cable is connected; when
+  active it adds **~17 W of heat per node**. This is now the **3rd independent source**
+  corroborating the CX-7 active thermal/power penalty: S-forum-cx7-hotplug (idle power
+  nearly doubles when cable connected), S-forum-cx7-dac-power (6°C higher with DAC even
+  after software unbind), and now S-forum-cx7-idle-temp (10°C higher, 17 W/node quantified).
+  Three independent forum threads agree → **promoted to [reported]**. The ~17 W figure is
+  consistent with the ~100 W "rest" budget allocation noted above (CX-7 + SSD + USB).

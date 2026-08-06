@@ -38,6 +38,17 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-06 (Batch 55)
+- 2 new NVIDIA DGX Spark forum topics found, both technically relevant.
+- 2 new sources registered (Batch 55). 2 topic IDs added to processed_topics.txt (total now 539).
+- Pages touched: platform-gb10 (CX-7 connection raises idle temp ~10°C, 17 W/node — 3rd
+  independent source corroborating CX-7 active thermal penalty → **[reported]** promotion:
+  S-forum-cx7-hotplug + S-forum-cx7-dac-power + S-forum-cx7-idle-temp), containers-and-tooling
+  (MiniMax-H3 video generation via ComfyUI on single Spark — i2v 174s, t2v 143s, r2v 215s for
+  5s/0.2M; ~235s at 768² with easycache+SageAttention KJ nodes; 432s for 10s — [conjecture]),
+  benchmarks (5 new [conjecture] MiniMax-H3 video diffusion rows).
+- Evidence promotion: CX-7 active thermal/power penalty [conjecture] → [reported].
+
 ## Forum ingest 2026-08-05 (Batch 54)
 - 6 new NVIDIA DGX Spark forum topics found (4 technically relevant, 2 skipped: Tailscale
   regression, IsaacLab robotics question).

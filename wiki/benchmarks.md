@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-laguna-yaml, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall
-> **updated:** 2026-08-05
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-laguna-yaml, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui
+> **updated:** 2026-08-06
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
 anchor the rules on
@@ -795,5 +795,25 @@ S-forum-macaron-v1-tall.
 > TheAwakenOne): ~half the speed of NVFP4 Qwen3.6-35B-A3B because it runs bf16 (no quant).
 > MTP nst=3 adds only +2% throughput despite 71.5% acceptance — consistent with the
 > proven finding that MTP on this model family can be marginal. Tool-eval: the Macaron
-> routing system scores *lower* (82/100) than the bare Qwen base (90/100) because
+> Tool-eval: base Qwen 90/100, full Macaron router 82/100 because
 > routing sends most requests to L0 general chat instead of the tool specialist.
+
+## Batch 55 forum ingest (2026-08-06) — MiniMax-H3 video generation
+
+**[conjecture]** — single-source forum benchmarks via ComfyUI on single Spark. S-forum-minimax-h3-comfyui.
+
+||||| Model | Workflow | Resolution / Duration | Time | Notes | Source |||
+|||---|---|---|---|---|---|||
+||| MiniMax-H3 | i2v (image-to-video) | 0.2M, 5s | 174s | single Spark, ComfyUI; models from Comfy-Org/MiniMax-H3 | S-forum-minimax-h3-comfyui |||
+||| MiniMax-H3 | t2v (text-to-video) | 0.2M, 5s | 143s | single Spark, ComfyUI | S-forum-minimax-h3-comfyui |||
+||| MiniMax-H3 | r2v (reference-to-video) | 0.2M, 5s, 2 ref imgs | 215s | single Spark, ComfyUI | S-forum-minimax-h3-comfyui |||
+||| MiniMax-H3 | i2v (768²) | 768×768, 5s | ~235s | with easycache + SageAttention KJ nodes | S-forum-minimax-h3-comfyui |||
+||| MiniMax-H3 | i2v (768²) | 768×768, 10s | 432s | with easycache + SageAttention KJ nodes | S-forum-minimax-h3-comfyui |||
+
+> **[conjecture]** **MiniMax-H3 video generation on DGX Spark** (S-forum-minimax-h3-comfyui,
+> wxhpad + cx77 + TheAwakenOne): first reported MiniMax-H3 video diffusion data points on
+> GB10. Generation times 143–215s for 5s/0.2M video depending on workflow type (t2v fastest,
+> r2v slowest). At 768² resolution, ~235s for 5s video, 432s for 10s — roughly linear with
+> duration. easycache (native ComfyUI) + KJNodes SageAttention nodes used for speedup.
+> Consistent with the broader ComfyUI-on-GB10 pattern (compute-bound video diffusion, UMA
+> memory management). See `[[wiki/containers-and-tooling.md]]` → Batch 55.
