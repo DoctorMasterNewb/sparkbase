@@ -38,6 +38,20 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-07 (Batch 57)
+- 7 new NVIDIA DGX Spark forum topics found (5 technically relevant, 2 skipped: recovery help, kernel panic RMA).
+- 5 new sources registered (Batch 57). 7 topic IDs added to processed_topics.txt (total now 551).
+- **Headline finding:** GB10 may serialize CUDA contexts — `cuInit()` returns
+  `CUDA_ERROR_NO_DEVICE` for a second process while another holds a context (Compute Mode=Default,
+  20-60s teardown delay, vLLM sleep doesn't release context, Xid 119 interaction). If confirmed,
+  single-tenant-per-node is enforced at the driver level, not just by memory.
+- Pages touched: platform-gb10 (single-CUDA-context limitation [conjecture], CX-7 27W warning
+  confirmed benign by NVIDIA staff [conjecture], MiniMax-H3 thermal freeze + unit-to-unit
+  variation [conjecture]), containers-and-tooling (vLLM NGC forward-compat ceiling on 580.173.02
+  — caps at CUDA 13.1, no tag supports Qwen3.6 + forward-compats [conjecture]; Unsloth Docker
+  recipe — pytorch:25.10-py3, torchao conflict fix [conjecture]), sources/README, index, log.
+- All [conjecture] — single-source forum. No evidence promotions.
+
 ## Forum ingest 2026-08-06 (Batch 56)
 - 5 new NVIDIA DGX Spark forum topics found, all technically relevant.
 - 5 new sources registered (Batch 56). 5 topic IDs added to processed_topics.txt (total now 544).

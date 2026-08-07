@@ -2062,3 +2062,33 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
      triggers QEMU emulation on the Grace ARM64 CPU, yielding only 3.7 tok/s. The fix is
      to use ARM64-native images (spark-vllm-docker, NGC ARM64, or community builds).
 - All [conjecture] — single-source forum. No evidence promotions.
+
+## Forum ingest 2026-08-07 (Batch 57)
+- 7 new forum topics found (5 technically relevant, 2 skipped: Ubuntu 26.04 recovery help,
+  kernel panic recovery/RMA — same class as existing S-forum-kernel-panic).
+- 5 new sources registered (Batch 57). 7 topic IDs added to processed_topics.txt (total now 551).
+- **Headline finding:** GB10 may effectively serialize CUDA contexts — `cuInit()` returns
+  `CUDA_ERROR_NO_DEVICE` for a second process while another holds a context, despite
+  Compute Mode=Default. 20-60s teardown delay after process exit. vLLM sleep mode does
+  NOT release the context. Xid 119 interaction during teardown window. If confirmed, this
+  means the single-tenant-per-node rule is enforced at the driver/context level, not just
+  by memory pressure. Status: open (unknown if intended or driver bug).
+- **vLLM forward-compat ceiling:** driver 580.173.02 forward-compat caps at CUDA 13.1
+  (590.48.01). NGC tags 26.03+ need CUDA 13.2 / driver ≥595.58. No NGC tag both
+  forward-compats on 580.x and supports Qwen3.6 (model_type qwen3_5). Real fix: ≥595.58
+  driver (not yet via DGX Dashboard) or CUDA-13.1 vLLM build with qwen3_5 support.
+- **Thermal freeze + unit variation:** MiniMax-H3 inference hard-freezes one Spark
+  (GPU 84°C, ACPI 93.1°C, 70-83W, PowerStress MODS-020000610139 failure) while another
+  user runs the same model at 58°C/15W — dramatic unit-to-unit thermal variation.
+  Clock-cap 2000MHz workaround corroborated again.
+- **CX-7 27W warning confirmed benign** by NVIDIA staff (aniculescu) — corroborates
+  existing S-forum-cx7-pcie-power finding.
+- **Unsloth Docker recipe:** pytorch:25.10-py3 base, CUDA 13.0 nightly PyTorch, torchao
+  dependency conflict fix (uninstall torchao), test_unsloth.py works.
+- Pages touched: platform-gb10 (single-CUDA-context limitation, CX-7 27W benign, thermal
+  freeze + unit variation — all [conjecture]), containers-and-tooling (vLLM forward-compat
+  ceiling, Unsloth Docker recipe — all [conjecture]), sources/README, index, log.
+- Skipped: 379046 (Ubuntu 26.04 recovery help — user guidance, no durable technical
+  findings beyond existing recovery docs), 358976 (kernel panic after update — same
+  recovery/RMA class as S-forum-kernel-panic, no new findings).
+- No evidence promotions past [reported]. All new findings [conjecture] (single-source forum).

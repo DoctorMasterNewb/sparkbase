@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu
-> **updated:** 2026-08-06
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze
+> **updated:** 2026-08-07
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -1299,6 +1299,72 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   Note: the July 23 update also caused idle overheating ("roasting like hell in stale")
   on the same unit — see S-forum-typec-thermal for the USB-C PD firmware pending-update
   pattern.
+
+### Batch 57 forum ingest (2026-08-07)
+
+- **[conjecture]** **GB10 may effectively serialize CUDA contexts — `cuInit()` returns
+  `CUDA_ERROR_NO_DEVICE` (rc=100) for a second process while another holds a context**
+  (S-forum-cuda-single-ctx, tom450): on DGX Spark (GB10, sm_121, 128 GB unified, driver
+  580.159.03, CUDA 13, Ubuntu 24.04 aarch64), a second CUDA process calling `cuInit(0)`
+  receives `CUDA_ERROR_NO_DEVICE` (rc=100) as long as another process holds a live CUDA
+  context — **even though `nvidia-smi -q` reports Compute Mode: Default** (which normally
+  allows concurrent contexts). After the context-holding process exits, `cuInit()` still
+  returns 100 for **20–60+ seconds** before succeeding. Reproduced host↔container (Docker
+  `--gpus all`) and host↔host. `nvidia-smi` works fine throughout (device listed, usual GB10
+  `[N/A]` memory metrics). vLLM's sleep mode (`/sleep?level=1`) frees ~36 GB but the sleeping
+  process keeps its context → second process still gets `NO_DEVICE`; only a full process exit
+  releases the device. No MIG, no MPS, `nvidia-uvm` loaded. The reporter links this to the Xid
+  119 (GSP RPC timeout) pattern (S-forum-gsp-timeout, S-forum-driver580-173): if a new process
+  starts its allocation burst during the previous context's teardown window, it can
+  reproducibly push the GPU into Xid 119 (`_memdescAllocInternal` `NV_ERR_NO_MEMORY` and
+  `GSP_RM_ALLOC` timeouts in dmesg). Serializing GPU users and gating on `cuInit()` success
+  before starting the next process eliminated the crashes. **Status:** `open` — unknown
+  whether this is an intended GB10 limitation or a driver bug. This is a GB10-specific
+  concurrency constraint: if confirmed, it means the "single-tenant per node" rule
+  (documented [proven] above) is enforced at the **driver/context level**, not just by
+  memory pressure. It also means vLLM sleep mode does NOT enable a second CUDA process to
+  coexist — only full process exit frees the device. Single source → [conjecture].
+  Related to the existing `[conjecture]` `cudaMemGetInfo` under-reporting finding
+  (S-forum-comfyui-optimized) — both are UMA multi-process constraints unique to GB10.
+
+- **[conjecture]** **ConnectX-7 27W "insufficient power" boot warning on all 4 ports is
+  benign — confirmed by NVIDIA staff** (S-forum-cx7-27w-benign, james587, aniculescu):
+  on a new replacement DGX Spark (OTA 7.5.0, driver 580.173.02, kernel 6.17.0-1029-nvidia),
+  all four ConnectX-7 PCIe functions report `mlx5_core: insufficient power … 27W` at boot.
+  NVIDIA staff (aniculescu) confirmed: **"The 27 W Power messages are benign and do not
+  indicate an actual fault with your system."** This corroborates the existing
+  `[conjecture]` CX-7 PCIe power warning finding (S-forum-cx7-pcie-power, which saw the
+  same 27W warning on all 4 ports) — now confirmed as expected platform behavior, not a
+  fault. Firmware inventory on the replacement unit: EC 0x03000508, UEFI 0x02009b0b, CX7
+  firmware 28.45.4028, Samsung NVMe NXHB202Q, platform bundle 5.36_0ACUM018. Three signed
+  capsule updates had been applied during factory provisioning. `fwupdmgr` reports no
+  additional updates available. Docker 29.2.1 + containerd 2.2.1 installed and validated
+  on ARM64. Single source → [conjecture] (NVIDIA staff confirmation, but only one thread).
+
+- **[conjecture]** **DGX Spark hard-freeze under sustained MiniMax-H3 inference — PowerStress
+  thermal failure, unit-to-unit thermal variation** (S-forum-thermal-freeze,
+  tannerhaggerman, zc142365, sggin1): a DGX Spark (DGX OS 7.5.0, kernel 6.17.0-1029-nvidia,
+  driver 580.173.02, EC 3.5.8, current firmware) reproducibly hard-freezes under sustained
+  GPU inference (MiniMax-H3 864×480, 5-second inference). **No OOM, no Xid, no kernel
+  panic, no application exception** — the same "zero forensic trace" signature documented
+  across S-forum-thermal-shutdown, S-forum-host-freeze-tp2, S-forum-power-90w,
+  S-forum-uvm-livelock. Thermal data: idle GPU 47°C, ACPI 49.8°C at ~4W; under load
+  (96% GPU util, ~70-83W): GPU reached 84°C, hottest ACPI/SoC zone reached **93.1°C**
+  within ~2 minutes, then hard-freeze. `partnerdiag` PowerStress fails with
+  **MODS-020000610139** ("acceptable temperature limits exceeded or thermal sensor
+  broken/miscalibrated") — same error class as S-forum-powerstress (082-000-1-020000600139).
+  GpuStress passes. 240W adapter verified, display + airflow verified. A second user
+  (zc142365) resolved similar symptoms by **downgrading firmware and locking max clock to
+  2000 MHz** — corroborating the existing **[reported]** clock-cap mitigation. A third user
+  (sggin1) running the same MiniMax-H3 workload on their Spark reports much cooler
+  temperatures: GPU 58°C, ACPI 62°C at only **15.17W** under load (101s render) — a
+  dramatic unit-to-unit thermal variation (84°C/83W vs 58°C/15W for the same model).
+  This large variation is consistent with the existing thermal-paste-degradation and
+  sensor-blind-spot findings (S-forum-thermal-shutdown). The OP's unit appears to have
+  a thermal fault (PowerStress failure + MODS error code → RMA candidate). Single thread
+  with 3 users → [conjecture] for the freeze mechanism; the clock-cap workaround is
+  already [reported] from prior batches. MiniMax-H3 GPU memory: ~24 GB (diffusion) +
+  15 GB (TE) + 5 GB (VAE) ≈ 44 GB.
 
 ### Batch 55 forum ingest (2026-08-06)
 

@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal, S-forum-vllm-2607-xgrammar, S-forum-depfree-dashboard, S-forum-comfyui-triplany, S-forum-acestep-v15-comfyui, S-forum-minimax-h3-comfyui
-> **updated:** 2026-08-06
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal, S-forum-vllm-2607-xgrammar, S-forum-depfree-dashboard, S-forum-comfyui-triplany, S-forum-acestep-v15-comfyui, S-forum-minimax-h3-comfyui, S-forum-vllm-fwdcompat, S-forum-unsloth-docker
+> **updated:** 2026-08-07
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -684,3 +684,52 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   Outside core LLM-inference scope (video diffusion, not vLLM/llama.cpp/sglang), but the
   ComfyUI-on-GB10 UMA management context and SageAttention/easycache flags are GB10-relevant.
   Models sourced from `huggingface.co/Comfy-Org/MiniMax-H3`.
+
+### Batch 57 forum ingest (2026-08-07) — vLLM forward-compat ceiling + Unsloth recipe
+
+- **[conjecture]** **vLLM NGC forward-compat ceiling on driver 580.173.02 — no tag both
+  forward-compats and supports Qwen3.6** (S-forum-vllm-fwdcompat, fmarcano, griffith.mark):
+  on DGX Spark (GB10, 128 GB, driver 580.173.02 via DGX Dashboard), the container
+  `nvcr.io/nvidia/vllm:26.04-py3` (vLLM 0.19.0) fails its compatibility check at startup:
+  `"ERROR: This container was built for NVIDIA Driver Release 595.58 or later, but version
+  580.173.02 was detected and compatibility mode is UNAVAILABLE"`. On the previous driver
+  580.159.03, the same container started with `"CUDA Forward Compatibility mode ENABLED"`
+  and ran fine. The container still falls back and serves requests, but not through the
+  intended forward-compatibility path. **Root cause:** the 580.x driver's forward-compat
+  is capped at **CUDA 13.1** (confirmed: the 26.02 container gets "Forward Compatibility
+  mode ENABLED (CUDA 13.1 / 590.48.01)"). NGC tags 26.03+ require **CUDA 13.2 / driver
+  ≥595.58**, which is above the 580.x forward-compat ceiling. **The gap:** no NGC tag both
+  forward-compats on 580.173.02 *and* supports Qwen3.6 — model support (26.03+/CUDA 13.2,
+  model_type `qwen3_5`) and forward-compat (caps at CUDA 13.1) sit on opposite sides of
+  that line. The 26.02 tag (vLLM 0.15.1, older transformers) doesn't recognize Qwen3.6
+  (`"model type 'qwen3_5' … Transformers does not recognize this architecture"`). **Real
+  fix:** either a ≥595.58 driver via DGX Dashboard (not yet available as of 2026-08-04),
+  or a CUDA-13.1 vLLM build new enough to include `qwen3_5` support. This is a GB10-specific
+  container/driver gap: the 580.x driver branch (recommended for Spark) caps forward-compat
+  at CUDA 13.1, while newer NGC vLLM tags (needed for newer model architectures) require
+  CUDA 13.2+. Related to the existing `[conjecture]` driver 580.173.02 torn-pairing finding
+  (S-forum-driver580-173) and the NGC-vs-community container gap (S-forum-vllm-containers).
+  Single thread (2 users) → [conjecture].
+
+- **[conjecture]** **Working Unsloth Docker recipe on DGX Spark — torchao dependency conflict
+  fix** (S-forum-unsloth-docker, Neurfer): a working recipe for running Unsloth on DGX Spark
+  (GB10, dual ARM64 + CUDA 13.0 + unified memory — "all bleeding edge"). Key findings:
+  - **Base image:** `nvcr.io/nvidia/pytorch:25.10-py3` with `--ulimit memlock=-1
+    --ulimit stack=67108864`.
+  - **PyTorch:** install CUDA 13.0 nightly: `pip install --pre torch torchvision torchaudio
+    --index-url https://download.pytorch.org/whl/nightly/cu130`.
+  - **torchao conflict:** mixing nightly PyTorch with stable `transformers`/`torchao` causes
+    `transformers` to try importing `safetensors_utils` from `torchao` (moved/removed in
+    nightly builds). **Fix: `pip uninstall torchao -y`** — torchao is an optional optimization
+    backend not required for Unsloth (which relies on bitsandbytes + its own kernels).
+  - **Install:** `pip install transformers peft "datasets~=4.3.0" "trl~=0.19.1" unsloth
+    unsloth_zoo hf_transfer`.
+  - **Test:** `curl -O https://raw.githubusercontent.com/NVIDIA/dgx-spark-playbooks/refs/heads/main/nvidia/unsloth/assets/test_unsloth.py`
+    then `python test_unsloth.py` — works with warnings.
+  - NVIDIA staff (aniculescu) confirmed the Unsloth playbook was updated for DGX Spark
+    accuracy. Multiple users in the thread report dependency conflicts are the main barrier
+    — the platform's ARM64 + CUDA 13 + UMA combination means "almost all AI/ML libraries
+    are not updated yet and you just have to hash through these dependency conflicts."
+  Single thread → [conjecture]. The torchao-nightly-PyTorch conflict is a GB10-specific
+  dependency pattern (cf. the ARM64 wheel gaps documented in S-forum-qwen-tts-arm64,
+  S-forum-nvidia-vfx, S-forum-qwen3tts-ggml).
