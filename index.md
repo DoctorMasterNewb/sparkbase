@@ -38,6 +38,23 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-07 (Batch 58)
+- 3 new NVIDIA DGX Spark forum topics found (2 technically dense, 1 marginal accessory thread).
+- 3 new sources registered (Batch 58). 3 topic IDs added to processed_topics.txt (total now 554).
+- **Headline finding:** SparkRing — first custom RDMA collective layer (SIRCL) for GB10, bypassing
+  NCCL entirely for inference-critical paths on a 4-node switchless ring. GLM-5.2 at 19-20 tok/s C1
+  / 50-63 tok/s C8 aggregate. Fundamental alternative to the NCCL env-var workarounds for switchless
+  ring topologies (S-forum-6x-ring-rdma). Also: GLM-5.2 indexer weight bug (57/78 layers run top-k
+  on uninitialized memory), VLLM_NVFP4_MLA_PER_TOKEN_SCALE=1, SparkCache DCP4-sharded NVMe KV cache.
+- Pages touched: models/glm-5.2 (SparkRing section — SIRCL, MXFP4-Experts-GPTQ + MXFP8-NVFP4-NF3
+  hybrid + EXL3 quants, indexer bug, peer ordering bug, CUDA graph lock, SparkCache, Terry01
+  reproduction — all [conjecture]), multinode-tp-and-networking (SIRCL custom collective layer —
+  first reported NCCL bypass for inference on GB10 [conjecture]), benchmarks (4 new [conjecture]
+  rows: GLM-5.2 SparkRing ×3 configs, DSV4-Flash-0731 llama.cpp IQ2_M single-node),
+  llama-cpp-rpc (DSV4-Flash-0731 UD-IQ2_M single-node 16.2 tok/s [conjecture]),
+  sources/README, index, log.
+- All [conjecture] — single-source forum. No evidence promotions.
+
 ## Forum ingest 2026-08-07 (Batch 57)
 - 7 new NVIDIA DGX Spark forum topics found (5 technically relevant, 2 skipped: recovery help, kernel panic RMA).
 - 5 new sources registered (Batch 57). 7 topic IDs added to processed_topics.txt (total now 551).

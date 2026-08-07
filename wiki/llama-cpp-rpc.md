@@ -3,8 +3,8 @@
 > **area:** llama.cpp
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-nemotron-rpc, S-forum-m3-llamacpp-2x
-> **updated:** 2026-07-08
+> **sources:** S-nemotron-rpc, S-forum-m3-llamacpp-2x, S-forum-dsv4-llamacpp-fan
+> **updated:** 2026-08-07
 
 llama.cpp is the path for **GGUF** checkpoints and for archs vLLM/Atlas don't support (e.g.
 `nemotron_h_moe` hybrid Mamba-2+attn MoE). Its 2-node story is **pipeline RPC**, not tensor-parallel —
@@ -66,6 +66,14 @@ cmake --build build-rpc --target llama-server rpc-server -j
   (KV q8_0 ≈ 45 KB/token). Tool-calling via a **hybrid chat template** (M3 native body + M2 tool-call
   format; llama.cpp PR #24523's parser can't read M3's native format). First load ~13–25 min (cached
   after). Build: `CUDA_ARCH=121` from source, `aarch64`/GCC 13 (S-forum-m3-llamacpp-2x, karol.spark).
+- **[conjecture]** DeepSeek-V4-Flash-0731 UD-IQ2_M GGUF on single HP ZGX (GB10), llama-server,
+  `--n-gpu-layers 999 --flash-attn on --ctx-size 524288 --parallel 4 --cont-batching --batch-size 2048
+  --ubatch-size 1024 --jinja --threads 10 --no-mmap`: **16.2 tok/s** tg32 (pp2048 390 tok/s, ttfr
+  4860ms). Decode degrades with depth: 16.2→15.86 @ 4K, →15.82 @ 8K, →15.26 @ 16K. Firmware update
+  improved thermals to 71°C / 75W with no shutdown (S-forum-dsv4-llamacpp-fan, chrm). The `--no-mmap`
+  flag is consistent with the proven UMA requirement. The IQ2_M (2-bit UD quant) allows the ~440B
+  model to fit in a single 121 GB node. Prefill is low (390 tok/s) — llama.cpp's CPU-side processing
+  on Grace limits prefill vs vLLM's CUDA prefill path. See `[[wiki/benchmarks.md]]` → Batch 58.
 
 ## See also
-`[[wiki/multinode-tp-and-networking.md]]` · `[[wiki/engines.md]]` · `[[wiki/models/nemotron-3.md]]`
+`[[wiki/multinode-tp-and-networking.md]]` · `[[wiki/engines.md]]` · `[[wiki/models/nemotron-3.md]]` · `[[wiki/benchmarks.md]]`

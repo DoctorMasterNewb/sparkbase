@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** evolving
 > **evidence:** conjecture
-> **sources:** S-forum-glm52-4x, S-forum-glm52-mtp-fix, S-forum-glm52-1bit, S-forum-glm52-reapless, S-forum-glm52-800k, S-forum-glm52-iq4xs-4x, S-forum-glm52-8x, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-flashinfer-livelock, S-forum-colibri-glm52, S-forum-6x-cluster, S-forum-glm52-3x-aqlm
-> **updated:** 2026-08-04
+> **sources:** S-forum-glm52-4x, S-forum-glm52-mtp-fix, S-forum-glm52-1bit, S-forum-glm52-reapless, S-forum-glm52-800k, S-forum-glm52-iq4xs-4x, S-forum-glm52-8x, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-flashinfer-livelock, S-forum-colibri-glm52, S-forum-6x-cluster, S-forum-glm52-3x-aqlm, S-forum-sparkring
+> **updated:** 2026-08-07
 
 **GLM-5.2** is a 744B-parameter / ~40B-active MoE with sparse-MLA (DeepSeek-V4-class) attention and
 MTP speculative decoding support. It is one of the most-discussed large models on the DGX Spark forums
@@ -258,6 +258,118 @@ GLM-5.2 exercises three GB10-specific pressure points simultaneously:
   Corroborates the existing [conjecture] NCCL 2.30.4+ mandatory finding
   (S-forum-ds4f-4x-vllm, S-forum-tokenspeed).
 
+## SparkRing — switchless 4-node ring with custom RDMA collectives (2026-08-07 ingest)
+
+- **[conjecture]** **SparkRing: 4× DGX Spark switchless ring using custom SIRCL RDMA collective
+  layer** (S-forum-sparkring, FujitsuPolycom): an experimental inference stack that runs GLM-5.2
+  across four directly-cabled DGX Sparks arranged as a physical ring — **no Ethernet switch in the
+  inference path**. Four direct 200GbE ConnectX-7 links; management backplane is WiFi/USB ethernet.
+  The core innovation is **SIRCL** (Switchless Inference RDMA Collective Layer), a custom low-level
+  transport that uses direct-neighbor RDMA RC links, mapped pinned-memory arenas on GB10, explicit
+  sequence/doorbell ordering, and inference-specific collective plans. It implements:
+  - Custom TP4 all-reduce
+  - Custom DCP query and fused output/LSE combine
+  - Custom vocabulary and all-gather paths
+  - **CUDA-graph-aware command rings**
+  - Explicit software decomposition/relay for communication that would otherwise require a
+    non-adjacent connection (the ring's non-adjacent node pairs are not L2 neighbors)
+  - A patched ring-only NCCL fallback for operations not yet moved onto the custom path
+  - This is a **fundamentally different approach** from the S-forum-6x-ring-rdma NCCL env-var workarounds:
+    SIRCL replaces NCCL's collective algorithms entirely for inference-critical paths, rather than
+    trying to make stock NCCL topology-aware. The NCCL approach hit the L2-adjacency wall for
+    non-adjacent ring pairs; SIRCL sidesteps it with software relay. See
+    `[[wiki/multinode-tp-and-networking.md]]`.
+
+- **[conjecture]** **GLM-5.2 MXFP4-Experts-GPTQ on SparkRing: 19-20 tok/s C1, 500K KV capacity**
+  (S-forum-sparkring, FujitsuPolycom): checkpoint `aidendle94/GLM-5.2-MXFP4-Experts-GPTQ`, TP4/DCP4/MTP4
+  using `ag_rs`, dynamic MTP2/4, `nvfp4_ds_mla` KV with per-token scaling, RoPE fp8. Config:
+  4,000,000,000 KV bytes per rank, 500,224-token measured logical KV pool, 458,752-token request
+  ceiling, 4,096 maximum batched tokens, 8 sequence slots, FULL_AND_PIECEWISE CUDA graphs.
+
+  | Context | Prefill tok/s | C1 | C2 agg | C4 agg | C8 agg |
+  |---|---|---|---|---|---|
+  | 8K | 844 | 20.3 | 27.1 | 40.5 | 49.2 |
+  | 16K | 876 | 19.0 | 26.4 | 37.9 | 53.3 |
+  | 32K | 830 | 20.3 | 27.6 | 38.6 | 51.9 |
+  | 64K | 832 | 20.3 | 27.0 | 39.4 | 50.9 |
+  | 128K | 796 | 19.7 | 26.3 | 37.2 | 47.7 |
+
+  Short workload-dependent C8 windows reached 66.3 aggregate tok/s. Consistent with the 20-25 tok/s
+  C1 range across other GLM-5.2 4× Spark recipes (see cross-thread summary below).
+
+- **[conjecture]** **GLM-5.2 MXFP8-NVFP4-NF3 hybrid on SparkRing: 40-50 tok/s C4, 875K KV**
+  (S-forum-sparkring, FujitsuPolycom): checkpoint `madeby561/GLM-5.2-MXFP8-NVFP4-NF3-Hybrid`, TP4
+  DCP4 AMTP2-4 (adaptive MTP 2-4 tokens), KV format NVFP4 MLA + FP8 RoPE + per-token scaling,
+  max 8 sequences, 4096 batched tokens. Weight mix: 64 NVFP4 + 192 NF3 experts. Total KV: 875,520.
+  Max model length: 458,752. Reported 40-50 tok/s range for 4-concurrent shared-context coding
+  sessions. This is a **third independent hybrid quant checkpoint** for GLM-5.2 (cf.
+  S-forum-glm52-hybrid `aidendle94/GLM-5.2-Hybrid-FP8-MXFP4` and S-forum-glm52-3x-aqlm
+  `jarrelscy` NVFP4+AQLM) — the frozen-backbone + mixed-precision expert approach is now
+  well-established across multiple authors.
+
+- **[conjecture]** **GLM-5.2 EXL3 3.25bpw working — 1M KV room, decode parity but prefill penalty**
+  (S-forum-sparkring, FujitsuPolycom): checkpoint `willfalco/GLM-5.2-EXL3-TR3-3.25bpw` (from the
+  RTX6000 Discord quant community). Decode "just as good or better" than the NF3 hybrid quant, but
+  prefill stuck in the 500s tok/s (vs ~800-880 for other quants) — possibly config or calculation
+  loss. Room for 1M KV capacity. The EXL3 format (EXL3 = ExLlamaV3) is a newer quant format not
+  previously documented in sparkbase; its GB10 compatibility via SparkRing's custom transport
+  is a new data point.
+
+- **[conjecture]** **GLM-5.2 indexer weights missing for 57/78 layers — silent garbage above
+  index_topk=2048** (S-forum-sparkring, Terry01): GLM-5.2 ships indexer weights for only **21 of 78
+  layers** (layout is in `config.json` under `indexer_types`, which vLLM doesn't read). The guard
+  in `deepseek_v2.py` ~line 1166 never fires, so **57 layers run top-k on uninitialized memory**.
+  This is silent because the uninitialized-weights check is disabled when quantization is set.
+  Below `index_topk=2048`, top-k picks everything so garbage is a no-op. Above it: **word salad
+  with CJK**. `acceptance_gate.py` can't catch it. **Fix:** pattern from SETUP.md:881 — also
+  gained ~30% throughput (acceptance 3.14→4.17, step 354→260ms, KV 465,663→575,232). **Check:**
+  `docker logs <rank> | grep -c "skip sparse MLA indexer computation"` should be 57/rank, not 0.
+  This is a GB10/vLLM-specific GLM-5.2 bug that affects any sparse-MLA deployment, not just SparkRing.
+
+- **[conjecture]** **SparkRing launcher peer ordering bug — XOR schedule vs rank sort mismatch**
+  (S-forum-sparkring, Terry01): `sparkring_launcher.py` ~line 164 sorts `transport_peers` by rank
+  number, but `tp4_schedule.cpp` pairs by XOR (round0: rank^1, round1: rank^3). This is correct by
+  luck for ranks 0/1 but inverted for 2/3, so both ends pick the same listen/connect role and every
+  rendezvous times out (`timed out connecting/accepting control peer`, `ibv_modify_qp(RTR)`).
+  **Fix:** `[by_rank[id^1], by_rank[id^3]]`. After the fix, every rank has peer0 on cage0 / peer1
+  on cage1, matching the cable plan. This is a SparkRing-specific bug, but the underlying insight
+  (RDMA peer pairing must match the physical cable plan) generalizes to any multi-node ring.
+
+- **[conjecture]** **VLLM_NVFP4_MLA_PER_TOKEN_SCALE=1 missing from example launch config**
+  (S-forum-sparkring, Terry01): documented in SETUP.md 8.4 but not the example launch config.
+  Without it, you're on the legacy static-outer-scale KV record. On MXFP4-Experts-GPTQ, **448 of
+  2528 latent groups sit under the E4M3 subnormal floor**, layers 0-7 entirely. This env var is
+  GLM-5.2-specific on GB10 and critical for NVFP4 MLA KV cache correctness.
+
+- **[conjecture]** **VLLM_PREFIX_CACHE_RETENTION_INTERVAL=4096 causes engine death on GLM-5.2**
+  (S-forum-sparkring, Terry01): the image bakes this env var, but pinned vLLM rejects it for
+  GLM-5.2 (no sliding-window/Mamba KV group) — engine dies in `kv_cache_coordinator` right after
+  KV allocation. No value fixes it since `envs.py` tests membership; needs `docker run --env KEY`
+  with no `=`. Corroborates the existing S-forum-glm52-hybrid finding about the same env var
+  causing issues — now a second independent report → approaches [reported].
+
+- **[conjecture]** **CUDA graphs produce single-token lock on GLM-5.2 SparkRing** (S-forum-sparkring,
+  Terry01): with full 8.4 env, `MAX_QUERY_ROWS=40`, CPU pins, graph ports — the engine boots and
+  serves, then answers a 13k-token prompt with a single token "lock" (output stalls at 1 token).
+  DCP1 graph arm produced identical lock. Suspected workspace issue from TESTING_HISTORY.
+  Eager mode works: 18.3 tok/s median on 500-token code completions, TP4/DCP4 on
+  MXFP4-Experts-GPTQ, clean at 13K context — ~92% of the published eager number.
+
+- **[conjecture]** **SparkCache: DCP4-sharded persistent KV context cache from local NVMe**
+  (S-forum-sparkring, FujitsuPolycom): an experimental DCP4-sharded persistent context cache that
+  can snapshot and restore very large KV contexts from each Spark's local NVMe shard with **zero
+  cross-node KV traffic** — only tiny quorum metadata is exchanged. Current limitation: the
+  snapshot/store path can still interfere with unique-context decode slightly. This is a novel
+  approach to persistent KV caching on GB10 — distinct from vLLM prefix caching or LMCache.
+
+- **[conjecture]** **Terry01 reproduced SparkRing: 18.3 tok/s eager, ~92% of published number**
+  (S-forum-sparkring, Terry01): after fixing 6 setup issues (indexer weights, peer ordering,
+  per-token scale env var, prefix cache retention interval, download script, tool/reasoning parser),
+  achieved 18.3 tok/s median on 500-token code completions in eager mode, TP4/DCP4 on
+  MXFP4-Experts-GPTQ, clean at 13K context. This is the **first independent reproduction** of a
+  SparkRing deployment — ~92% of the published ~20 tok/s eager number. However, both reporters are
+  in the same thread using the same image → stays [conjecture] per independence rules.
+
 ## Performance across configurations (cross-thread summary)
 
 All numbers are **[conjecture]** or **[reported]** as noted. See `[[wiki/benchmarks.md]]` for full rows.
@@ -271,7 +383,9 @@ All numbers are **[conjecture]** or **[reported]** as noted. See `[[wiki/benchma
 | TP=4, Hybrid FP8+MXFP4 (v3-GPTQ) | Hybrid+GPTQ | 4 | 20.6 | 262K | S-forum-glm52-hybrid |
 | TP=6, b12x | (Int4-family) | 6 | ~30 | — | S-forum-6x-cluster |
 | TP=8, Int4-Int8 mix, b12x W4A8 | Int4-Int8 | 8 | 33-54 | 200K | S-forum-glm52-8x |
-| TP=4, IQ4_XS GGUF, llama.cpp RPC | IQ4_XS | 4 | 6.28 | 1M | S-forum-glm52-iq4xs-4x |
+|| TP=4, MXFP4-Experts-GPTQ, SparkRing SIRCL | MXFP4-Experts-GPTQ | 4 | 19-20 (C1) / 50-63 (C8) | 500K | S-forum-sparkring |
+|| TP=4, MXFP8-NVFP4-NF3 hybrid, SparkRing | MXFP8+NVFP4+NF3 | 4 | 40-50 (C4) | 875K | S-forum-sparkring |
+|| TP=4, IQ4_XS GGUF, llama.cpp RPC | IQ4_XS | 4 | 6.28 | 1M | S-forum-glm52-iq4xs-4x |
 | 1× Spark, Colibri expert streaming | int4 MoE + int8 MTP | 1 | 2.4-3.3 | short | S-forum-colibri-glm52 |
 
 **[reported]** GLM-5.2 decode on 4× Spark is consistently in the 20-25 tok/s range across multiple

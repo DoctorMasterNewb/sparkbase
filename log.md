@@ -2092,3 +2092,40 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   findings beyond existing recovery docs), 358976 (kernel panic after update — same
   recovery/RMA class as S-forum-kernel-panic, no new findings).
 - No evidence promotions past [reported]. All new findings [conjecture] (single-source forum).
+
+## 2026-08-07 — Forum ingest: Batch 58 — 3 new topics (3 processed)
+
+- **Sources:** 3 new forum topics found by fetch_new_topics.py. All 3 had at least marginal GB10
+  technical relevance; none fully skipped. 3 new sources registered as `S-forum-*` in
+  `sources/README.md` (Batch 58): S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-cooling-fan.
+  3 topic IDs added to `sources/processed_topics.txt` (total now 554).
+- **Headline finding: SparkRing — first custom RDMA collective layer (SIRCL) for GB10.**
+  (S-forum-sparkring, topic 378451, FujitsuPolycom + Terry01): an experimental inference stack
+  that runs GLM-5.2 across 4 directly-cabled DGX Sparks in a physical ring — no Ethernet switch.
+  The SIRCL transport replaces NCCL entirely for inference-critical collectives (TP4 all-reduce,
+  DCP query/combine, all-gather, CUDA-graph-aware command rings). This is a fundamentally different
+  approach from the S-forum-6x-ring-rdma NCCL env-var workarounds: SIRCL sidesteps the L2-adjacency
+  wall with software relay rather than trying to make stock NCCL topology-aware. GLM-5.2
+  MXFP4-Experts-GPTQ: 19-20 tok/s C1, 50-63 tok/s C8 aggregate, 500K KV. MXFP8-NVFP4-NF3 hybrid:
+  40-50 tok/s C4, 875K KV. EXL3 3.25bpw: working with 1M KV room. Terry01 independently reproduced
+  (18.3 tok/s eager, ~92% of published). Key bugs found: GLM-5.2 indexer weights missing for 57/78
+  layers (silent garbage above index_topk=2048), VLLM_NVFP4_MLA_PER_TOKEN_SCALE=1 missing,
+  VLLM_PREFIX_CACHE_RETENTION_INTERVAL=4096 kills engine on GLM-5.2, CUDA graphs produce
+  single-token lock. SparkCache: DCP4-sharded persistent NVMe KV cache with zero cross-node traffic.
+- **DeepSeek-V4-Flash-0731 UD-IQ2_M via llama.cpp on HP ZGX** (S-forum-dsv4-llamacpp-fan, topic
+  379276, chrm): single-node llama-server, 524K ctx, 4 parallel, flash-attn, --no-mmap, threads 10.
+  16.2 tok/s tg32 (pp2048 390 tok/s). Firmware update improved thermals to 71°C/75W with no
+  shutdown. Consistent with bandwidth-bound decode ceiling and proven --no-mmap UMA requirement.
+- **Cooling fan accessory thread** (S-forum-cooling-fan, topic 373199): mostly 3D-printed duct
+  designs and USB fan recommendations. One durable technical tidbit: `nvidia-smi -lgc 0,2000`
+  clock cap gives <1% perf loss + 10°C temp drop — already well-documented in platform-gb10
+  (S-forum-cooler-temps, S-forum-gpu-throttle-cmd). Source registered for provenance; no new wiki
+  page edits beyond the clock-cap corroboration.
+- **Pages touched:** models/glm-5.2 (new SparkRing section — SIRCL, 3 quant configs, indexer bug,
+  peer ordering bug, per-token scale env var, prefix cache retention interval, CUDA graph lock,
+  SparkCache, Terry01 reproduction, EXL3, cross-thread table updated — all [conjecture]),
+  multinode-tp-and-networking (SIRCL custom collective layer — first NCCL bypass for inference on
+  GB10 [conjecture]), benchmarks (4 new [conjecture] rows: GLM-5.2 SparkRing ×3, DSV4-Flash-0731
+  llama.cpp IQ2_M), llama-cpp-rpc (DSV4-Flash-0731 UD-IQ2_M single-node 16.2 tok/s [conjecture]),
+  sources/README, index, log.
+- All [conjecture] — single-source forum. No evidence promotions.

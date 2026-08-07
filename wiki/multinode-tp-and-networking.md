@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3, S-forum-mikrotik-cr804-042, S-forum-nfs-modelshare, S-forum-cx7-pcie-power, S-forum-4node-qrs812, S-forum-crs812-4node
-> **updated:** 2026-08-06
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3, S-forum-mikrotik-cr804-042, S-forum-nfs-modelshare, S-forum-cx7-pcie-power, S-forum-4node-qrs812, S-forum-crs812-4node, S-forum-sparkring
+> **updated:** 2026-08-07
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -881,3 +881,31 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
   S-forum-6x-cluster (CRS812 for 6× Spark) with practical setup details. The static-IP
   and MTU-9000 guidance is consistent with the proven fabric setup on this page. Single
   source (2 users in one thread) → [conjecture].
+
+### Batch 58 forum ingest (2026-08-07)
+
+- **[conjecture]** **SparkRing SIRCL — custom RDMA collective layer bypasses NCCL for switchless
+  4-node ring inference** (S-forum-sparkring, FujitsuPolycom): a fundamentally different approach
+  to the switchless ring problem documented in S-forum-6x-ring-rdma. Instead of patching NCCL env
+  vars to work around the L2-adjacency requirement, SparkRing replaces NCCL's collective algorithms
+  entirely with a custom transport layer called **SIRCL** (Switchless Inference RDMA Collective
+  Layer). SIRCL uses:
+  - Direct-neighbor RDMA RC links (only adjacent ring nodes, no non-adjacent QPs needed)
+  - Mapped pinned-memory arenas on GB10
+  - Explicit sequence/doorbell ordering
+  - Inference-specific collective plans (custom TP4 all-reduce, DCP query + fused output/LSE combine,
+    custom vocabulary/all-gather paths)
+  - **CUDA-graph-aware command rings** (the first reported integration of CUDA graph capture with
+    custom RDMA collectives on GB10 — distinct from the cross-node cudagraph wall in
+    `[[wiki/cudagraphs-and-compile.md]]`)
+  - Explicit software decomposition/relay for non-adjacent communication
+  - A patched ring-only NCCL fallback for operations not yet on the custom path
+  Management, SSH, Gloo, and NCCL bootstrap use a separate management interface (WiFi/USB ethernet);
+  the direct RoCE links carry only inference payloads.
+  - **Why it bites on Spark:** this is the first reported custom collective layer for GB10 that
+    bypasses NCCL entirely for inference-critical paths. The L2-adjacency wall that blocked stock
+    NCCL ring topologies (S-forum-6x-ring-rdma) is sidestepped by software relay rather than solved
+    at the NCCL level. If SIRCL's approach generalizes, it could unlock switchless topologies beyond
+    what NCCL's algorithm selection supports.
+  - See `[[wiki/models/glm-5.2.md]]` → SparkRing section for GLM-5.2-specific performance and bugs.
+  - Single source (one thread, OP + 1 reproducer in same thread) → [conjecture].

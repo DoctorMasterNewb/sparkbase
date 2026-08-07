@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-laguna-yaml, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt
-> **updated:** 2026-08-06
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan
+> **updated:** 2026-08-07
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
 anchor the rules on
@@ -845,3 +845,32 @@ S-forum-laguna-modelopt, S-forum-vllm-qemu.
 > Qwen2.5-Coder-32B-Instruct via x86_64 vLLM Docker image on Grace CPU = 3.7 tok/s. This is the
 > "wrong architecture" baseline — native ARM64 images should be 5-10×+ faster. See
 > `[[wiki/platform-gb10.md]]` → Batch 56 for the full QEMU emulation trap finding.
+
+## Batch 58 forum ingest (2026-08-07)
+
+**[conjecture]** — all single-source forum benchmarks. S-forum-sparkring,
+S-forum-dsv4-llamacpp-fan.
+
+|| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+||---|---|---|---|---|---|---|---||
+|| GLM-5.2 | MXFP4-Experts-GPTQ | SparkRing SIRCL TP4/DCP4/MTP4 | 4 (switchless ring) | 19-20 (C1) / 50-63 (C8 agg) | 500K | `aidendle94/GLM-5.2-MXFP4-Experts-GPTQ`; nvfp4_ds_mla KV + per-token scaling; 30s sustained decode; prefill 796-876 tok/s; C8 peak 66.3 (workload-dependent) | S-forum-sparkring ||
+|| GLM-5.2 | MXFP8-NVFP4-NF3 hybrid | SparkRing SIRCL TP4/DCP4/AMTP2-4 | 4 (switchless ring) | 40-50 (C4 shared ctx) | 875K | `madeby561/GLM-5.2-MXFP8-NVFP4-NF3-Hybrid`; 64 NVFP4 + 192 NF3 experts; NVFP4 MLA + FP8 RoPE KV | S-forum-sparkring ||
+|| GLM-5.2 | MXFP4-Experts-GPTQ | SparkRing SIRCL TP4/DCP4 (eager) | 4 (switchless ring) | 18.3 (median) | 13K | Terry01 independent reproduction; eager mode (CUDA graphs produce single-token lock); ~92% of published eager number | S-forum-sparkring ||
+|| DeepSeek-V4-Flash-0731 | UD-IQ2_M | llama.cpp (llama-server) | 1 (HP ZGX) | 16.2 (tg32) | 524K | `--flash-attn on --ctx-size 524288 --parallel 4 --no-mmap --threads 10`; pp2048 390 tok/s; ttfr 4860ms; tg32 degrades 16.2→15.26 at 16K depth; firmware update fixed thermal shutdown (71°C/75W) | S-forum-dsv4-llamacpp-fan ||
+
+> **[conjecture]** **GLM-5.2 on SparkRing SIRCL — 19-20 tok/s C1, 50-63 tok/s C8 aggregate**
+> (S-forum-sparkring, FujitsuPolycom): the first reported custom-RDMA-collective inference stack
+> on GB10. The C1 decode (19-20 tok/s) is consistent with the 20-25 tok/s range across other GLM-5.2
+> 4× Spark recipes (AWQ-INT4, NVFP4, Hybrid FP8+MXFP4) — the quant format matters less than the
+> sparse-MLA attention + bandwidth-bound decode ceiling. The C8 aggregate (50-63 tok/s) shows
+> good concurrency scaling under shared-prefix workloads. See `[[wiki/models/glm-5.2.md]]` →
+> SparkRing section.
+>
+> **[conjecture]** **DeepSeek-V4-Flash-0731 UD-IQ2_M via llama.cpp on HP ZGX — 16.2 tok/s tg32**
+> (S-forum-dsv4-llamacpp-fan, chrm): single-node llama.cpp serving on HP ZGX (GB10 variant).
+> The 16.2 tok/s at tg32 with IQ2_M (2-bit UD quant) and 524K context is consistent with the
+> bandwidth-bound decode ceiling for a ~440B model at 2-bit on a single 121 GB node. Prefill
+> 390 tok/s (pp2048) is low — llama.cpp's CPU-side processing on Grace limits prefill vs vLLM's
+> CUDA prefill path. The `--no-mmap` flag is consistent with the proven UMA requirement
+> (`[[wiki/llama-cpp-rpc.md]]`). The firmware update improving thermals (71°C/75W, no shutdown)
+> corroborates the documented EC firmware / fan curve findings (`[[wiki/platform-gb10.md]]`).
