@@ -2150,3 +2150,60 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   llama.cpp IQ2_M), llama-cpp-rpc (DSV4-Flash-0731 UD-IQ2_M single-node 16.2 tok/s [conjecture]),
   sources/README, index, log.
 - All [conjecture] — single-source forum. No evidence promotions.
+
+## Scheduled forum ingest: 2026-08-08 (Batch 60)
+
+- **Date:** 2026-08-08
+- **Sources:** 2 new forum sources (S-forum-vllm-deepdive, S-forum-dsv4-vision-plugin)
+- **Topics processed:** 2 (379391, 379212)
+- **Topic IDs added to processed_topics.txt:** 2 (total now 558)
+
+### Findings
+
+- **DeepSeek-V4-Flash-0731-vision on 2× Spark** (S-forum-dsv4-vision-plugin, topic 379212,
+  co-le): first reported vision-enabled DSV4-Flash-0731 deployment on DGX Spark. FlyCockpit
+  vLLM plugin (`dsv4_vision_vllm`) registers `DeepseekV4VisionForCausalLM` via
+  `vllm.general_plugins` entry point. Frozen 865 MB DeepEncoderV2 tower + 40 MB projector
+  adapter. Validated on `aidendle94/sparkrun-vllm-ds4-gb10:production-3.7-reffix`.
+  - **DSpark wrapper-transparency bug (headline):** the stock upstream plugin quietly breaks
+    DSpark — acceptance collapses to 1-15%, throughput ~20 tps. Root cause: vision wrapper
+    hides the backbone, cutting off auxiliary hidden-state flow the DSpark draft feeds on.
+    Fix: pass `**kwargs` through in `forward()`, expose `lm_head` property. After fix:
+    acceptance 50-64%, mean acceptance length ~2.0, ~40-50 tps. Log signature:
+    `SpecDecoding metrics: Per-position acceptance rate: 0.0x, 0.0`. General pattern for
+    any vLLM vision wrapper + spec-decode combo.
+  - **Image requests:** `chat_template_kwargs: {"thinking": false}` required or `content`
+    comes back empty (text lands in `reasoning` field). `--limit-mm-per-prompt '{"image":8}'`,
+    `--trust-request-chat-template`. Max 8 images/request.
+  - **tiles=2 token layout:** image = n_views×256+1 tokens (257/769/1281). tiles=0 fallback
+    silently serves wrong token layout.
+  - **Vision quality:** strong for screenshots/UIs/on-screen text, strong for docs, decent
+    but generic for photos, not ready for click-agents. Screenshot specialist, not
+    general-purpose VLM. Gemma 4 E2B vision is better general-purpose.
+  - **Throughput:** ~40-50 tps post-fix post-reboot (below 40 before reboot). DSpark stays
+    engaged on image requests (~63% acceptance). ~20-30% below non-vision DSpark baseline
+    (55-66 tps, S-forum-dsv4-0731-dspark-loader).
+  - **webbrain-one/DeepSeek-V4-Flash-0731-Vision-NVFP4:** alternative 9 GB NVFP4 vision
+    variant (vs 900 MB FlyCockpit). Not yet tested; 9 GB challenging on 2× Spark memory.
+
+- **DGX Spark vLLM deep-dive blog posts** (S-forum-vllm-deepdive, topic 379391, swesty):
+  source registered for provenance. The OP links to two external blog posts covering
+  vLLM on DGX Spark history (troubleshooting, FP4 checkpoint-format rule, UMA OOM math,
+  sm_121 vs sm_100, CUTLASS/FlashInfer/Marlin, vLLM backend oracle). No specific durable
+  GB10 findings (flags, env vars, error strings, tok/s numbers) in the forum post itself
+  beyond what's already in the KB. External blog posts not fetched. No wiki page edits.
+
+### Pages touched
+- engines (new DSV4-Flash-0731-vision section — 7 [conjecture] findings: plugin recipe +
+  flags/env, wrapper-transparency bug, thinking:false for images, tiles=2 token layout,
+  vision quality assessment, throughput, webbrain-one NVFP4 variant; sources header +
+  updated date bumped)
+- benchmarks (1 new [conjecture] row: DSV4-Flash-0731-vision 40-50 tps; sources header
+  updated)
+- sources/README (Batch 60 — 2 new source rows)
+- index (Batch 60 entry)
+- log (this entry)
+- sources/processed_topics.txt (+2 topic IDs)
+
+### Evidence
+- All [conjecture] — single-source forum. No evidence promotions.

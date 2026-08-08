@@ -39,6 +39,25 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-08 (Batch 60)
+- 2 new NVIDIA DGX Spark forum topics found, both technically relevant.
+- 2 new sources registered (Batch 60). 2 topic IDs added to processed_topics.txt (total now 558).
+- **Headline finding:** DSV4-Flash-0731-vision — first reported vision-enabled DSV4-Flash-0731
+  deployment on 2× DGX Spark. FlyCockpit vLLM plugin (DeepEncoderV2 tower + 40 MB projector).
+  Key discovery: vision wrappers that intercept the backbone's forward path silently kill DSpark
+  speculative decoding (acceptance 1-15% → 50-64% after wrapper-transparency fix). General pattern
+  for any vLLM vision wrapper + spec-decode combo. Throughput 40-50 tps post-fix (~20-30% below
+  non-vision DSpark baseline). Also: `chat_template_kwargs: {"thinking": false}` required for
+  image requests, tiles=2 token math (257/769/1281), screenshot-specialist vision quality.
+- Pages touched: engines (DSV4-Flash-0731-vision — 7 new [conjecture] findings: plugin recipe,
+  wrapper-transparency bug, thinking:false for images, tiles=2 token layout, vision quality
+  assessment, throughput, webbrain-one 9 GB NVFP4 variant), benchmarks (1 new [conjecture] row),
+  sources/README, index, log.
+- Topic 379391 (vLLM deep-dive blog posts by swesty): source registered for provenance; no new
+  wiki content — the OP links to external blog posts without containing specific durable GB10
+  findings (flags, env vars, error strings, tok/s numbers) beyond what's already in the KB.
+- All [conjecture] — single-source forum. No evidence promotions.
+
 ## Forum ingest 2026-08-08 (Batch 59)
 - 2 new NVIDIA DGX Spark forum topics found (1 technically relevant, 1 skipped: system updates question).
 - 1 new source registered (Batch 59). 2 topic IDs added to processed_topics.txt (total now 556).

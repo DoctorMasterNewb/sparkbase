@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda
-> **updated:** 2026-08-06
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin
+> **updated:** 2026-08-08
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -628,3 +628,66 @@ Three engines run on the Spark pair; pick by arch support and quant.
  ~43% improvement over the original Q2 baseline. The 1M-context single-Spark recipe is
  notable — DSV4-Flash at 1M context on a single 121 GB node is at the edge of feasibility
  with 2-bit quant + KV disk offload. Single source (one thread, 2 users) → [conjecture].
+
+ ## Forum ingest: DSV4-Flash-0731-vision — vLLM vision plugin for DSV4 on 2× Spark (2026-08-08)
+
+ - **[conjecture]** **FlyCockpit/DeepSeek-V4-Flash-0731-vision — vLLM plugin adding vision to
+   DSV4-Flash-0731 on 2× Spark** (S-forum-dsv4-vision-plugin, co-le): a community vLLM plugin
+   (`dsv4_vision_vllm`) that registers a wrapper model `DeepseekV4VisionForCausalLM` via the
+   standard `vllm.general_plugins` entry point. Vision comes from a frozen 865 MB `DeepEncoderV2`
+   tower + 40 MB trained projector adapter that maps tower features into the 0731 backbone's
+   embedding space. The model directory is a zero-cost symlink tree of the 0731 snapshot with
+   only `architectures` swapped in `config.json`. Validated on
+   `aidendle94/sparkrun-vllm-ds4-gb10:production-3.7-reffix`. The plugin mechanism is plain vLLM
+   plugin territory — no launcher or image internals involved.
+   - **Key flags:** `--limit-mm-per-prompt '{"image":8}'`, `--trust-request-chat-template`
+   - **Env:** `DSV4_VISION_TOWER=<path>/deepencoder_v2_tower.safetensors`,
+     `DSV4_VISION_ADAPTER=<path>/adapter/latest.pt`
+   - **Max 8 images per request** (counted across replayed history; 9th → HTTP 400)
+
+ - **[conjecture]** **DSpark wrapper-transparency bug — vision wrapper breaks speculative decoding**
+   (S-forum-dsv4-vision-plugin, co-le): the stock upstream plugin quietly breaks DSpark. The draft
+   keeps running, but **acceptance collapses to 1-15%** and throughput drops to ~20 tps. Root cause:
+   the vision wrapper hides the backbone, cutting off the auxiliary hidden-state flow the DSpark
+   draft feeds on. **Fix:** keep the wrapper transparent to the backbone — pass `**kwargs` through
+   in `forward()` and expose an `lm_head` property that forwards to the language model. After fix:
+   **acceptance recovers to 50-64%** with mean acceptance length ~2.0. The broken state is
+   recognizable in logs: `SpecDecoding metrics: Per-position acceptance rate: 0.0x, 0.0`. This is
+   a general pattern for any vLLM vision wrapper that intercepts the backbone's forward path while
+   DSpark speculative decoding is active — the draft model needs access to the backbone's
+   hidden states.
+
+ - **[conjecture]** **Image requests must send `chat_template_kwargs: {"thinking": false}`**
+   (S-forum-dsv4-vision-plugin, co-le): the recipe defaults to `thinking:true`, but on image input
+   the model answers without thinking — the answer lands inside an unclosed think block and `content`
+   comes back empty (the text ends up in the `reasoning` field). This is a DSV4-Flash-0731-specific
+   chat-template interaction that bites when adding vision to the existing DSpark recipe.
+
+ - **[conjecture]** **tiles=2 token layout — image = n_views×256+1 tokens (257/769/1281)**
+   (S-forum-dsv4-vision-plugin, co-le): under the `tiles=2` layout, an image expands to
+   `n_views×256+1` tokens. Verify the layout is active by checking
+   `[dsv4-vision] checkpoint config.tiles=2` in the logs; a `tiles=0` fallback silently serves
+   the wrong token layout.
+
+ - **[conjecture]** **Vision quality assessment — strong for screenshots/UIs, weak for general
+   photos, not ready for click-agents** (S-forum-dsv4-vision-plugin, co-le): screenshots, UIs,
+   and on-screen text → strong (near-perfect transcription in tests). Documents → strong.
+   Everyday photos → decent but generic — "this is a screenshot specialist, not a general-purpose
+   vision-language model." Click-agents and real-world computer use → **not ready** (explicitly
+   unclaimed by the upstream project). The OP reports Gemma 4 E2B vision is better as a
+   general-purpose vision model than this encoder.
+
+ - **[conjecture]** **Throughput: ~40-50 tps after clean reboot (below 40 before)**
+   (S-forum-dsv4-vision-plugin, co-le): on 2× DGX Spark TP=2 with the wrapper-transparency fix
+   applied, DSpark acceptance 50-64% with mean acceptance length ~2.0, ~40-50 tps after a clean
+   reboot. DSpark stays engaged even on image requests (~63% acceptance). The reboot measurably
+   helped — consistent with the UMA fragmentation / power-state findings on platform-gb10.
+   Before the fix: ~20 tps. This is below the 55-66 tps reported for non-vision DSV4-Flash-0731
+   DSpark on 2× Spark (S-forum-dsv4-0731-dspark-loader), suggesting the vision plugin adds
+   ~20-30% throughput overhead even when working correctly.
+
+ - **[conjecture]** **webbrain-one/DeepSeek-V4-Flash-0731-Vision-NVFP4 — 9 GB NVFP4 vision variant**
+   (S-forum-dsv4-vision-plugin, mikeyb222, james.park4): an alternative NVFP4 vision checkpoint
+   that adds ~9 GB to the weights (vs ~900 MB for the FlyCockpit encoder). Potentially better
+   quality due to larger vision component, but the additional 9 GB is challenging given the
+   "constant struggle with memory constraints" on 2× Spark. Not yet tested.

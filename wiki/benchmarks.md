@@ -3,7 +3,7 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin
 > **updated:** 2026-08-08
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
@@ -890,3 +890,20 @@ S-forum-dsv4-llamacpp-fan.
 > repetitive output ("loops a lot") — the OP does not recommend it. Consistent with the
 > bandwidth-bound decode regime for large MoE at MXFP4 on 8× Spark. See
 > `[[wiki/models/kimi-k3.md]]`.
+
+## Batch 60 forum ingest (2026-08-08)
+
+**[conjecture]** — single-source forum benchmark. S-forum-dsv4-vision-plugin.
+
+|| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+|---|---|---|---|---|---|---|---|
+|| DeepSeek-V4-Flash-0731-vision | NVFP4 + DSpark (vision plugin) | vLLM TP=2 (aidendle94 image) | 2 | ~40-50 (post-fix, post-reboot) / ~20 (pre-fix) | — | FlyCockpit DeepEncoderV2 tower + 40 MB projector; wrapper-transparency fix (acceptance 1-15%→50-64%, mean len ~2.0); --limit-mm-per-prompt image:8; DSpark stays engaged on image requests (~63% acceptance); reboot measurably helped | S-forum-dsv4-vision-plugin ||
+
+> **[conjecture]** **DSV4-Flash-0731-vision on 2× Spark — 40-50 tps with DSpark after
+> wrapper-transparency fix** (S-forum-dsv4-vision-plugin, co-le): first reported vision-enabled
+> DSV4-Flash-0731 deployment on DGX Spark. The headline finding is not the throughput (40-50 tps
+> is ~20-30% below the 55-66 tps non-vision DSpark baseline, S-forum-dsv4-0731-dspark-loader) but
+> the **wrapper-transparency bug**: a vLLM vision wrapper that intercepts the backbone's forward
+> path silently kills DSpark speculative decoding (acceptance 1-15% → 50-64% after fix). This is
+> a general pattern for any vision wrapper + spec-decode combo on vLLM, not DSV4-specific.
+> See `[[wiki/engines.md]]` → DSV4-Flash-0731-vision section.

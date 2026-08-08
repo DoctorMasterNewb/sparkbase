@@ -625,3 +625,10 @@ sources cite the experiment (what/config/when), never a private path.
 || ID | type | What it is | Reference | Date |
 ||---|---|---|---|---|
 || S-forum-kimi-k3-coder-reap | forum | Kimi K3 Coder REAP-320 MXFP4 on 8× GB10 — llama-bench decode 21-30 tok/s (tg1500), peak 35 tok/s, prefill 541-686 tok/s (pp2048); 32K context depth tested; REAP pruned variant "loops a lot" (quality issue); full K3 needs 16× GB10; same active expert count as full model (ciprianveg) | https://forums.developer.nvidia.com/t/378858 | 2026-08-01 |
+
+## Batch 60 forum sources (2026-08-08 ingest)
+
+|| ID | type | What it is | Reference | Date ||
+|---|---|---|---|---|
+|| S-forum-vllm-deepdive | forum | DGX Spark vLLM deep-dive blog posts — historical troubleshooting guide + technical report (sm_121 vs sm_100, CUTLASS/FlashInfer/Marlin, NVFP4/MXFP4/FP8 wiring, vLLM backend oracle, FP4 checkpoint-format rule, UMA OOM math, measured tok/s) (swesty) | https://forums.developer.nvidia.com/t/379391 | 2026-08-06 |
+|| S-forum-dsv4-vision-plugin | forum | DeepSeek-V4-Flash-0731-vision on 2× Spark — FlyCockpit vLLM plugin (DeepEncoderV2 tower + 40 MB projector), DSpark wrapper-transparency fix (acceptance 1-15%→50-64%, ~40-50 tps), --limit-mm-per-prompt image:8, chat_template_kwargs thinking:false for images, tiles=2 token math 257/769/1281, vision quality assessment (co-le) | https://forums.developer.nvidia.com/t/379212 | 2026-08-05 |
