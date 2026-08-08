@@ -31,12 +31,22 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [laguna-s-2.1](wiki/models/laguna-s-2.1.md) — 117.6B MoE NVFP4 single-node; DFlash spec=7; 22.6 tok/s decode, flat across depths; **retired** — output quality below MiMo/DeepSeek, no speed advantage over Qwen3.6.
 - [inkling](wiki/models/inkling.md) — Thinking Machines multimodal MoE (975B/41B-active + Small 276B/12B-active); NVFP4 on 8× and 2× Spark, paged-KV cliff, FP8 KV absent (BF16 only), tool-calling parser bug, Lamport-on-RoCE escape hatch, kernel bugs filed.
 - [glm-5.2](wiki/models/glm-5.2.md) — Zhipu AI 744B/40B-active MoE (sparse-MLA); 4×–8× Spark recipes, hybrid FP8+NVFP4+MXFP4 quant, MTP quality, reasoning-parser bug, KV kernel constraints.
+- [kimi-k3](wiki/models/kimi-k3.md) — Moonshot AI Kimi K3 (~2.8T MoE); REAP-320 MXFP4 on 8× Spark 21-30 tok/s; full model needs 16× GB10; REAP variant loops.
 
 ## Reference
 - [benchmarks](wiki/benchmarks.md) — collated decode tok/s + concurrency table; append rows.
 - [roadmap](wiki/roadmap.md) — open problems & areas of further development.
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
+
+## Forum ingest 2026-08-08 (Batch 59)
+- 2 new NVIDIA DGX Spark forum topics found (1 technically relevant, 1 skipped: system updates question).
+- 1 new source registered (Batch 59). 2 topic IDs added to processed_topics.txt (total now 556).
+- **Headline finding:** Kimi K3 Coder REAP-320 MXFP4 on 8× GB10 — first reported Kimi K3 variant
+  on DGX Spark. Decode 21-30 tok/s (tg1500), peak 35 tok/s, prefill 541-686 tok/s via llama-bench.
+  REAP pruned variant "loops a lot" (quality issue); full K3 needs 16× GB10.
+- Pages touched: models/kimi-k3 (NEW), benchmarks (1 new [conjecture] row), sources/README, index, log.
+- All [conjecture] — single-source forum. No evidence promotions.
 
 ## Forum ingest 2026-08-07 (Batch 58)
 - 3 new NVIDIA DGX Spark forum topics found (2 technically dense, 1 marginal accessory thread).

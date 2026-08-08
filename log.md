@@ -2,6 +2,27 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-08 — Forum ingest: Batch 59 — 2 new topics (1 processed, 1 skipped)
+
+- **Sources:** 2 new forum topics found by fetch_new_topics.py. 1 technically relevant, 1 skipped.
+  1 new source registered (Batch 59) in `sources/README.md`: S-forum-kimi-k3-coder-reap.
+  2 topic IDs added to `processed_topics.txt` (total now 556).
+- **Topics found:**
+  - 378858 (Kimi K3 Coder Reap on 8xGB10 — 32t/s avg gen speed in coding task) — technically
+    relevant. First reported Kimi K3 variant on DGX Spark.
+  - 379263 (Quick Question on Spark System Updates) — non-technical (how to get system updates,
+    "just use the dashboard"). Skipped.
+- **Pages touched:** models/kimi-k3 (NEW — full model page), benchmarks (1 new [conjecture] row),
+  sources/README, index, log.
+- **Key findings:**
+  1. **Kimi K3 Coder REAP-320 MXFP4 on 8× GB10** — first reported Kimi K3 variant on DGX Spark
+     (ciprianveg). Decode 21-30 tok/s (tg1500), peak 35 tok/s, prefill 541-686 tok/s via
+     llama-bench (llama.cpp). Decode relatively flat across d0-d32000 context depths.
+     Consistent with bandwidth-bound decode for large MoE at MXFP4 on 8× Spark. The REAP
+     pruned variant "loops a lot" (repetitive output quality issue) — OP does not recommend it.
+     Full K3 model needs 16× GB10. All [conjecture] — single source.
+- All [conjecture] — single-source forum. No evidence promotions.
+
 ## 2026-07-08 — Public seed: sanitize + evidence-tag the initial KB
 - Established sparkbase from a private GB10/DGX-Spark knowledge base: added the evidence ladder
   (`conjecture → reported → reproduced → proven → superseded`), the two-stack agent model

@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan
-> **updated:** 2026-08-07
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap
+> **updated:** 2026-08-08
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
 anchor the rules on
@@ -874,3 +874,19 @@ S-forum-dsv4-llamacpp-fan.
 > CUDA prefill path. The `--no-mmap` flag is consistent with the proven UMA requirement
 > (`[[wiki/llama-cpp-rpc.md]]`). The firmware update improving thermals (71°C/75W, no shutdown)
 > corroborates the documented EC firmware / fan curve findings (`[[wiki/platform-gb10.md]]`).
+
+## Batch 59 forum ingest (2026-08-08)
+
+**[conjecture]** — single-source forum benchmark. S-forum-kimi-k3-coder-reap.
+
+||| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+|||---|---|---|---|---|---|---|---||
+||| Kimi K3 Coder REAP-320 | MXFP4 | llama.cpp (llama-bench) | 8 (TP=8) | 23.79 (d0) / 29.69 (d4000) / 21.29 (d32000) | 32K | pp2048 541-686 tok/s; peak 35 tok/s; REAP variant "loops a lot" (quality issue); full K3 needs 16× GB10; same active experts as full model | S-forum-kimi-k3-coder-reap ||
+
+> **[conjecture]** **Kimi K3 Coder REAP-320 MXFP4 on 8× GB10** (S-forum-kimi-k3-coder-reap,
+> ciprianveg): first reported Kimi K3 variant on DGX Spark. Decode 21-30 tok/s (tg1500), peak
+> 35 tok/s, prefill 541-686 tok/s. Decode is relatively flat across context depths (d0-d32000),
+> suggesting attention is not the bottleneck at these depths. The REAP pruned variant produces
+> repetitive output ("loops a lot") — the OP does not recommend it. Consistent with the
+> bandwidth-bound decode regime for large MoE at MXFP4 on 8× Spark. See
+> `[[wiki/models/kimi-k3.md]]`.
