@@ -3,7 +3,7 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3, S-forum-mikrotik-cr804-042, S-forum-nfs-modelshare, S-forum-cx7-pcie-power, S-forum-4node-qrs812, S-forum-crs812-4node, S-forum-sparkring, S-forum-kernel-1029-rdma
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3, S-forum-mikrotik-cr804-042, S-forum-nfs-modelshare, S-forum-cx7-pcie-power, S-forum-4node-qrs812, S-forum-crs812-4node, S-forum-sparkring, S-forum-kernel-1029-rdma, S-forum-crs804-8x
 > **updated:** 2026-08-10
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
@@ -527,6 +527,38 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
   on Spark:** Ray's memory assumptions (discrete CPU RAM vs GPU VRAM) don't hold on unified memory
   — high utilization is normal, not a leak. Related to the existing [proven] Ray V2 hangs finding
   and the [conjecture] UVM livelock finding (S-forum-uvm-livelock).
+
+### Batch 62 forum ingest (2026-08-10)
+
+- **[conjecture]** **CRS804-4DDQ confirmed for 8× Spark clusters — PCIe5 x4 ceiling means breakout
+  ports cap at ~109Gbps per x4** (S-forum-crs804-8x, Patrick-ServeTheHome + jwarner + elsaco):
+  a 32-post thread with ServeTheHome's Patrick confirming 8× Spark on a single CRS804-4DDQ
+  switch (1.6T total, 8× 200G ports). The thread clarifies the GB10 CX-7 port architecture in
+  detail:
+  - Each GB10 QSFP56 port is **200GbE**, backed by **two PCIe5 x4 links** (each ~109Gbps
+    practical). The CX-7 has two physical QSFP56 ports, each mapping to one PCIe5 x4.
+  - **Without breakout**: connecting one cable per port means each port only drives ~109Gbps
+    (one PCIe5 x4) despite the 200G port rate — the second x4 link is idle.
+  - **With QSFP56-DD breakout**: both PCIe5 x4 links from the SoC route through one physical
+    port, saturating the full 200G. This is why the CRS804 DDQ (double-density QSFP-DD) is the
+    recommended switch — one DD port splits to 2× QSFP56, each getting a full PCIe5 x4.
+  - **Must manually set port speed to 200Gbps** on all CRS804 ports (auto-negotiate may not
+    select 200G). Also set MTU 9000 and use the correct interface pairs.
+  - **2 breakout cables suffice for 4× Spark** (each cable splits 1× DD → 2× QSFP56, so 2
+    cables = 4 ports). Connecting both ports per Spark adds redundancy but no performance gain
+    (the PCIe bus is the ceiling, not the port count).
+  - **Naddod Q2Q56-400G-CU1** breakout DAC confirmed working (1m, passive copper, marketed
+    for Spark clusters). FS.com QDD-400G-2QPC02 also confirmed (S-forum-mikrotik-cr804-042).
+  - **QSFP-112 cables are backwards-compatible** (QSFP+/QSFP28/QSFP56) but overkill — the
+    Spark's physical port is QSFP-56 (200G max), so QSFP-112 (400G) cables work but give no
+    extra bandwidth.
+  - **10G ports on the CRS804 can serve storage** (NVMe-oF / NFS model cache) to avoid
+    consuming 200G fabric ports for storage traffic.
+  **Why it bites on Spark:** the PCIe5 x4 architecture means the practical per-port ceiling
+  is ~109Gbps unless you use breakout to combine both x4 links. This corroborates the proven
+  finding that cross-node collectives are host-staged (the PCIe bus, not the link, is the
+  ceiling). The CRS804 is the highest-density switch option for GB10 clusters (8× 200G on one
+  1.6T switch). Single source (thread with ServeTheHome confirmation) → [conjecture].
 
 ## See also
 `[[wiki/platform-gb10.md]]` · `[[wiki/cudagraphs-and-compile.md]]` · `[[wiki/llama-cpp-rpc.md]]` · `[[wiki/engines.md]]`

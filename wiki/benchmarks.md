@@ -3,7 +3,7 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp
 > **updated:** 2026-08-10
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
@@ -920,3 +920,21 @@ S-forum-dsv4-llamacpp-fan.
 > (S-forum-dsv4-0731-sparkrun, david735): packaging derivative of the tonyd2wild DSpark recipe
 > (S-forum-dsv4-0731-dspark-loader). The 58 tps figure is consistent with the 55.4 mean / 66.1
 > peak already documented. No new GB10-specific findings beyond sparkrun packaging.
+
+## Batch 62 forum ingest (2026-08-10)
+
+**[conjecture]** — single-source forum benchmark. S-forum-dsv4-0731-dspark-llamacpp.
+
+|| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+||---|---|---|---|---|---|---|---||
+|| DeepSeek-V4-Flash-0731 | UD-IQ3_XXS + DSpark (dflash drafter) | llama.cpp (llama-server) | 1 | 30.5-31.5 (code, DSpark) / 16.6 (plain) / 20.2 (prose, DSpark) | 256K | first dflash-format drafter for 0731; --spec-draft-n-max 5; accept ~50% code / ~25% prose; 25.3 t/s post-227k prefill; 151 t/s prefill (NEON-bound); IQ3_XXS 97GB only quant fitting GPU+drafter; KLD 0.24 | S-forum-dsv4-0731-dspark-llamacpp ||
+
+> **[conjecture]** **DSV4-Flash-0731 DSpark on single GB10 via llama.cpp — 31 t/s on code**
+> (S-forum-dsv4-0731-dspark-llamacpp, GaelicThndr): first reported DSpark speculative decoding
+> on single GB10 via llama.cpp, and first public dflash-format drafter for DSV4-Flash-0731.
+> UD-IQ3_XXS (97GB) is the only quant that fits fully on GPU alongside the 6.5GB drafter —
+> CPU offload of even 5-6 expert layers poisons speculation. The 31 t/s on code (1.87× over
+> plain 16.6 t/s) is the highest reported single-Spark DSV4-Flash-0731 throughput via llama.cpp.
+> The KLD quant ladder analysis shows a binary trade on 121GB: IQ3_XXS+DSpark=31 t/s at KLD
+> 0.24, or Q3_K_XL=9 t/s at KLD 0.106, with no intermediate viable. See
+> `[[wiki/llama-cpp-rpc.md]]` for the full recipe and KLD table.

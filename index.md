@@ -39,6 +39,21 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-10 (Batch 62)
+- 3 new NVIDIA DGX Spark forum topics found (2 technically relevant, 1 skipped: Qwen3.8-27B
+  open-weights announcement — no GB10-specific findings).
+- 2 new sources registered (Batch 62). 3 topic IDs added to processed_topics.txt (total now 569).
+- **Headline finding 1:** CRS804-4DDQ confirmed for 8× Spark clusters — CX-7 port architecture
+  clarified (each QSFP56 port backed by 1× PCIe5 x4 ~109Gbps; breakout combines both x4 for
+  full 200G; manual 200G port speed required). Highest-density switch for GB10 (1.6T).
+- **Headline finding 2:** DSV4-Flash-0731 DSpark on single GB10 via llama.cpp — 31 t/s on code,
+  first public dflash-format drafter. KLD quant ladder shows binary trade on 121GB: IQ3_XXS+DSpark
+  (31 t/s, KLD 0.24) vs Q3_K_XL (9 t/s, KLD 0.106), no intermediate viable.
+- Pages touched: multinode-tp-and-networking (CRS804 8× Spark [conjecture]), llama-cpp-rpc
+  (DSV4-Flash-0731 DSpark single-node recipe [conjecture]), benchmarks (1 new [conjecture] row),
+  sources/README, log.
+- All [conjecture] — single-source forum. No evidence promotions.
+
 ## Forum ingest 2026-08-10 (Batch 61)
 - 8 new NVIDIA DGX Spark forum topics found (4 technically relevant, 4 skipped: DGX Spark 2
   speculation, NVIDIA Sync Tailscale security advisory on macOS, NVMe AES-256 confirmation, ISO

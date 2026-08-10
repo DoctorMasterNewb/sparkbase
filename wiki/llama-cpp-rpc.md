@@ -3,7 +3,7 @@
 > **area:** llama.cpp
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-nemotron-rpc, S-forum-m3-llamacpp-2x, S-forum-dsv4-llamacpp-fan, S-forum-dsv4-0731-gguf
+> **sources:** S-nemotron-rpc, S-forum-m3-llamacpp-2x, S-forum-dsv4-llamacpp-fan, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-dspark-llamacpp
 > **updated:** 2026-08-10
 
 llama.cpp is the path for **GGUF** checkpoints and for archs vLLM/Atlas don't support (e.g.
@@ -83,6 +83,46 @@ cmake --build build-rpc --target llama-server rpc-server -j
   Unsloth also published **UD-Q8_K_XL** (162 GB, "full precision lossless", 7 GB larger than Q4) —
   too large for single Spark, needs 2-node RPC. Consistent with the S-forum-dsv4-llamacpp-fan
   recipe (same quant, same flags). No tok/s reported in this thread.
+
+- **[conjecture]** DeepSeek-V4-Flash-0731 DSpark (speculative decoding) on single ASUS Ascent GX10
+  (GB10, 121GB, sm_121a) via `llama-server` (S-forum-dsv4-0731-dspark-llamacpp, GaelicThndr):
+  mainline llama.cpp supports DSpark natively (`--spec-type draft-dspark`) but no drafter in the
+  required dflash GGUF format existed for the 0731 model — the OP converted it from the ds4-fork
+  format (pure arch/KV/tensor rename, numerics byte-identical, tokenizer added from target model).
+  Published at `GaelicThunder/DSpark-DeepSeek-V4-Flash-0731-drafter-dflash-GGUF`.
+  - **Target**: Unsloth UD-IQ3_XXS (97GB, full GPU, temp 0).
+  - **Spec decode results**: code generation 16.6 → **30.5-31.5 t/s** (draft accept ~50%, mean
+    accepted length 3.5 of block 5); adversarial literary prose 16.6 → **20.2 t/s** (accept ~25%).
+  - **`--spec-draft-n-max 5`** required: the drafter block size is 5; the default of 3 silently
+    wastes two draft positions per block.
+  - **KLD quant ladder on 121GB** (Unsloth published KLD vs Q8, lower = closer to full quality):
+    | quant | size | KLD | GB10 measured |
+    |---|---|---|---|
+    | UD-IQ3_XXS | 97GB | 0.2403 | 16.6 t/s plain / 31 t/s DSpark — ONLY quant fitting fully on GPU with 6.5GB drafter |
+    | UD-IQ3_S | 108GiB | ~0.17 | not viable: 5-6 expert layers on CPU once drafter loaded → poisons speculation |
+    | UD-Q3_K_M | 119GiB | ~0.11 | same class as Q3_K_XL, nothing gained |
+    | UD-Q3_K_XL | 120GB | 0.1062 | 9.0 t/s with last 7 layers on CPU — llama.cpp copies weights to device buffers (no mmap serving), so 120GB can never fully fit |
+    | UD-IQ4_XS | 128GB | 0.0747 | ruled out by same physics — even more CPU offload needed |
+  - **No free intermediate quant**: the OP tried splicing Q3_K_XL expert tensors into IQ3_XXS
+    base (same imatrix, directly transplantable). Paired KL-divergence shows divergence spread
+    almost uniformly across layers — swapping 21 of 43 expert layers recovers only ~25% of the
+    quality gap vs the ~49% a concentrated-importance model would predict. The gap between 0.24
+    and 0.106 stays empty on this hardware without a real imatrix.
+  - **Production config**: 256k context, KV q8_0 on both target and draft, routed experts of
+    last 2 layers on CPU, watchdog at 8GB MemAvailable. **25.3 t/s** on code measured AFTER a
+    real 227,399-token prefill (not boot-time numbers). Min available memory 9GB during run.
+    Prefill 151 t/s on first long hit (NEON-bound through CPU expert layers).
+  - **CPU offload poisons speculation**: even 5-6 expert layers on CPU (IQ3_S at 108GiB) kills
+    speculative decode benefit — the CPU expert routing latency per token dominates the draft
+    verify time. Only IQ3_XXS (97GB + 6.5GB drafter = ~104GB, fits fully on GPU) works with
+    DSpark.
+  **Why it bites on Spark:** this is the first reported DSpark speculative decoding on a single
+  GB10 via llama.cpp, and the first public dflash-format drafter for DSV4-Flash-0731. The 31 t/s
+  on code (1.87× over plain) is the highest reported single-Spark DSV4-Flash-0731 throughput via
+  llama.cpp. The KLD-vs-fit analysis is a durable GB10 finding: on 121GB unified memory, the
+  practical quant trade is binary (IQ3_XXS+DSpark=31 t/s at KLD 0.24, or Q3_K_XL=9 t/s at KLD
+  0.106) with no intermediate viable due to uniform layer importance. Consistent with the
+  proven `--no-mmap` requirement and bandwidth-bound decode ceiling.
 
 ## See also
 `[[wiki/multinode-tp-and-networking.md]]` · `[[wiki/engines.md]]` · `[[wiki/models/nemotron-3.md]]` · `[[wiki/benchmarks.md]]`

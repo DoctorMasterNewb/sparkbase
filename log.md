@@ -2,6 +2,53 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-10 — Forum ingest: Batch 62 — 3 new topics (2 processed, 1 skipped)
+
+- **Sources:** 3 new forum topics found by fetch_new_topics.py. 2 technically relevant, 1 skipped.
+  2 new sources registered (Batch 62) in `sources/README.md`: S-forum-crs804-8x,
+  S-forum-dsv4-0731-dspark-llamacpp.
+  3 topic IDs added to `processed_topics.txt` (total now 569).
+- **Topics found:**
+  - 364093 (GB10 QSFP56 ports speed — CRS804 DDQ for multi-Spark, 32 posts, 2160 views) —
+    **processed**. 8× Spark on CRS804-4DDQ confirmed by ServeTheHome. Detailed CX-7 port
+    architecture: each QSFP56 port backed by 1× PCIe5 x4 (~109Gbps); breakout combines both
+    x4 through one port for full 200G. Manual 200G port speed setting required. 2 breakout
+    cables for 4× Spark. Naddod Q2Q56-400G-CU1 confirmed. QSFP-112 backwards-compatible but
+    overkill. 10G ports for storage. S-forum-crs804-8x.
+  - 379612 (Lowest KLD DSV4-Flash-0731 on single GB10 — DSpark drafter converted, 31 t/s on
+    code, 256k context recipe) — **processed**. Extremely dense single-post recipe. First
+    public dflash-format drafter for DSV4-Flash-0731 (converted from ds4-fork format).
+    UD-IQ3_XXS 97GB + DSpark: 31 t/s code (accept ~50%), 20.2 t/s prose (accept ~25%),
+    16.6 t/s plain. --spec-draft-n-max 5 required. KLD quant ladder on 121GB: binary trade
+    (IQ3_XXS+DSpark=31 t/s at KLD 0.24, or Q3_K_XL=9 t/s at KLD 0.106, no intermediate
+    viable — uniform layer importance confirmed by tensor splicing experiment). Production
+    256k ctx: 25.3 t/s post-227k prefill, KV q8_0, 151 t/s prefill (NEON-bound). CPU offload
+    poisons speculation. S-forum-dsv4-0731-dspark-llamacpp.
+  - 379613 (Qwen3.8-27B coming next week — open weights announcement) — **skipped**: model
+    announcement, no GB10-specific findings (no flags, env vars, tok/s, quant formats, or
+    hardware configs). Qwen3.8-Max (2.4T) and Qwen3.8-27B announced for open-weights release
+    next week. No inference data. Source registered for provenance as topic ID only.
+- **Pages touched:** multinode-tp-and-networking (CRS804 8× Spark — CX-7 PCIe5 x4 port
+  architecture, breakout cable guidance, [conjecture]), llama-cpp-rpc (DSV4-Flash-0731 DSpark
+  single-node — first dflash drafter, KLD quant ladder, 31 t/s code, [conjecture]),
+  benchmarks (1 new [conjecture] row: DSV4-Flash-0731 DSpark single-Spark llama.cpp),
+  sources/README, log.
+- **Key findings:**
+  1. **CRS804-4DDQ for 8× Spark clusters** [conjecture] — confirms the CRS804 as the
+     highest-density switch for GB10 (1.6T, 8× 200G). Key architectural clarification: each
+     GB10 QSFP56 port is backed by one PCIe5 x4 link (~109Gbps practical); without breakout,
+     a single cable only drives ~109Gbps. QSFP56-DD breakout combines both x4 links through
+     one physical port for full 200G. Must manually set port speed to 200Gbps. Corroborates
+     the proven host-staged collective finding (PCIe bus is the ceiling, not the link).
+  2. **DSV4-Flash-0731 DSpark on single GB10 via llama.cpp — 31 t/s on code** [conjecture] —
+     first reported DSpark speculative decoding on single GB10 via llama.cpp, and first public
+     dflash-format drafter. The KLD quant ladder analysis is a durable GB10 finding: on 121GB
+     unified memory, the practical quant trade is binary (IQ3_XXS+DSpark=31 t/s at KLD 0.24,
+     or Q3_K_XL=9 t/s at KLD 0.106) with no intermediate viable due to uniform layer
+     importance (confirmed by tensor-splicing experiment). CPU offload of even 5-6 expert
+     layers poisons speculation.
+- All [conjecture] — single-source forum. No evidence promotions.
+
 ## 2026-08-10 — Forum ingest: Batch 61 — 8 new topics (4 processed, 4 skipped)
 
 - **Sources:** 8 new forum topics found by fetch_new_topics.py. 4 technically relevant, 4 skipped.
