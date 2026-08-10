@@ -39,6 +39,31 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-10 (Batch 61)
+- 8 new NVIDIA DGX Spark forum topics found (4 technically relevant, 4 skipped: DGX Spark 2
+  speculation, NVIDIA Sync Tailscale security advisory on macOS, NVMe AES-256 confirmation, ISO
+  download logistics).
+- 4 new sources registered (Batch 61). 8 topic IDs added to processed_topics.txt (total now 566).
+- **Headline finding 1:** Kernel 6.17.0-1029-nvidia one-way RDMA regression — ib_write_bw
+  craters to ~13 Gb/s in one direction (vs ~111 Gb/s healthy) on GB10. Two independent users
+  confirm (Claesbas, foogitiff). Fix: rollback to 6.17.0-1026-nvidia. Pins the existing
+  kernel-6.17 RoCE regression to a specific build. **[reported]** promotion (2 independent
+  sources agree).
+- **Headline finding 2:** vllm-snapshot plugin — fast model suspend/restore for vLLM on GB10.
+  vLLM sleep level-2 wake re-runs reload_weights (82s safetensors / 30min instanttensor —
+  processing wall, not disk I/O). Plugin snapshots weights byte-for-byte, restores via
+  cudaMemcpy in ~1.6s / ~9s full swap. Direct consequence of UMA (host RAM = GPU memory).
+- **Headline finding 3:** DSV4-Flash-0731 GGUF (Unsloth) — UD-Q8_K_XL 162GB lossless, UD-IQ2_M
+  runs on single Spark via llama.cpp with --no-repack flag.
+- **Headline finding 4:** DSV4-Flash-0731 DSpark packaged for sparkrun — 58 tps on 2× Spark
+  (packaging derivative of existing tonyd2wild recipe, consistent with 55.4 mean / 66.1 peak).
+- Pages touched: multinode-tp-and-networking (kernel-1029 RDMA regression [reported]), engines
+  (vllm-snapshot plugin [conjecture], DSV4-0731 GGUF + sparkrun [conjecture]), llama-cpp-rpc
+  (DSV4-0731 GGUF recipe [conjecture]), benchmarks (1 new [conjecture] row), sources/README,
+  index, log.
+- Evidence promotion: kernel-6.17.0-1029 RDMA regression [conjecture] → [reported] (2
+  independent users confirm identical symptoms + fix).
+
 ## Forum ingest 2026-08-08 (Batch 60)
 - 2 new NVIDIA DGX Spark forum topics found, both technically relevant.
 - 2 new sources registered (Batch 60). 2 topic IDs added to processed_topics.txt (total now 558).

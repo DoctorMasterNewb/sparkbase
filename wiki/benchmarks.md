@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin
-> **updated:** 2026-08-08
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun
+> **updated:** 2026-08-10
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
 anchor the rules on
@@ -907,3 +907,16 @@ S-forum-dsv4-llamacpp-fan.
 > path silently kills DSpark speculative decoding (acceptance 1-15% → 50-64% after fix). This is
 > a general pattern for any vision wrapper + spec-decode combo on vLLM, not DSV4-specific.
 > See `[[wiki/engines.md]]` → DSV4-Flash-0731-vision section.
+
+## Batch 61 forum ingest (2026-08-10)
+
+**[conjecture]** — single-source forum benchmark. S-forum-dsv4-0731-sparkrun.
+
+|| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+||---|---|---|---|---|---|---|---|---|
+|| DeepSeek-V4-Flash-0731-DSpark | NVFP4 (DSpark 1M NVFP4 KV) | vLLM TP=2 (sparkrun) | 2 | ~58 (agentic/coding) | 1M | tonyd2wild recipe packaged for sparkrun via brainchillz/sparkrun-dspark-registry; consistent with 55.4 mean / 66.1 peak from S-forum-dsv4-0731-dspark-loader | S-forum-dsv4-0731-sparkrun ||
+
+> **[conjecture]** **DSV4-Flash-0731 DSpark via sparkrun — 58 tps agentic/coding on 2× Spark**
+> (S-forum-dsv4-0731-sparkrun, david735): packaging derivative of the tonyd2wild DSpark recipe
+> (S-forum-dsv4-0731-dspark-loader). The 58 tps figure is consistent with the 55.4 mean / 66.1
+> peak already documented. No new GB10-specific findings beyond sparkrun packaging.

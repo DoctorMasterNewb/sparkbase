@@ -2,6 +2,58 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-10 — Forum ingest: Batch 61 — 8 new topics (4 processed, 4 skipped)
+
+- **Sources:** 8 new forum topics found by fetch_new_topics.py. 4 technically relevant, 4 skipped.
+  4 new sources registered (Batch 61) in `sources/README.md`: S-forum-kernel-1029-rdma,
+  S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun.
+  8 topic IDs added to `processed_topics.txt` (total now 566).
+- **Topics found:**
+  - 379303 (Kernel 6.17.0-1029-nvidia one-way RDMA regression on ASUS GX10) — **processed**.
+    Two independent users confirm: ib_write_bw 13.2 Gb/s (regressed dir) vs 111.6 Gb/s (healthy);
+    fix: rollback to 6.17.0-1026-nvidia. S-forum-kernel-1029-rdma. **[reported]** promotion.
+  - 379601 (DGX Spark 2 release date?) — **skipped**: roadmap speculation/social.
+  - 379413 (NVIDIA Sync bundles outdated Tailscale v1.92.5) — **skipped**: macOS security
+    advisory about bundled software, not GB10 inference.
+  - 379512 (AES-256 hardware encryption on DGX Spark NVMe) — **skipped**: storage spec
+    confirmation by NVIDIA staff, not LLM inference on GB10.
+  - 379524 (Where to find ISO for fresh installation) — **skipped**: support logistics.
+  - 348862 (Run VLLM in Spark — 159-post mega-thread, 15K views) — **processed** (new posts 160-
+    161). Post 160: vllm-snapshot plugin for fast model suspend/restore on GB10 (~1.6s restore
+    vs 82s reload_weights wall). Post 161: swesty blog posts (already registered as
+    S-forum-vllm-deepdive in Batch 60). S-forum-vllm-snapshot.
+  - 378829 (DeepSeek-V4-Flash-0731 GGUF Unsloth release) — **processed**: UD-Q8_K_XL 162GB
+    lossless, UD-IQ2_M single-Spark llama.cpp recipe with --no-repack, MJPansa NVFP4 variant
+    noted. S-forum-dsv4-0731-gguf.
+  - 378892 (DSV4-Flash-0731 58tps via sparkrun recipe) — **processed**: tonyd2wild DSpark recipe
+    packaged for sparkrun, 58 tps agentic/coding on 2× Spark. Packaging derivative of existing
+    S-forum-dsv4-0731-dspark-loader. S-forum-dsv4-0731-sparkrun.
+- **Pages touched:** multinode-tp-and-networking (kernel-6.17.0-1029 RDMA regression
+  [reported] — directional asymmetry 13→111 Gb/s, pinned to specific kernel build, 2 users
+  confirm), engines (vllm-snapshot plugin [conjecture] — UMA-specific weight reload wall,
+  byte-for-byte snapshot + cudaMemcpy restore; DSV4-0731 GGUF [conjecture] — Unsloth quants,
+  llama.cpp recipe; DSV4-0731 sparkrun [conjecture] — packaging derivative), llama-cpp-rpc
+  (DSV4-0731 GGUF recipe [conjecture] — --no-repack flag, UD-Q8_K_XL 162GB), benchmarks (1 new
+  [conjecture] row: DSV4-0731 DSpark sparkrun 58 tps), sources/README, index, log.
+- **Key findings:**
+  1. **Kernel 6.17.0-1029-nvidia one-way RDMA regression** [reported] — the existing kernel-6.17
+     RoCE finding is now pinned to a specific build: 1029 is affected, 1026 is not. The
+     regression is directional (one-way), affecting both RDMA and TCP. Two independent users
+     confirm identical symptoms and fix. This is the current DGX-OS kernel — `apt upgrade` can
+     silently break cross-node inference throughput.
+  2. **vllm-snapshot plugin** [conjecture] — vLLM sleep level-2 wake on GB10 takes 82s
+     (safetensors) / 30min (instanttensor) because reload_weights is a processing wall, not
+     disk I/O — a direct UMA consequence (host RAM = GPU memory). The plugin snapshots built
+     weights to disk and restores via cudaMemcpy in ~1.6s. First reported fast model-swap
+     mechanism validated on GB10/SM121.
+  3. **DSV4-Flash-0731 GGUF (Unsloth)** [conjecture] — UD-Q8_K_XL 162GB is lossless but needs
+     2-node RPC; UD-IQ2_M fits single Spark with --no-repack flag. Consistent with existing
+     S-forum-dsv4-llamacpp-fan recipe.
+  4. **DSV4-Flash-0731 DSpark via sparkrun** [conjecture] — 58 tps, packaging derivative of
+     existing recipe, consistent with 55.4 mean / 66.1 peak.
+- Evidence promotion: kernel-6.17.0-1029 RDMA regression [conjecture] → [reported] (2
+  independent users confirm identical symptoms + fix on different hardware pairs).
+
 ## 2026-08-08 — Forum ingest: Batch 59 — 2 new topics (1 processed, 1 skipped)
 
 - **Sources:** 2 new forum topics found by fetch_new_topics.py. 1 technically relevant, 1 skipped.

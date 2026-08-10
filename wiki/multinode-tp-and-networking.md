@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3, S-forum-mikrotik-cr804-042, S-forum-nfs-modelshare, S-forum-cx7-pcie-power, S-forum-4node-qrs812, S-forum-crs812-4node, S-forum-sparkring
-> **updated:** 2026-08-07
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3, S-forum-mikrotik-cr804-042, S-forum-nfs-modelshare, S-forum-cx7-pcie-power, S-forum-4node-qrs812, S-forum-crs812-4node, S-forum-sparkring, S-forum-kernel-1029-rdma
+> **updated:** 2026-08-10
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -909,3 +909,31 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
     what NCCL's algorithm selection supports.
   - See `[[wiki/models/glm-5.2.md]]` → SparkRing section for GLM-5.2-specific performance and bugs.
   - Single source (one thread, OP + 1 reproducer in same thread) → [conjecture].
+
+### Batch 61 forum ingest (2026-08-10)
+
+- **[reported]** **Kernel 6.17.0-1029-nvidia one-way RDMA regression on GB10** (S-forum-kernel-1029-rdma,
+  Claesbas + foogitiff): a severe **directional asymmetry** in RDMA Write performance appears on
+  kernel `6.17.0-1029-nvidia`. On a mixed pair (1× DGX Spark + 1× ASUS Ascent GX10) with two
+  direct 200 Gb/s ConnectX-7 links, RoCE v2, NCCL TP=2 vLLM:
+  - DGX Spark → ASUS GX10: **~13.2 Gb/s** (regressed direction)
+  - ASUS GX10 → DGX Spark: **~111.6 Gb/s** (healthy direction)
+  - TCP throughput shows the **same directional asymmetry**.
+  - Both CX-7 ports tested; 1/4/8 QPs tested; RDMA Write/Read/Send all affected.
+  - PCIe 5.0 x4 healthy, no AER errors. CX-7 firmware identical on both: `28.45.4028`,
+    PSID `NVD0000000087`.
+  - **Fix:** rolling the ASUS GX10 back to kernel `6.17.0-1026-nvidia` immediately restores
+    symmetric performance: **13.2 → 111.7 Gb/s**. Stable after reboot. No network/firmware/NCCL
+    config changes needed.
+  - **Second user (foogitiff) independently confirms**: identical symptoms on 2× ASUS GX10,
+    same `ib_write_bw` numbers (108.9 Gb/s on 1026 vs regressed on 1029), same fix (rollback to
+    1026).
+  - **Two independent users confirm** → [reported]. This is the **same regression class** as the
+    existing `[reported]` kernel-6.17 RoCE finding (line 33 above), but now **pinned to a specific
+    kernel build**: `1029` is affected, `1026` is not. The earlier finding recommended downgrading
+    to `6.11`; this finding shows `6.17.0-1026-nvidia` is also safe. **Why it bites on Spark:**
+    this is the current DGX-OS kernel — if `apt upgrade` pulls `1029`, cross-node inference
+    throughput silently craters to ~13 Gb/s in one direction. Hold the 1026 kernel packages
+    (`apt-mark hold linux-image-6.17.0-1026-nvidia`) or verify `ib_write_bw` after any kernel
+    update. The asymmetry means NCCL all-reduce (bidirectional) will be bottlenecked by the slow
+    direction.

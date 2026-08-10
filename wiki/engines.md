@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin
-> **updated:** 2026-08-08
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun
+> **updated:** 2026-08-10
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -691,3 +691,60 @@ Three engines run on the Spark pair; pick by arch support and quant.
    that adds ~9 GB to the weights (vs ~900 MB for the FlyCockpit encoder). Potentially better
    quality due to larger vision component, but the additional 9 GB is challenging given the
    "constant struggle with memory constraints" on 2× Spark. Not yet tested.
+
+ ## Forum ingest: vllm-snapshot — fast model suspend/restore on GB10 (2026-08-10)
+
+ - **[conjecture]** **vllm-snapshot plugin — byte-for-byte weight snapshot enables ~1.6s restore /
+   ~9s full model swap on GB10/SM121** (S-forum-vllm-snapshot, david.gareth.roberts): a native vLLM
+   plugin (`dgr237/vllm-snapshot`) that adds `/suspend` and `/restore` endpoints to vanilla vLLM's
+   server. vLLM's built-in sleep mode (`/sleep?level=2`) frees weight memory but a level-2 wake
+   must **re-run `reload_weights`** — this is a **processing wall, not disk I/O**:
+   - **~82s** for a 26B NVFP4 MoE via safetensors loader
+   - **~30 min** via instanttensor loader
+   - Faster loaders don't help because the bottleneck is CPU-side tensor reconstruction, not disk
+     read.
+   The plugin instead **snapshots the built weight regions byte-for-byte to disk** on suspend, then
+   restores them with a **bulk `cudaMemcpy`** on wake:
+   - **~1.6s restore** (weight regions only)
+   - **~9s full swap** (including CUDA graph teardown/rebuild)
+   - Correct and reproducible.
+   Additional features: `autosuspend` option (auto-suspend on idle timeout) + Docker Compose
+   `depends_on` pattern so N models boot one-at-a-time instead of OOM-ing the 121 GB unified pool.
+   Research prototype, only validated on GB10/SM121 so far. **Why it bites on Spark:** the 82s
+   reload wall is a direct consequence of unified memory — on a discrete-GPU server, level-2 sleep
+   + wake is fast because weights load from host RAM over PCIe at ~30 GB/s; on GB10, the "host RAM"
+   IS the GPU memory, so the reload path re-runs the full tensor construction pipeline. This is
+   the same UMA constraint that makes `cudaMemGetInfo` under-reporting (S-forum-comfyui-optimized)
+   and single-CUDA-context serialization (S-forum-cuda-single-ctx) bite. The plugin's
+   snapshot-to-disk approach sidesteps the reconstruction wall entirely. Related to the existing
+   multi-model co-hosting findings (S-forum-llm-comfyui, S-forum-woolyai).
+
+ ## Forum ingest: DSV4-Flash-0731 GGUF + sparkrun packaging (2026-08-10)
+
+ - **[conjecture]** **DeepSeek-V4-Flash-0731 GGUF (Unsloth release) — UD-Q8_K_XL 162GB lossless,
+   UD-IQ2_M runs on single Spark via llama.cpp** (S-forum-dsv4-0731-gguf, vincenzoa, chriswalz86):
+   Unsloth published GGUF quants for DSV4-Flash-0731 (284B params, 13B active, 1M context window).
+   - **UD-Q8_K_XL** (162 GB) is described as "full precision lossless" — only 7 GB larger than
+     UD-Q4_K_XL. Too large for a single 121 GB Spark; needs 2× Spark via llama.cpp RPC or a
+     single Spark with aggressive 2-bit quants.
+   - **UD-IQ2_M** runs on a single Spark via `llama-server`:
+     `--n-gpu-layers 999 --flash-attn on --ctx-size 262144 --parallel 2 --batch-size 2048
+     --ubatch-size 512 --jinja --reasoning off --no-repack --cache-type-k f16 --cache-type-v f16
+     --temp 0.6 --top-p 0.95 --top-k 0 --min-p 0.0`
+     Works without issues. The `--no-repack` flag is notable — it disables llama.cpp's default
+     repacking of quantized tensors, which may be specific to the Unsloth GGUF format.
+   - **MJPansa/DeepSeek-V4-Flash-0731-NVFP4** exists as a community NVFP4 variant (not yet
+     benchmarked on Spark in this thread).
+   - **MTP not yet compatible** on community vLLM for this model (anotheralvin).
+   The IQ2_M single-Spark recipe is consistent with the existing
+   `[conjecture]` DSV4-Flash-0731 UD-IQ2_M finding (S-forum-dsv4-llamacpp-fan, 16.2 tok/s tg32
+   on HP ZGX) — same quant, same flags, different poster.
+
+ - **[conjecture]** **DSV4-Flash-0731 DSpark packaged for sparkrun — 58 tps agentic/coding on 2×
+   Spark** (S-forum-dsv4-0731-sparkrun, david735): the tonyd2wild DSpark 1M NVFP4 KV recipe
+   (already documented as S-forum-dsv4-0731-dspark-loader) has been packaged for sparkrun via
+   `brainchillz/sparkrun-dspark-registry`. The poster reports **58 tps on agentic/coding tasks**
+   across 2× Spark. This is a packaging/automation derivative of the existing recipe — the
+   underlying recipe, flags, and performance characteristics are already documented. The 58 tps
+   figure is consistent with the 55.4 tok/s mean / 66.1 peak reported in the original
+   DSpark loader fix thread. No new GB10-specific findings beyond the packaging.

@@ -3,8 +3,8 @@
 > **area:** llama.cpp
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-nemotron-rpc, S-forum-m3-llamacpp-2x, S-forum-dsv4-llamacpp-fan
-> **updated:** 2026-08-07
+> **sources:** S-nemotron-rpc, S-forum-m3-llamacpp-2x, S-forum-dsv4-llamacpp-fan, S-forum-dsv4-0731-gguf
+> **updated:** 2026-08-10
 
 llama.cpp is the path for **GGUF** checkpoints and for archs vLLM/Atlas don't support (e.g.
 `nemotron_h_moe` hybrid Mamba-2+attn MoE). Its 2-node story is **pipeline RPC**, not tensor-parallel —
@@ -74,6 +74,15 @@ cmake --build build-rpc --target llama-server rpc-server -j
   flag is consistent with the proven UMA requirement. The IQ2_M (2-bit UD quant) allows the ~440B
   model to fit in a single 121 GB node. Prefill is low (390 tok/s) — llama.cpp's CPU-side processing
   on Grace limits prefill vs vLLM's CUDA prefill path. See `[[wiki/benchmarks.md]]` → Batch 58.
+
+- **[conjecture]** DeepSeek-V4-Flash-0731 UD-IQ2_M GGUF (Unsloth release) on single Spark via
+  `llama-server` (S-forum-dsv4-0731-gguf, chriswalz86): `--n-gpu-layers 999 --flash-attn on
+  --ctx-size 262144 --parallel 2 --batch-size 2048 --ubatch-size 512 --jinja --reasoning off
+  --no-repack --cache-type-k f16 --cache-type-v f16 --temp 0.6 --top-p 0.95 --top-k 0 --min-p 0.0`.
+  Works without issues. The `--no-repack` flag disables llama.cpp's default tensor repacking.
+  Unsloth also published **UD-Q8_K_XL** (162 GB, "full precision lossless", 7 GB larger than Q4) —
+  too large for single Spark, needs 2-node RPC. Consistent with the S-forum-dsv4-llamacpp-fan
+  recipe (same quant, same flags). No tok/s reported in this thread.
 
 ## See also
 `[[wiki/multinode-tp-and-networking.md]]` · `[[wiki/engines.md]]` · `[[wiki/models/nemotron-3.md]]` · `[[wiki/benchmarks.md]]`
