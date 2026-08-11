@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x, S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train, S-forum-moe-lora-vllm, S-forum-qlora-coding, S-forum-macaron-v1-tall, S-forum-qwen36-tp2-stall
-> **updated:** 2026-08-05
+> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x, S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train, S-forum-moe-lora-vllm, S-forum-qlora-coding, S-forum-macaron-v1-tall, S-forum-qwen36-tp2-stall, S-forum-kat-coder-autoround
+> **updated:** 2026-08-11
 
 The best-supported family on GB10 — both Atlas (AOT kernels for the MoE variants) and vLLM serve it.
 The recurring lesson: **MoE-A3B NVFP4 + MTP is the fastest regime on Spark; the dense variant of the
@@ -542,3 +542,20 @@ GB10 box at bf16 (~110 GB).
   leaves only ~16 GB for KV cache + workspace — a very tight margin on 121 GB UMA.
   Flagged for hardware-agent verification: does bf16 Qwen3.6-35B-A3B on 2× Spark TP=2
   Ray reliably stall under concurrency, and does NVFP4 avoid it?
+
+## Forum ingest: KAT Coder v2.5 Dev (Qwen3.6 MTP) AutoRound quant (2026-08-11)
+
+> **evidence:** conjecture (single forum thread, mixed benchmark signals)
+> **sources:** S-forum-kat-coder-autoround
+
+- **[conjecture]** **KAT-Coder-V2.5-Dev-MTP-int4-AutoRound-SAR — Qwen3.6 MTP headers grafted
+  onto KAT Coder v2.5 Dev, quantized via Spark AutoRound** (S-forum-kat-coder-autoround,
+  SlopOps): KAT Coder v2.5 Dev is a model trained for efficient thinking and fewer tool
+  calls. The OP grafted Qwen3.6 MTP headers onto it and quantized to int4 using the Spark
+  AutoRound method (S-forum-spark-auto-round). On Asus GB10 via vLLM with MTP: 85+ t/s
+  accepted. Tool-eval 84/100 vs Ornith-1.0-35B-int4-AutoRound 87/100. OP prefers Ornith
+  for coding; DannyTup found it "pretty bad" on bfcl/bigcodebench/ifevalcode and noted
+  benchmark validation issues. The MTP-header grafting pattern (adding Qwen3.6 MTP headers
+  to a non-Qwen base) is notable — it extends the MTP drafter approach to models not
+  originally trained with MTP. See `[[wiki/quantization-on-gb10.md]]` for the Spark
+  AutoRound tool context.

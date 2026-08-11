@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun
-> **updated:** 2026-08-10
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock
+> **updated:** 2026-08-11
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -748,3 +748,31 @@ Three engines run on the Spark pair; pick by arch support and quant.
    underlying recipe, flags, and performance characteristics are already documented. The 58 tps
    figure is consistent with the 55.4 tok/s mean / 66.1 peak reported in the original
    DSpark loader fix thread. No new GB10-specific findings beyond the packaging.
+
+## Forum ingest: LMCache 0.5.3 IPC deadlock with aidendle94 DS4F fork (2026-08-11)
+
+> **evidence:** conjecture (single forum post, one follow-up)
+> **sources:** S-forum-lmcache-ipc-deadlock
+
+- **[conjecture]** **LMCache 0.5.3 MP mode deadlocks with aidendle94's DS4F fork — version gap
+  between fork's vLLM 0.11.x IPC surface and LMCache 0.5.3's vLLM 0.18/0.20+ adapters**
+  (S-forum-lmcache-ipc-deadlock, mxjohnwong): attempted to add LMCache 0.5.3 (MP mode)
+  cross-instance KV sharing on top of `aidendle94/sparkrun-vllm-ds4-gb10:production-3.75`
+  (vLLM 0.11.2.dev279) running DeepSeek-V4-Flash-0731 on 4× Spark (2 clusters of 2 nodes each,
+  TP=2 per cluster). The LMCache server successfully registers the KV cache (170 layers for
+  DS4F's sparse-MLA hybrid KV groups with 256/64/8/4 block sizes), but vLLM hangs at
+  "Wrapping 170 KV cache tensors for IPC" and times out after 300s. Root cause is a version
+  gap: vLLM 0.11.x (2025-10 era) pairs with LMCache 0.3.x, but 0.3.x has no DS4F hybrid KV
+  support; hybrid support first appears in LMCache 0.4.7+ which targets vLLM 0.18/0.20+.
+  **No LMCache version matches both the fork's 0.11.x IPC surface AND DS4F hybrid KV.**
+  GB10-specific relevance: this is a UMA-cluster KV-cache-sharing attempt — the 128 GB pool
+  per node makes cross-instance KV sharing attractive for extending effective context across
+  clusters without doubling model weights. Operational notes: `--disable-hybrid-kv-cache-manager`
+  is a red herring (breaks startup — KV demand becomes 160 GB > available); container needs
+  `--gpus all` (Device UUID match), `--ipc host --shm-size 16g` (L1 SHM), and `cupy` installed.
+  The Mooncake connector (also shipped by the fork) natively handles hybrid KV but is likewise
+  unverified against this fork's old IPC interface. Status: `open` — no working LMCache +
+  DS4F fork configuration known. Single source → [conjecture]. See also the existing
+  `[conjecture]` LMCache-for-dedicated-KV-node finding
+  (`[[wiki/multinode-tp-and-networking.md]]`, S-forum-3node-mesh) — both are untested
+  LMCache-on-GB10 configurations.

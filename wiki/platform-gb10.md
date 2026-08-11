@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze
-> **updated:** 2026-08-07
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep
+> **updated:** 2026-08-11
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -1425,3 +1425,54 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   existing `[conjecture]` stock vLLM hang finding (S-forum-vllm-stock-hang) — both are
   "wrong image on ARM64" failure modes. The 3.7 tok/s figure is a useful baseline for
   "how slow QEMU emulation is" vs native ARM64.
+
+### Batch 63 forum ingest (2026-08-11)
+
+- **[reported]** **GPU clock energy-efficiency sweep — 1400-1800 MHz is the sweet spot for
+  bandwidth-bound LLM decode on GB10, ~25% better Wh/1M tokens than uncapped for ~3% speed
+  loss** (S-forum-clock-energy-sweep, peter.h177 + jetspark + arctic.gus + co-le): the most
+  quantitative clock-vs-power-vs-energy dataset for GB10 LLM inference to date. A 17-point
+  clock sweep (400–2400 MHz, both nodes capped in lockstep via `nvidia-smi -lgc`) on 2× DGX
+  Spark TP=2 running DSV4-Flash-0731 FP8 + DSpark + prefix caching (14-16h/day workload):
+  - **Decode is bandwidth-bound — flat across the top of the range:** 47.4-51.3 tok/s from
+    1400-2400 MHz. Raising the clock just makes the SMs "wait faster." This strongly
+    corroborates the existing **[reported]** clock-cap finding (Batch 41/49) with a new
+    dimension: energy efficiency (Wh/1M tokens), not just power/thermal.
+
+    | Cap (MHz) | Decode tok/s | Wall power (2 nodes) | Wh / 1M tokens |
+    |---|---|---|---|
+    | 2400 (uncapped) | 51.34 | 330 W | 1,688 |
+    | 2200 | 51.43 | 274 W | 1,480 |
+    | 1900 | 50.74 | 252 W | 1,381 |
+    | 1700 | 49.80 | 242 W | 1,350 |
+    | 1400 | 47.74 | 234 W | 1,362 |
+    | 800 | 34.90 | 211 W | 1,679 |
+
+  - **Best energy ROI band: 1400-1800 MHz** — ~25% better Wh/1M tokens than uncapped for
+    ~3% decode speed loss. Below ~1000 MHz the curve turns back up: generation itself costs
+    ~190 W regardless of clock, so you stretch that bill over more hours. Uncapped is not
+    even the fastest setting (2200 MHz at 51.43 tok/s slightly beats 2400 at 51.34).
+  - **`nvidia-smi` accounts for only 12-27% of real GB10 power draw** — wall-socket meter
+    is the only reliable way to measure total system power. This is a durable GB10 finding:
+    `nvidia-smi` power readings are not useful for energy-efficiency calculations on this
+    platform (GPU power is a small fraction of total SoC + system draw).
+  - **Prefill is compute-bound — ~14% penalty at 1400 MHz vs uncapped.** In agentic loops
+    with cold prefills, clock capping costs real prefill throughput. But with prefix caching,
+    only the first turn pays full prefill, so decode dominates in practice.
+  - **`-lgc` does not survive reboot** and GB10 snaps to discrete clock steps (ask for 1200,
+    get 1098). Always read back the actual clock. Re-apply the cap after every reboot or
+    use a systemd service. (jetspark posted a systemd unit — `jetspark-gpu-clock-cap.service`
+    — corroborating the existing systemd pattern from Batch 49, S-forum-cooler-temps.)
+  - **arctic.gus: stock cooling throttles at 2100 MHz** — with cases off + repasted, the
+    GPU boosts to 2500+ MHz and prefill throughput climbs further. Stock cooling cannot
+    avoid thermal throttling above ~2100 MHz, which is why extra MHz yields no improvement
+    past that point on stock units. Consistent with the existing thermal findings
+    (S-forum-thermal-shutdown, S-forum-acer-thermal).
+  - **co-le corroborates** with DSV4-Flash-0731 + DSpark on 2× Asus Ascent GX10: 2000 MHz
+    is the "proper pick" (very close to peak), runs at 2150 MHz for increased prefill +
+    decode speed. This is a 3rd independent user confirming the clock-cap sweet spot.
+  - Multiple independent users (peter.h177, jetspark, arctic.gus, co-le) contributing
+    quantitative data → strengthens the existing **[reported]** clock-cap finding. The
+    energy-efficiency dimension (Wh/1M tokens) is new and durable. **No evidence
+    promotion** — the [reported] tier is already established; this adds corroborating
+    data and the energy metric.

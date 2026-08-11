@@ -2,6 +2,64 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-11 — Forum ingest: Batch 63 — 5 new topics (3 processed, 2 skipped)
+
+- **Sources:** 5 new forum topics found by fetch_new_topics.py. 3 technically relevant, 2 skipped.
+  3 new sources registered (Batch 63) in `sources/README.md`: S-forum-clock-energy-sweep,
+  S-forum-lmcache-ipc-deadlock, S-forum-kat-coder-autoround.
+  5 topic IDs added to `processed_topics.txt` (total now 574).
+- **Topics found:**
+  - 379389 (It makes no sense to run my Sparks above 1400-1700 MHz GPU clock) — **processed**.
+    17-post thread, 1053 views. The most quantitative clock-vs-power-vs-energy dataset for GB10
+    LLM inference: 17-point sweep on 2× Spark TP=2 (DSV4-Flash-0731 FP8 + DSpark). Decode flat
+    47-51 tok/s from 1400-2400 MHz (bandwidth-bound). Best energy ROI band 1400-1800 MHz
+    (~1350 Wh/1M tokens vs 1688 uncapped = 25% better for ~3% speed loss). nvidia-smi accounts
+    for only 12-27% of real GB10 power draw. Prefill compute-bound (~14% penalty at 1400).
+    -lgc doesn't survive reboot; GB10 snaps to discrete steps. jetspark posted systemd unit.
+    arctic.gus: stock cooling throttles at 2100MHz (repaste unlocks 2500+). co-le corroborates
+    with DSV4-Flash-0731 + DSpark at 2000-2150MHz. S-forum-clock-energy-sweep.
+  - 379626 (New MSI EdgeXpert still on driver 580 / CUDA 13.0 — how about 13.2?) — **skipped**:
+    OP resolved as a mixup between Spark (580/13.0) and Thor (590/13.2). No GB10-specific
+    findings. Community advice: stay on officially supported 580/13.0 for Spark.
+  - 379644 (NVIDIA Sync not opening links in Safari) — **skipped**: browser/OS issue, not GB10
+    inference.
+  - 379624 (Failed attempt: LMCache 0.5.3 MP mode with aidendle94's DS4F fork — IPC deadlock)
+    — **processed**. 2-post thread. LMCache server registers 170 KV layers for DS4F sparse-MLA
+    hybrid KV, but vLLM hangs at "Wrapping 170 KV cache tensors for IPC" and times out after
+    300s. Root cause: version gap (fork is vLLM 0.11.2.dev279 from 2025-10, LMCache 0.5.3
+    targets vLLM 0.18/0.20+). No LMCache version matches both the fork's IPC surface AND DS4F
+    hybrid KV. --disable-hybrid-kv-cache-manager breaks startup (160GB > available). Mooncake
+    connector also unverified on this fork. S-forum-lmcache-ipc-deadlock.
+  - 379611 (KAT Coder v2.5 Dev versus Ornith 1.0 35B — Spark AutoRound) — **processed**.
+    4-post thread. KAT-Coder-V2.5-Dev-MTP-int4-AutoRound-SAR: Spark AutoRound int4 quant of
+    KAT Coder v2.5 Dev with Qwen3.6 MTP headers grafted. 85+ t/s accepted on Asus GB10.
+    Tool-eval 84/100 vs Ornith 87/100. OP prefers Ornith. DannyTup found it "pretty bad" on
+    bfcl/bigcodebench/ifevalcode and notes benchmark validation issues. MTP-header grafting
+    pattern extends MTP to non-Qwen models. S-forum-kat-coder-autoround.
+- **Pages touched:** platform-gb10 (clock energy-efficiency sweep — 17-point table, Wh/1M
+  tokens metric, nvidia-smi undercount, prefill compute-bound, systemd unit, stock cooling
+  throttle at 2100MHz — strengthens [reported] clock-cap finding), engines (LMCache 0.5.3
+  IPC deadlock with DS4F fork — version gap, no working LMCache + DS4F config [conjecture]),
+  quantization-on-gb10 (KAT Coder v2.5 Dev Spark AutoRound int4 quant — 85+ t/s accepted,
+  tool-eval 84 vs Ornith 87, benchmark dispute [conjecture]), models/qwen (KAT Coder
+  Qwen3.6 MTP graft pattern [conjecture]), sources/README, log.
+- **Key findings:**
+  1. **GPU clock energy-efficiency sweep** [reported] — the clock-cap mitigation is now
+     corroborated by 6+ independent forum threads. This thread adds the energy dimension
+     (Wh/1M tokens) and the durable finding that nvidia-smi accounts for only 12-27% of
+     real GB10 power draw. The 1400-1800 MHz band is 25% more energy-efficient than uncapped
+     for ~3% decode speed loss — "close to a free win" for always-on inference workloads.
+  2. **LMCache 0.5.3 + aidendle94 DS4F fork IPC deadlock** [conjecture] — documents that
+     cross-instance KV sharing on GB10 clusters is blocked by a vLLM version gap. The fork's
+     0.11.x IPC surface is incompatible with any LMCache version that supports DS4F hybrid KV.
+     No working configuration known. Status: open.
+  3. **KAT Coder v2.5 Dev Spark AutoRound quant** [conjecture] — extends the Spark AutoRound
+     tool to a new model class (KAT, trained for efficient thinking). MTP-header grafting
+     pattern (Qwen3.6 MTP onto non-Qwen base) is notable. Benchmark signals are mixed
+     (tool-eval 84 vs Ornith 87; DannyTup found it poor on standard code benchmarks).
+- All [conjecture] except the clock-cap finding which strengthens existing [reported].
+  No evidence promotions.
+
 ## 2026-08-10 — Forum ingest: Batch 62 — 3 new topics (2 processed, 1 skipped)
 
 - **Sources:** 3 new forum topics found by fetch_new_topics.py. 2 technically relevant, 1 skipped.

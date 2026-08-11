@@ -3,8 +3,8 @@
 > **area:** quantization
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-dsv4-reap25, S-forum-sm121-4bugs
-> **updated:** 2026-07-31
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-dsv4-reap25, S-forum-sm121-4bugs, S-forum-kat-coder-autoround
+> **updated:** 2026-08-11
 
 GB10 has **no native FP4 compute and no native FP8 block-scale**. That one fact decides which quant
 to pick. Decode is **bandwidth-bound** (`[[wiki/platform-gb10.md]]`), so the winning quant is usually
@@ -439,3 +439,27 @@ decompress, because at low batch you're memory-bound, not compute-bound.
   CUTLASS type-40 path runs on sm_120 f8f6f4 tensor cores, ~2.6× faster per layer than dp4a, and
   is more faithful to the original than Q8_K activations. This is a model-specific finding but
   relevant to any FP4-QAT model on GB10 — the source encoding may have a native tensor-core path.
+
+## Forum ingest: KAT Coder v2.5 Dev Spark AutoRound quant (2026-08-11)
+
+> **evidence:** conjecture (single forum thread, mixed benchmark signals)
+> **sources:** S-forum-kat-coder-autoround
+
+- **[conjecture]** **KAT-Coder-V2.5-Dev-MTP-int4-AutoRound-SAR on DGX Spark — 85+ t/s accepted
+  with MTP, but tool-eval below Ornith** (S-forum-kat-coder-autoround, SlopOps): a new
+  community int4 AutoRound quant of KAT Coder v2.5 Dev using the Spark AutoRound method
+  (S-forum-spark-auto-round), with Qwen3.6 MTP headers added. Published at
+  `slopops/KAT-Coder-V2.5-Dev-MTP-int4-AutoRound-SAR` on HuggingFace. On Asus GB10 via
+  vLLM with MTP, the OP reports **85+ t/s accepted** (tokens accepted by the target per
+  second, not total decode). Tool-eval: 84/100 (KAT) vs 87/100 (Ornith-1.0-35B-int4-AutoRound,
+  S-forum-ornith-int4). OP finds Ornith superior for coding/planning tasks — KAT had more
+  tool-calling issues and was less thorough on planning. A second user (DannyTup) ran
+  bfcl/bigcodebench/ifevalcode benchmarks and found it "pretty bad," and noted broader
+  benchmark validation issues (many benchmarks have typos in validation requiring wrong
+  answers to score correctly). azampatti (Ornith's author) plans to include KAT in an
+  upcoming benchmark suite. Single source for the quant + throughput → [conjecture]; the
+  benchmark disagreement is noted but not resolvable without controlled hardware runs.
+  GB10-relevant: demonstrates Spark AutoRound being applied to a new model class (KAT, trained
+  for efficient thinking / fewer tool calls) with MTP headers from Qwen3.6 — the quantization
+  tooling generalizes beyond Qwen/Ornith. See `[[wiki/models/qwen.md]]` for the Qwen3.6 model
+  family context.

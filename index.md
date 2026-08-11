@@ -39,6 +39,27 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-11 (Batch 63)
+- 5 new NVIDIA DGX Spark forum topics found (3 technically relevant, 2 skipped: MSI
+  EdgeXpert driver mixup, NVIDIA Sync Safari link issue).
+- 3 new sources registered (Batch 63). 5 topic IDs added to processed_topics.txt (total now 574).
+- **Headline finding 1:** GPU clock energy-efficiency sweep on 2× Spark TP=2 — 17-point
+  clock sweep (400-2400 MHz) shows decode flat 47-51 tok/s from 1400-2400 (bandwidth-bound);
+  best energy ROI band 1400-1800 MHz (~1350 Wh/1M tokens vs 1688 uncapped = 25% better for
+  ~3% speed loss). nvidia-smi accounts for only 12-27% of real GB10 power draw. Prefill
+  compute-bound (~14% penalty at 1400). Stock cooling throttles at 2100 MHz (repaste unlocks
+  2500+). Strengthens existing [reported] clock-cap finding with energy dimension.
+- **Headline finding 2:** LMCache 0.5.3 MP mode deadlocks with aidendle94 DS4F fork —
+  vLLM 0.11.x fork IPC surface incompatible with LMCache 0.5.3 (targets vLLM 0.18/0.20+);
+  no LMCache version matches both fork's IPC AND DS4F hybrid KV. Status: open [conjecture].
+- **Headline finding 3:** KAT-Coder-V2.5-Dev-MTP-int4-AutoRound-SAR — Spark AutoRound int4
+  quant with Qwen3.6 MTP headers grafted onto KAT Coder v2.5 Dev. 85+ t/s accepted on Asus
+  GB10. Tool-eval 84 vs Ornith 87. Benchmark signals mixed [conjecture].
+- Pages touched: platform-gb10 (clock energy sweep [reported]), engines (LMCache IPC
+  deadlock [conjecture]), quantization-on-gb10 (KAT Coder AutoRound [conjecture]),
+  models/qwen (KAT Coder MTP graft [conjecture]), sources/README, log.
+- No evidence promotions (clock-cap finding already [reported]).
+
 ## Forum ingest 2026-08-10 (Batch 62)
 - 3 new NVIDIA DGX Spark forum topics found (2 technically relevant, 1 skipped: Qwen3.8-27B
   open-weights announcement — no GB10-specific findings).
