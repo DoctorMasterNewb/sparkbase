@@ -39,6 +39,23 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-11 (Batch 64)
+- 2 new NVIDIA DGX Spark forum topics found, both technically relevant.
+- 2 new sources registered (Batch 64). 2 topic IDs added to processed_topics.txt (total now 576).
+- **Headline finding 1:** nvidia-conf-xconfig.service recovery on DGX Spark FE — the
+  `nvidia-conf-xconfig` package's systemd unit is required by GDM (RequiredBy=
+  systemd-logind.service); if the package or `/etc/apt/sources.list.d/spark.sources`
+  is lost, apt can't locate it. Recovery: extract spark.sources + GPG key from System
+  Recovery image. Corroborates existing apt-upgrade-breaks-driver finding. [conjecture].
+- **Headline finding 2:** vLLM `--runner pooling` enables embedding + reranking models
+  on single Spark with tiny memory footprint — nomic-embed-text-v1.5 at gpu_memory_utilization
+  0.05, bge-reranker-base at 0.015. Co-hostable with main LLM for RAG (unlike vision
+  models). BAAI/bge-m3, Nemotron-3-Embed-8B/1B, Qwen 0.6B recommended. Qdrant + Open
+  WebUI. Working YAML recipes documented. [conjecture].
+- Pages touched: platform-gb10 (nvidia-conf-xconfig recovery [conjecture]), engines
+  (embedding+reranking RAG recipes [conjecture]), sources/README, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+
 ## Forum ingest 2026-08-11 (Batch 63)
 - 5 new NVIDIA DGX Spark forum topics found (3 technically relevant, 2 skipped: MSI
   EdgeXpert driver mixup, NVIDIA Sync Safari link issue).

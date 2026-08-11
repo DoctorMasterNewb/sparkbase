@@ -2,6 +2,35 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-11 — Forum ingest: Batch 64 — 2 new topics (2 processed, 0 skipped)
+
+- **Sources:** 2 new forum topics found by fetch_new_topics.py. Both technically relevant.
+  2 new sources registered (Batch 64) in `sources/README.md`: S-forum-xconfig-recovery,
+  S-forum-embed-rag. 2 topic IDs added to `processed_topics.txt` (total now 576).
+- **Topics found:**
+  - 379141 (How to recover nvidia-conf-xconfig.service) — **processed**. 10-post thread,
+    183 views. DGX Spark FE user accidentally deleted nvidia-conf-xconfig.service after
+    a bad kernel/driver upgrade cascade. The service is part of nvidia-conf-xconfig
+    package (ExecStart=/usr/sbin/nvidia-conf-xconfig, RequiredBy=systemd-logind.service);
+    missing it blocks GDM. /etc/apt/sources.list.d/spark.sources + GPG key also lost
+    during package cleanup. Recovery: extract from System Recovery image, reinstall
+    package. NVIDIA staff (Neill) recommends DGX Dashboard for updates, System Recovery
+    as fallback. Corroborates existing apt-breaks-driver finding (S-forum-driver580-173).
+    S-forum-xconfig-recovery.
+  - 379652 (Which embedding model is best to run on single SPARK for RAG?) — **processed**.
+    10-post thread, 440 views. vLLM `--runner pooling` flag enables embedding + reranking
+    models on GB10. Working YAML recipes: nomic-embed-text-v1.5 at gpu_memory_utilization
+    0.05 / max_model_len 8192, bge-reranker-base at 0.015 / max_model_len 512 /
+    max-num-seqs 64 / max-num-batched-tokens 4096. Both via eugr spark-vllm-docker
+    vllm-node container. Tiny footprint makes co-hosting with main LLM practical (unlike
+    vision models). Model recommendations: BAAI/bge-m3, nomic-embed-text-v1.5,
+    BAAI/bge-reranker-base, NVIDIA Nemotron-3-Embed-8B/1B-BF16, Qwen 0.6B, Qwen3-8B.
+    RAG config: Qdrant, chunk 1200/overlap 200, Open WebUI. S-forum-embed-rag.
+- **Pages touched:** platform-gb10 (nvidia-conf-xconfig.service recovery [conjecture]),
+  engines (embedding+reranking RAG recipes with --runner pooling [conjecture]),
+  sources/README, index, log.
+- **Evidence:** all [conjecture] — single-source forum threads. No evidence promotions.
+
 ## 2026-08-11 — Forum ingest: Batch 63 — 5 new topics (3 processed, 2 skipped)
 
 - **Sources:** 5 new forum topics found by fetch_new_topics.py. 3 technically relevant, 2 skipped.

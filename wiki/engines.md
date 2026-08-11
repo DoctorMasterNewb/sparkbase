@@ -3,7 +3,7 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag
 > **updated:** 2026-08-11
 
 Three engines run on the Spark pair; pick by arch support and quant.
@@ -776,3 +776,85 @@ Three engines run on the Spark pair; pick by arch support and quant.
   `[conjecture]` LMCache-for-dedicated-KV-node finding
   (`[[wiki/multinode-tp-and-networking.md]]`, S-forum-3node-mesh) — both are untested
   LMCache-on-GB10 configurations.
+
+## Forum ingest: Embedding + reranking models for RAG on single Spark (2026-08-11)
+
+> **evidence:** conjecture (single forum thread, multiple users contributing recipes)
+> **sources:** S-forum-embed-rag
+
+- **[conjecture]** **vLLM `--runner pooling` enables embedding + reranking models on
+  GB10 with tiny memory footprint, co-hostable with a main LLM**
+  (S-forum-embed-rag, emX0r + ajvazan + joshua.dale.warner + jetspark + jrsphd):
+  vLLM can serve embedding and reranking models on a single DGX Spark alongside a
+  primary LLM for RAG pipelines. The key flag is **`--runner pooling`** (selects the
+  pooling/encoder runner instead of the generation runner). Working recipes via
+  eugr's spark-vllm-docker (`vllm-node` container):
+
+  **Embedding server** (nomic-ai/nomic-embed-text-v1.5):
+  ```yaml
+  recipe_version: "1"
+  name: Nomic Embed Text v1.5
+  model: nomic-ai/nomic-embed-text-v1.5
+  container: vllm-node
+  defaults:
+    port: 8010
+    host: 0.0.0.0
+    gpu_memory_utilization: 0.05
+    max_model_len: 8192
+  command: |
+    vllm serve nomic-ai/nomic-embed-text-v1.5 \
+      --port {port} \
+      --host {host} \
+      --runner pooling \
+      --trust-remote-code \
+      --gpu-memory-utilization {gpu_memory_utilization} \
+      --max-model-len {max_model_len}
+  ```
+
+  **Reranking server** (BAAI/bge-reranker-base):
+  ```yaml
+  recipe_version: "1"
+  name: BGE Reranker Base
+  model: BAAI/bge-reranker-base
+  container: vllm-node
+  defaults:
+    port: 8011
+    host: 0.0.0.0
+    gpu_memory_utilization: 0.015
+    max_model_len: 512
+  command: |
+    vllm serve BAAI/bge-reranker-base \
+      --port {port} \
+      --host {host} \
+      --served-model-name baai/bge-reranker-base \
+      --runner pooling \
+      --dtype auto \
+      --gpu-memory-utilization {gpu_memory_utilization} \
+      --max-model-len {max_model_len} \
+      --max-num-seqs 64 \
+      --max-num-batched-tokens 4096
+  ```
+
+  **Why it bites on Spark:** embedding and reranking models are small (<1B params)
+  and need only **0.05 and 0.015 GPU memory utilization** respectively — a negligible
+  fraction of the 121 GB unified pool. This makes them practical to co-host with a
+  primary LLM on a single Spark, unlike vision models which compete aggressively for
+  memory (see the co-hosting findings above). The `--runner pooling` flag is the
+  non-obvious requirement; without it vLLM defaults to the generation runner and
+  embedding models fail.
+
+  **Model recommendations from the thread:**
+  - **BAAI/bge-m3** — the OP's current model under vLLM, works well.
+  - **nomic-ai/nomic-embed-text-v1.5** — working recipe above (ajvazan).
+  - **BAAI/bge-reranker-base** — cross-encoder reranker, working recipe above (ajvazan).
+  - **NVIDIA Nemotron-3-Embed-8B-BF16** / **Nemotron-3-Embed-1B-BF16** — newly released,
+    claimed best current; 8B and 1B variants (joshua.dale.warner).
+  - **Qwen 0.6B embedding** — works well for small RAG (jetspark).
+  - **Qwen3-8B** — used as embedding model (jrsphd).
+  - All run fine on GB10 because embeddings need to be fast, so models are small
+    (joshua.dale.warner).
+
+  **RAG config:** Qdrant vector DB, chunk size 1200 with overlap 200 (emX0r). Works
+  with Open WebUI. Multiple users contribute model recommendations but no quantitative
+  tok/s or latency benchmarks → [conjecture]. The `--runner pooling` recipes and memory
+  utilization values are the durable GB10-specific findings.

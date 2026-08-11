@@ -3,7 +3,7 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery
 > **updated:** 2026-08-11
 
 The hardware facts every model bring-up assumes. Read this first.
@@ -1476,3 +1476,38 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
     energy-efficiency dimension (Wh/1M tokens) is new and durable. **No evidence
     promotion** — the [reported] tier is already established; this adds corroborating
     data and the energy metric.
+
+### Batch 64 forum ingest (2026-08-11)
+
+- **[conjecture]** **nvidia-conf-xconfig.service — package recovery on DGX Spark after
+  broken apt state** (S-forum-xconfig-recovery, hpcm + elsaco + Neill/NVIDIA): the
+  `nvidia-conf-xconfig.service` systemd unit is part of the `nvidia-conf-xconfig`
+  package on DGX OS. Its service definition:
+  ```ini
+  [Unit]
+  Description=NVIDIA Xconfig service
+  Before=graphical.target gdm.service
+
+  [Service]
+  Type=oneshot
+  ExecStart=/usr/sbin/nvidia-conf-xconfig
+
+  [Install]
+  RequiredBy=systemd-logind.service
+  ```
+  If the service file (or the package) is missing, **GDM cannot start** — the system
+  boots to a black screen with `Unit nvidia-conf-xconfig.service not found`. The package
+  is installable via `apt install --reinstall nvidia-conf-xconfig` **only if the Spark
+  APT repository is intact**. The repo config lives at `/etc/apt/sources.list.d/spark.sources`
+  with a corresponding GPG key — both can be lost if a user manually deletes packages
+  (e.g. during recovery from an unsupported kernel/driver upgrade). If the repo file is
+  gone, `apt` reports `Unable to locate package nvidia-conf-xconfig`. **Recovery path:**
+  extract `spark.sources` and the GPG key from the DGX Spark System Recovery image, then
+  `apt install --reinstall nvidia-conf-xconfig`. A dummy service (`ExecStart=/bin/true`)
+  restores the GUI but may have unexpected side effects — proper package reinstall is
+  preferred. NVIDIA staff (Neill) recommends the DGX Dashboard as the update path and
+  the System Recovery image as the fallback for badly damaged package state. This
+  corroborates the existing finding that **plain `apt upgrade` on a Spark can break the
+  kernel+driver pairing** (S-forum-driver580-173): the user upgraded to an unsupported
+  kernel, then driver 595 via `ubuntu-drivers devices`, which cascaded into package
+  removals. Single forum thread → [conjecture].
