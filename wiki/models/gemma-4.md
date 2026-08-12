@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-forum-gemma4-26b-bench
-> **updated:** 2026-07-29
+> **sources:** S-sess-jun5, S-sess-jun4, S-forum-gemma4-26b-bench, S-forum-spark-field-notes
+> **updated:** 2026-08-12
 
 Gemma-4 family on GB10. The 12B "unified" variant is a clean case study in *image-support* deciding
 serveability, and in FP8 online-dynamic being the GB10 fast path for a dense model.
@@ -55,6 +55,25 @@ serveability, and in FP8 online-dynamic being the GB10 fast path for a dense mod
     single-stream decode. The TPOT (~47-59 ms on Spark) implies ~17-21 tok/s per-stream, which
     is lower than the Atlas ~67 tok/s above — likely due to the concurrency saturating the
     bandwidth-bound decode path. See `[[wiki/benchmarks.md]]`.
+
+## gemma-4-26B-A4B NVFP4: cross-engine field-notes benchmark (2026-08-12 ingest)
+
+- **[conjecture]** **nvidia NVFP4 30.3 tok/s single-stream (no MTP) vs community Q4_K_M GGUF
+  49.6 tok/s in Ollama — "the obvious A/B makes the NVFP4 checkpoint look slower than it is"**
+  (S-forum-spark-field-notes, ss121): measured on a single DGX Spark (vLLM 0.26.1rc1.dev535,
+  driver 580.173.02, CUDA 13.0) with an identical harness across Ollama and vLLM. With MTP
+  enabled, the NVFP4 checkpoint moves to 54.9 tok/s (+81%). The OP's point: a naive comparison
+  (NVFP4 without MTP vs GGUF Q4_K_M) makes the official NVIDIA NVFP4 checkpoint appear slower
+  than the community GGUF — but MTP closes and exceeds the gap. This is consistent with the
+  proven finding that speculative decoding pays off unusually well on bandwidth-bound hardware
+  (verification is nearly free when weights had to be read anyway).
+  - **MTP `num_speculative_tokens: 2` beats 4** — per-position acceptance decays
+    0.84 → 0.60 → 0.39 → 0.27, so positions 3-4 add cost without proportional benefit. This
+    corroborates the existing [proven] finding on DSV4-Flash-DSpark (nst=3 beats 5) and the
+    GLM-5.2 finding (MTP4 beats MTP5 on tool-eval-bench).
+  - vLLM at 8 concurrent: 303.6 tok/s aggregate for Gemma-4-26B-A4B+MTP (vs Ollama 51.9 — Ollama
+    does not batch, so its 8× aggregate equals its single-stream figure). TTFT: vLLM 94 ms vs
+    Ollama 511 ms.
 
 ## Open
 Whether Atlas's gemma4 loader accepts the **unified** (audio-tower) arch vs the text+vision

@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** evolving
 > **evidence:** conjecture
-> **sources:** S-forum-glm52-4x, S-forum-glm52-mtp-fix, S-forum-glm52-1bit, S-forum-glm52-reapless, S-forum-glm52-800k, S-forum-glm52-iq4xs-4x, S-forum-glm52-8x, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-flashinfer-livelock, S-forum-colibri-glm52, S-forum-6x-cluster, S-forum-glm52-3x-aqlm, S-forum-sparkring
-> **updated:** 2026-08-07
+> **sources:** S-forum-glm52-4x, S-forum-glm52-mtp-fix, S-forum-glm52-1bit, S-forum-glm52-reapless, S-forum-glm52-800k, S-forum-glm52-iq4xs-4x, S-forum-glm52-8x, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-flashinfer-livelock, S-forum-colibri-glm52, S-forum-6x-cluster, S-forum-glm52-3x-aqlm, S-forum-sparkring, S-forum-glm52-8x-nvfp4
+> **updated:** 2026-08-12
 
 **GLM-5.2** is a 744B-parameter / ~40B-active MoE with sparse-MLA (DeepSeek-V4-class) attention and
 MTP speculative decoding support. It is one of the most-discussed large models on the DGX Spark forums
@@ -370,6 +370,34 @@ GLM-5.2 exercises three GB10-specific pressure points simultaneously:
   SparkRing deployment — ~92% of the published ~20 tok/s eager number. However, both reporters are
   in the same thread using the same image → stays [conjecture] per independence rules.
 
+## Official NVIDIA GLM-5.2 NVFP4 on 8× Spark (2026-08-12 ingest)
+
+- **[conjecture]** **Official `nvidia/GLM-5.2-NVFP4` on 8× Spark TP=8 — 25 tok/s decode, 256K
+  context, tool-eval-bench v2.5.1 score 93** (S-forum-glm52-8x-nvfp4, hypermac.6502): served via
+  eugr's `spark-vllm-docker` with the included `8x-spark-cluster/glm-5.2-nvfp4.yaml` recipe.
+  Weights distributed to each worker from HuggingFace; "everything worked right away with the
+  included recipe." This is the **official NVIDIA NVFP4 checkpoint** (not a community re-quant)
+  and the first reported 8× Spark run of the official checkpoint with a tool-eval-bench score.
+  - **tool-eval-bench v2.5.1 score: 93/100** — the highest reported tool-eval-bench score for
+    GLM-5.2 on GB10. For comparison: the hybrid FP8+MXFP4 community quant scored 86/100 (v2) /
+    85/100 (v3-GPTQ) on 4× Spark (S-forum-glm52-hybrid). The 8-point gap may reflect the official
+    checkpoint's higher fidelity, the 8× cluster's headroom, or tool-eval-bench version differences
+    (v2.5.1 vs the version used in the hybrid thread). Single source → [conjecture].
+  - **25 tok/s decode at TP=8** is consistent with the existing 8× TP=8 Int4-Int8 mix result
+    (33-54 tok/s, S-forum-glm52-8x) — the official NVFP4 checkpoint at 25 tok/s is at the lower
+    end of that range, consistent with the [reported] finding that NVFP4 decode is bandwidth-bound
+    and quant-format matters less than the sparse-MLA attention + bandwidth ceiling. The 8×
+    Int4-Int8 mix may benefit from the b12x W4A8 backend's kernel efficiency (same pattern as
+    AWQ-beats-NVFP4 for MiniMax M2.7).
+  - **256K context** — lower than the 800K achieved by the hybrid quant on 4× Spark
+    (S-forum-glm52-hybrid), likely because the official NVFP4 checkpoint's larger weight footprint
+    (~460 GB total, ~115 GB/node per S-forum-glm52-hybrid) leaves less room for KV at 8× than the
+    hybrid's mixed-precision approach. However, 8× gives 2× the compute/memory of 4×, so the
+    KV pool per node is less constrained — the 256K may be a recipe default, not a hard limit.
+  - This corroborates the existing [conjecture] finding that the official NVIDIA GLM-5.2 NVFP4
+    checkpoint runs on 4× Spark at ~115 GB/node (S-forum-glm52-hybrid, kevin.wu07). At 8× the
+    per-node weight footprint drops to ~58 GB, leaving ample room for KV.
+
 ## Performance across configurations (cross-thread summary)
 
 All numbers are **[conjecture]** or **[reported]** as noted. See `[[wiki/benchmarks.md]]` for full rows.
@@ -386,7 +414,8 @@ All numbers are **[conjecture]** or **[reported]** as noted. See `[[wiki/benchma
 || TP=4, MXFP4-Experts-GPTQ, SparkRing SIRCL | MXFP4-Experts-GPTQ | 4 | 19-20 (C1) / 50-63 (C8) | 500K | S-forum-sparkring |
 || TP=4, MXFP8-NVFP4-NF3 hybrid, SparkRing | MXFP8+NVFP4+NF3 | 4 | 40-50 (C4) | 875K | S-forum-sparkring |
 || TP=4, IQ4_XS GGUF, llama.cpp RPC | IQ4_XS | 4 | 6.28 | 1M | S-forum-glm52-iq4xs-4x |
-| 1× Spark, Colibri expert streaming | int4 MoE + int8 MTP | 1 | 2.4-3.3 | short | S-forum-colibri-glm52 |
+|| 1× Spark, Colibri expert streaming | int4 MoE + int8 MTP | 1 | 2.4-3.3 | short | S-forum-colibri-glm52 |
+|| TP=8, official NVFP4 | NVFP4 (official nvidia) | 8 | 25 | 256K | S-forum-glm52-8x-nvfp4 |
 
 **[reported]** GLM-5.2 decode on 4× Spark is consistently in the 20-25 tok/s range across multiple
 independent threads and quant formats (AWQ-INT4, NVFP4, Hybrid FP8+MXFP4) — the bottleneck is the

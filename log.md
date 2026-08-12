@@ -2,6 +2,53 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-12 — Forum ingest: Batch 65 — 4 new topics (3 processed, 1 skipped)
+
+- **Sources:** 4 new forum topics found by fetch_new_topics.py. 3 technically relevant, 1 skipped.
+  3 new sources registered (Batch 65) in `sources/README.md`: S-forum-spark-field-notes,
+  S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m. 4 topic IDs added to `processed_topics.txt`
+  (total now 580).
+- **Topics found:**
+  - 379766 (Measured inference benchmarks on a single DGX Spark — same harness across Ollama,
+    llama.cpp and vLLM) — **processed**. 4-post thread, 175 views. Week-long single-Spark
+    benchmark with identical harness across Ollama and vLLM (ss121). 4 models tested:
+    Qwen3-Coder-Next, Gemma-4-26B-A4B+MTP, GPT-OSS-120B, Qwen3-30B-A3B. Key findings:
+    (1) Ollama does not batch (8× agg = single-stream), vLLM 289-313 tok/s at 8 concurrent.
+    (2) NVFP4 1.1 tok/s on vanilla vLLM (emulation fallback) vs 77.1 tok/s with FlashInfer-
+    CUTLASS — 70× from kernel path. (3) MTP nst=2 beats 4 (acceptance decays 0.84→0.60→
+    0.39→0.27). (4) nvidia NVFP4 Gemma-4-26B-A4B 30.3 tok/s w/o MTP vs Q4_K_M GGUF Ollama
+    49.6 — "obvious A/B makes NVFP4 look slower than it is" (MTP closes gap to 54.9, +81%).
+    (5) Prefill ~6,000 tok/s (not the bottleneck). S-forum-spark-field-notes.
+  - 379765 (GLM5.2-nvfp4 on x8 Spark: 25 tok/s decode, 256K, tool-eval-bench 93 using eugr's
+    repo) — **processed**. 1-post thread, 93 views. Official `nvidia/GLM-5.2-NVFP4` on 8× Spark
+    TP=8 via eugr spark-vllm-docker (`8x-spark-cluster/glm-5.2-nvfp4.yaml`). 25 tok/s decode,
+    256K context, tool-eval-bench v2.5.1 score 93/100 — highest reported tool-eval score for
+    GLM-5.2 on GB10. S-forum-glm52-8x-nvfp4.
+  - 379761 (Model-Free NIM Container vs. Eugr's vLLM Spark Cluster for Large Models on GB10
+    Clusters?) — **skipped**: pure question, no replies, no data, no GB10-specific findings.
+  - 376979 (MiniMax-M3-NVFP4 @ 1M context, ~31 tok/s, native vision — 4× DGX Spark) —
+    **processed**. 6-post thread, 709 views. Official `nvidia/MiniMax-M3-NVFP4` on 4× Spark
+    TP=4 with 1M context (1,177,344-token KV pool via 4-bit packed nvfp4 KV), ~31 tok/s decode
+    with EAGLE3, native vision + tool-calling. Major bug discovery: NVFP4-Marlin MoE path drops
+    SwiGLU-OAI activation params (gemm1_alpha 1.702 / gemm1_beta 1.0 arrive at Marlin kernel as
+    defaults 1.0/0.0; clamp 7.0 threads through) → all 57 MoE layers compute wrong activation →
+    silent garbage output. 3-file param-threading fix documented (config.py + nvfp4.py +
+    modelopt.py). Same bug class as #46816/#47552 sibling on NVFP4 quant-config chain. Three
+    mandatory mods: alpha/beta fix, nvfp4 KV inline-dequant, reasoning parser with
+    _looks_like_rendered_prompt guard. enforce-eager mandatory (fp8-KV attention backend
+    rejects nvfp4 KV + FULL cudagraph). NCCL ulimit nofile=1048576. S-forum-m3-nvfp4-4x-1m.
+- **Pages touched:** models/minimax (M3 NVFP4 official 4× recipe + SwiGLU-OAI alpha/beta bug
+  + 3 mandatory mods + serving config [conjecture]), models/glm-5.2 (official NVFP4 8× recipe
+  + tool-eval 93 + cross-thread table row [conjecture]), models/gemma-4 (NVFP4 vs Q4_K_M GGUF
+  gap + MTP nst=2>4 + 30.3 tok/s baseline [conjecture]), engines (Ollama-vs-vLLM batching
+  + NVFP4 missing-kernels 70× + prefill not bottleneck + tool-parser finding [conjecture]),
+  benchmarks (6 new [conjecture] rows: 4 cross-engine + GLM-5.2 8× + M3 4× 1M), sources/README,
+  index, log.
+- **Evidence:** all [conjecture] — single-source forum threads. No evidence promotions.
+  The M3 SwiGLU-OAI alpha/beta param-dropping bug is a major durable finding but single-source
+  → [conjecture]. Flagged for priority hardware verification in roadmap (would confirm the bug
+  + fix on real silicon, potentially [reproduced]).
+
 ## 2026-08-11 — Forum ingest: Batch 64 — 2 new topics (2 processed, 0 skipped)
 
 - **Sources:** 2 new forum topics found by fetch_new_topics.py. Both technically relevant.

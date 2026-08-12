@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-m3-vision, S-m3-20tps, S-sess-jun11, S-minimax-sweeps, S-forum-m3-nvfp4-4x, S-forum-m3-awq-4x, S-forum-m3-llamacpp-2x, S-forum-m3-quad, S-forum-m3-w4a16-gptq, S-forum-m25-sglang-4x, S-forum-m27-recipe, S-forum-4node-crs504, S-forum-m3-tp3
-> **updated:** 2026-07-24
+> **sources:** S-m3-vision, S-m3-20tps, S-sess-jun11, S-minimax-sweeps, S-forum-m3-nvfp4-4x, S-forum-m3-awq-4x, S-forum-m3-llamacpp-2x, S-forum-m3-quad, S-forum-m3-w4a16-gptq, S-forum-m25-sglang-4x, S-forum-m27-recipe, S-forum-4node-crs504, S-forum-m3-tp3, S-forum-m3-nvfp4-4x-1m
+> **updated:** 2026-08-12
 
 Two very different MiniMax stories on GB10: **M2.7 AWQ** = the fast, durable daily-driver default;
 **M3** = a 428B research/long-context/vision endpoint that's structurally slow here.
@@ -230,6 +230,105 @@ tonyd615, eugr_nv)
   yet. (S-forum-m3-tp3, tonyd615)
 - **[conjecture]** `bullerwins/MiniMax-M3-4bit-W4A16-v0` (~227 GB on disk) may fit on 2× Spark
   (queried by corbett_korbett, unanswered in thread). (S-forum-m3-tp3)
+
+## Forum ingest: M3 NVFP4 official checkpoint, 1M context, 4× Spark (2026-08-12, forum 376979)
+
+**[conjecture]** **MiniMax-M3 NVFP4 (official `nvidia/MiniMax-M3-NVFP4`) on 4× DGX Spark — 1M
+context, ~31 tok/s decode with EAGLE3, native vision + tool-calling** (S-forum-m3-nvfp4-4x-1m,
+baristankut): the official NVIDIA NVFP4 checkpoint served across 4× GB10 (TP=4, InfiniBand mlx5,
+GID3, MTU 9000) with a 1,177,344-token KV pool via 4-bit packed (nvfp4) KV cache, EAGLE3
+speculative decoding (`num_speculative_tokens=2`, lossless), and working native vision +
+tool-calling + clean reasoning stream (no `<mm:think>` leak). Base image:
+`vllm/vllm-openai:nightly-dev-arm64-cu13.0.1-515d6e9` (vLLM 0.17.2rc1.dev3669, torch
+2.11.0+cu130) — the July MARLIN clamp-capable NVFP4-MoE build.
+
+### The blocker: NVFP4-Marlin MoE SwiGLU-OAI alpha/beta param dropping (unreported upstream bug)
+
+**[conjecture]** **The NVFP4-Marlin MoE path drops the SwiGLU-OAI activation params → all 57 MoE
+layers compute the wrong activation → template-fragment garbage output** (S-forum-m3-nvfp4-4x-1m,
+baristankut): On mainline vLLM, `nvidia/MiniMax-M3-NVFP4` loads fine but emits incoherent
+template-fragment garbage. Root cause traced via runtime probes:
+- `gemm1_alpha` (1.702) and `gemm1_beta` (1.0) are initialized correctly on the layer, but arrive
+  at the Marlin kernel as **defaults (1.0 / 0.0)**. The `clamp` (7.0) threads through; alpha/beta
+  do not.
+- Same bug class as the clamp-threading issues (#46816 / #47552), but a **sibling on the NVFP4
+  quant-config chain** — not yet reported upstream.
+- **Fix (3-file param threading):**
+  1. `vllm/model_executor/layers/fused_moe/config.py` — add `gemm1_alpha`/`gemm1_beta` params to
+     `nvfp4_moe_quant_config` + `nvfp4_w4a16_moe_quant_config`, forward into
+     `FusedMoEQuantConfig.make(...)`.
+  2. `vllm/model_executor/layers/fused_moe/oracle/nvfp4.py` — same params on
+     `make_nvfp4_moe_quant_config`, forward right after `gemm1_clamp_limit=swiglu_limit,`.
+  3. `vllm/model_executor/layers/quantization/modelopt.py` — at the `make_nvfp4(...)` call, pass
+     `gemm1_alpha=getattr(layer, "swiglu_alpha", None), gemm1_beta=getattr(layer, "swiglu_beta", None)`.
+- Verify with a coherence probe (must return "Paris", not template junk):
+  `curl -s localhost:8230/v1/chat/completions -H 'Content-Type: application/json' -d '{"model":"minimax-m3","max_tokens":8,"messages":[{"role":"user","content":"Capital of France? One word."}]}'`
+
+This is a **GB10-critical bug** for anyone serving the official M3 NVFP4 checkpoint on vLLM — the
+garbage output is silent (no error, no crash) and affects all 57 MoE layers. The fix is
+non-negotiable for coherent output. This is distinct from the existing [reported] garbage-output
+findings on community re-quants (which are checkpoint-specific); this is a mainline vLLM
+quant-config plumbing bug that affects the official NVIDIA checkpoint.
+
+### Three mandatory mods for the official NVFP4 checkpoint
+
+**[conjecture]** All three mods are required for coherent serving of `nvidia/MiniMax-M3-NVFP4`
+(S-forum-m3-nvfp4-4x-1m, baristankut):
+1. **Alpha/beta MoE fix** (above) — mandatory, or output is garbage.
+2. **nvfp4 KV-cache inline-dequant** (4-bit packed KV → enables 1M context). The
+   `--kv-cache-dtype nvfp4 --kv-cache-memory-bytes 30064771072` flags set this explicitly,
+   bypassing conservative profiling.
+3. **Reasoning parser with `_looks_like_rendered_prompt` guard** — fixes `<mm:think>` leaking into
+   `content` (the #46042/#46616 streaming leak). The guard ignores the example markers the chat
+   template embeds in the prompt. `--reasoning-parser minimax_m3` alone isn't enough on a stock
+   parser. This corroborates the existing [proven] M3 reasoning-parser finding (our `m3_mmthink`
+   parser) — the `_looks_like_rendered_prompt` guard is a different implementation of the same
+   fix class.
+
+### Serving configuration (4× Spark, TP=4, mp executor)
+
+**[conjecture]** Full serve command and env vars (S-forum-m3-nvfp4-4x-1m, baristankut):
+- `--tensor-parallel-size 4 --distributed-executor-backend mp` (no Ray)
+- `--attention-backend TRITON_ATTN --block-size 128` (mandatory for MSA, consistent with
+  existing [proven] finding)
+- `--max-model-len 1048576 --max-num-batched-tokens 4096 --max-num-seqs 1`
+- `--gpu-memory-utilization 0.86`
+- `--kv-cache-dtype nvfp4 --kv-cache-memory-bytes 30064771072` (explicit; bypasses conservative
+  profiling)
+- `--enable-chunked-prefill --enable-prefix-caching --skip-mm-profiling`
+- `--mm-encoder-tp-mode data` (vision tower replicated per rank — same approach as the GLM-5.2
+  TP=3 vision graft, S-forum-glm52-3x-aqlm)
+- `--limit-mm-per-prompt '{"image":4,"video":0}'` (same video-profiling-eats-KV fix as existing
+  [proven] EAGLE3 stack)
+- `--reasoning-parser minimax_m3 --tool-call-parser minimax_m3 --enable-auto-tool-choice`
+- `--enforce-eager` (mandatory — the fp8-KV attention backend rejects nvfp4 KV + FULL cudagraph;
+  use mainline TRITON_ATTN path for 1M context)
+- `--speculative-config '{"method":"eagle3","model":"/path/to/minimax-m3-eagle3","num_speculative_tokens":2,"attention_backend":"TRITON_ATTN"}'`
+- NCCL: `nvidia-nccl-cu13==2.30.4` via pip, `LD_PRELOAD` the pip .so
+  (`VLLM_NCCL_SO_PATH` + `LD_PRELOAD` both point at it). Corroborates existing [conjecture] NCCL
+  2.30.4+ mandatory finding.
+- `--ulimit nofile=1048576:1048576` — **NCCL "Too many open files" deadlock otherwise**. This is a
+  GB10-specific operational gotcha for multi-node TP on DGX Spark.
+- `NCCL_CUMEM_ENABLE=0 NCCL_IGNORE_CPU_AFFINITY=1` — standard GB10 NCCL env.
+- `VLLM_ALLOW_LONG_MAX_MODEL_LEN=1` — required for 1M context.
+- Use the **raw NVIDIA checkpoint's short weight mapper** — the long/full mapper is for the
+  b12x/luke re-quant ecosystem and fails on the official checkpoint.
+
+### Key differences from existing M3 recipes
+
+This recipe is distinct from the existing M3 recipes in sparkbase:
+- **Official `nvidia/MiniMax-M3-NVFP4`** (raw checkpoint) vs community re-quants
+  (AutoRound-mixed `aquaman164/MiniMax-M3-AutoRound-3.2bit-longctx`, W4A16-GPTQ
+  `Sebesky/MiniMax-M3-W4A16-GPTQ`, AWQ, etc.)
+- **4× Spark TP=4** vs the proven 2× Spark TP=2 EAGLE3 stack (13-15 tok/s) or the b12x W4A16
+  2× stack (36 tok/s). The 4× recipe achieves ~31 tok/s with 1M context — the largest context
+  reported for M3 on GB10.
+- **nvfp4 KV cache** (4-bit packed) enables the 1M pool. This is distinct from the existing
+  [conjecture] `tonyd2wild/MiniMax-M3-AWQ-1M-NVFP4-KV-4x-DGX-Spark` finding (which was an AWQ
+  variant with nvfp4 KV). Here it's the official NVFP4 checkpoint with nvfp4 KV.
+- **`enforce-eager` is mandatory** here because the fp8-KV attention backend rejects nvfp4 KV +
+  FULL cudagraph. This is consistent with the [proven] M3 cudagraph-wall finding
+  (`[[wiki/cudagraphs-and-compile.md]]`).
 
 ## Forum ingest: 4× Spark recipes, llama.cpp RPC, AWQ-INT4 (2026-07-08)
 

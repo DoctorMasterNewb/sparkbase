@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag
-> **updated:** 2026-08-11
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes
+> **updated:** 2026-08-12
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -57,6 +57,44 @@ Three engines run on the Spark pair; pick by arch support and quant.
 
 ## See also
 `[[wiki/containers-and-tooling.md]]` · `[[wiki/multinode-tp-and-networking.md]]` · `[[wiki/quantization-on-gb10.md]]`
+
+## Forum ingest: cross-engine field-notes — Ollama vs vLLM, NVFP4 missing-kernels (2026-08-12)
+
+- **[conjecture]** **Ollama does not batch — 8× concurrent aggregate equals single-stream on all
+  4 models tested; vLLM reaches 289-313 tok/s at 8 concurrent on the same hardware** (S-forum-
+  spark-field-notes, ss121): a week-long single-Spark benchmark with an identical harness across
+  Ollama and vLLM (same prompt, 400 max_tokens, warm-up discarded, single-stream + 8 concurrent +
+  prefill measurement). Models tested: Qwen3-Coder-Next, Gemma-4-26B-A4B+MTP, GPT-OSS-120B,
+  Qwen3-30B-A3B. On every model, Ollama's 8× aggregate = its single-stream figure (no batching);
+  vLLM's 8× aggregate is 289-313 tok/s. TTFT: vLLM 94-161 ms vs Ollama 161-511 ms. This is not a
+  GB10-specific finding (it's a general Ollama-vs-vLLM batching difference), but it's durable for
+  Spark owners choosing an engine: **Ollama is fine for single-stream interactive use; vLLM is
+  mandatory for concurrent/multi-user workloads.** See `[[wiki/benchmarks.md]]` for the table.
+  Single source → [conjecture].
+
+- **[conjecture]** **"NVFP4 is not a trap, missing kernels are" — the same weights ran at ~1.1
+  tok/s on vanilla vLLM (emulation fallback) and 77.1 tok/s with FlashInfer-CUTLASS kernels**
+  (S-forum-spark-field-notes, ss121): on Qwen3-30B-A3B, the same NVFP4 checkpoint runs at 1.1 tok/s
+  on vanilla vLLM (emulation fallback path) vs 77.1 tok/s with FlashInfer-CUTLASS kernels — a
+  **70× difference** from the kernel path alone. SM121 lacking `cvt.e2m1x2` removes the FP4
+  compute speedup but **not** the bandwidth saving, and bandwidth is the binding constraint on
+  this box. "Worth checking the log line rather than the format name" — the vLLM startup log
+  shows `SM12x detected - using native FlashInfer CUTLASS attention instead of TRT-LLM attention
+  (cubins not available for SM12x)`. This corroborates the existing [conjecture] SM121 kernel
+  guide finding (S-forum-sm121-kernel-guide: stock vLLM has zero Blackwell cubins, `.so` injection
+  gives 3.65× speedup) and the [reported] NVFP4 meta-analysis (42-48% of bandwidth ceiling on
+  GB10 — a software/kernel gap, not hardware). Single source → [conjecture].
+
+- **[conjecture]** **Prefill is not the bottleneck on single Spark — ~6,000 tok/s prefill against
+  ~56 tok/s generation, flat out to 27K tokens; a 27,000-token prompt prefills in 3.6 s** (S-forum-
+  spark-field-notes, ss121): for RAG workloads, context is nearly free on a single Spark. This is
+  consistent with the proven bandwidth-bound decode finding (~270 GB/s ceiling) — prefill is
+  compute-bound (tensor cores), decode is bandwidth-bound. Single source → [conjecture].
+
+- **[conjecture]** **Tool-calling failures were usually the server, not the model** (S-forum-
+  spark-field-notes, ss121): three models the OP had written off as unusable for agents "work fine
+  under vLLM with matching `--tool-call-parser` / `--reasoning-parser`." This is a general vLLM
+  operational finding, not GB10-specific — but durable for Spark owners building agent stacks.
 
 ## Forum ingest: Atlas, ds4, DFlash engines (2026-07-08)
 

@@ -39,6 +39,33 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-12 (Batch 65)
+- 4 new NVIDIA DGX Spark forum topics found (3 technically relevant, 1 skipped: NIM-vs-Eugr
+  question with no replies/data).
+- 3 new sources registered (Batch 65). 4 topic IDs added to processed_topics.txt (total now 580).
+- **Headline finding 1:** MiniMax-M3 NVFP4 (official `nvidia/MiniMax-M3-NVFP4`) on 4× Spark —
+  1M context (1,177,344-token KV pool via 4-bit packed nvfp4 KV), ~31 tok/s decode with EAGLE3,
+  native vision + tool-calling. Major bug: NVFP4-Marlin MoE path drops SwiGLU-OAI activation
+  params (gemm1_alpha 1.702 / gemm1_beta 1.0 arrive at Marlin kernel as defaults 1.0/0.0) → all
+  57 MoE layers compute wrong activation → silent garbage output. 3-file param-threading fix
+  documented (config.py + nvfp4.py + modelopt.py). Sibling of #46816/#47552 on NVFP4 quant-config
+  chain. [conjecture].
+- **Headline finding 2:** Cross-engine single-Spark field notes — identical harness across
+  Ollama and vLLM for 4 models. Ollama does not batch (8× agg = single-stream); vLLM 289-313
+  tok/s at 8 concurrent. NVFP4 1.1 tok/s on vanilla vLLM (emulation fallback) vs 77.1 tok/s with
+  FlashInfer-CUTLASS — 70× from kernel path. MTP nst=2 beats 4. nvidia NVFP4 Gemma-4-26B-A4B
+  30.3 tok/s w/o MTP vs Q4_K_M GGUF 49.6 — "obvious A/B makes NVFP4 look slower than it is."
+  [conjecture].
+- **Headline finding 3:** GLM-5.2 official NVFP4 on 8× Spark TP=8 — 25 tok/s decode, 256K context,
+  tool-eval-bench v2.5.1 score 93/100 (highest reported for GLM-5.2 on GB10). Official
+  `nvidia/GLM-5.2-NVFP4` via eugr spark-vllm-docker. [conjecture].
+- Pages touched: models/minimax (M3 NVFP4 4× 1M recipe + SwiGLU-OAI bug [conjecture]),
+  models/glm-5.2 (official NVFP4 8× recipe + tool-eval 93 [conjecture]), models/gemma-4
+  (NVFP4 vs Q4_K_M GGUF gap + MTP nst=2>4 [conjecture]), engines (Ollama-vs-vLLM batching +
+  NVFP4 missing-kernels 70× + prefill not bottleneck [conjecture]), benchmarks (6 new
+  [conjecture] rows), sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+
 ## Forum ingest 2026-08-11 (Batch 64)
 - 2 new NVIDIA DGX Spark forum topics found, both technically relevant.
 - 2 new sources registered (Batch 64). 2 topic IDs added to processed_topics.txt (total now 576).

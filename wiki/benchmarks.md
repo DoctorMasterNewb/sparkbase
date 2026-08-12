@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp
-> **updated:** 2026-08-10
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m
+> **updated:** 2026-08-12
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
 anchor the rules on
@@ -938,3 +938,42 @@ S-forum-dsv4-llamacpp-fan.
 > The KLD quant ladder analysis shows a binary trade on 121GB: IQ3_XXS+DSpark=31 t/s at KLD
 > 0.24, or Q3_K_XL=9 t/s at KLD 0.106, with no intermediate viable. See
 > `[[wiki/llama-cpp-rpc.md]]` for the full recipe and KLD table.
+
+## Batch 65 forum ingest (2026-08-12)
+
+**[conjecture]** — all single-source forum benchmarks. S-forum-spark-field-notes,
+S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m.
+
+|| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+|---|---|---|---|---|---|---|---|
+|| Qwen3-Coder-Next | Q4 (Ollama) / 4-bit (vLLM) | Ollama / vLLM 0.26.1rc1 | 1 | 59.2 (Ollama) / 74.8 (vLLM) / 289 (vLLM 8× agg) | — | cross-engine single-Spark; Ollama does not batch (8× agg = single-stream); vLLM TTFT 104ms vs Ollama 215ms | S-forum-spark-field-notes ||
+|| Gemma-4-26B-A4B + MTP | NVFP4 (vLLM) / Q4_K_M GGUF (Ollama) | Ollama / vLLM 0.26.1rc1 | 1 | 49.6 (Ollama) / 54.9 (vLLM w/ MTP) / 303.6 (vLLM 8× agg) | — | nvidia NVFP4 30.3 w/o MTP vs Q4_K_M GGUF 49.6; MTP +81% (30.3→54.9); nst=2 beats 4 (accept decays 0.84→0.60→0.39→0.27); vLLM TTFT 94ms vs Ollama 511ms | S-forum-spark-field-notes ||
+|| GPT-OSS-120B | Q4 (Ollama) / 4-bit (vLLM) | Ollama / vLLM 0.26.1rc1 | 1 | 42.1 (Ollama) / 60.7 (vLLM) / 116-153 (vLLM 8× agg) | — | vLLM TTFT 131ms vs Ollama 449ms | S-forum-spark-field-notes ||
+|| Qwen3-30B-A3B | Q4 (Ollama) / NVFP4 (vLLM) | Ollama / vLLM 0.26.1rc1 | 1 | 85.2 (Ollama) / 77.1 (vLLM) / 313.4 (vLLM 8× agg) | — | NVFP4 1.1 tok/s on vanilla vLLM (emulation fallback) vs 77.1 with FlashInfer-CUTLASS (70× from kernels); Ollama single-stream slightly faster here | S-forum-spark-field-notes ||
+|| GLM-5.2 (744B/40B MoE) | NVFP4 (official nvidia) | vLLM (eugr spark-vllm-docker) | 8 (TP=8) | 25 | 256K | tool-eval-bench v2.5.1: 93/100; official nvidia/GLM-5.2-NVFP4; recipe 8x-spark-cluster/glm-5.2-nvfp4.yaml | S-forum-glm52-8x-nvfp4 ||
+|| MiniMax-M3 (428B/A23B MoE) | NVFP4 (official nvidia) + nvfp4 KV + EAGLE3 | vLLM 0.17.2rc1.dev3669 | 4 (TP=4) | ~31 | 1M | 1,177,344-token KV pool (4-bit packed nvfp4 KV); EAGLE3 nst=2 lossless; native vision + tools; enforce-eager mandatory; 3-file alpha/beta MoE fix required; TRITON_ATTN block-size 128 | S-forum-m3-nvfp4-4x-1m ||
+
+> **[conjecture]** **Cross-engine single-Spark field notes** (S-forum-spark-field-notes, ss121):
+> a week-long benchmark with identical harness across Ollama and vLLM on a single DGX Spark
+> (vLLM 0.26.1rc1.dev535, driver 580.173.02, CUDA 13.0). Key durable findings: (1) Ollama does
+> not batch — 8× aggregate = single-stream on all 4 models; vLLM reaches 289-313 tok/s at 8
+> concurrent. (2) NVFP4 on vanilla vLLM (emulation fallback) = 1.1 tok/s vs 77.1 tok/s with
+> FlashInfer-CUTLASS — a 70× kernel-path difference. (3) MTP nst=2 beats 4 (acceptance decays
+> 0.84→0.60→0.39→0.27). (4) Prefill ~6,000 tok/s (not the bottleneck); 27K-token prompt in 3.6s.
+> See `[[wiki/engines.md]]` → cross-engine field-notes section.
+>
+> **[conjecture]** **GLM-5.2 official NVFP4 on 8× Spark** (S-forum-glm52-8x-nvfp4, hypermac.6502):
+> 25 tok/s decode, 256K context, tool-eval-bench v2.5.1 score 93/100 — the highest reported
+> tool-eval score for GLM-5.2 on GB10. Official `nvidia/GLM-5.2-NVFP4` via eugr spark-vllm-docker.
+> Consistent with the 20-25 tok/s range across 4× Spark recipes; at TP=8 the official NVFP4
+> checkpoint is at the lower end of the 33-54 tok/s range from the Int4-Int8 mix (S-forum-glm52-8x).
+> See `[[wiki/models/glm-5.2.md]]` → official NVFP4 section.
+>
+> **[conjecture]** **MiniMax-M3 official NVFP4 on 4× Spark — 1M context, ~31 tok/s, EAGLE3 +
+> vision** (S-forum-m3-nvfp4-4x-1m, baristankut): the largest context reported for M3 on GB10
+> (1,177,344-token KV pool via 4-bit packed nvfp4 KV). The headline finding is the **NVFP4-Marlin
+> MoE SwiGLU-OAI alpha/beta param-dropping bug** — `gemm1_alpha` (1.702) and `gemm1_beta` (1.0)
+> arrive at the Marlin kernel as defaults (1.0/0.0), causing all 57 MoE layers to compute the
+> wrong activation → silent garbage output. 3-file param-threading fix documented. This is a
+> mainline vLLM bug on the NVFP4 quant-config chain (sibling of #46816/#47552). See
+> `[[wiki/models/minimax.md]]` → M3 NVFP4 official checkpoint section.
