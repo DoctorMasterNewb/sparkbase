@@ -2440,3 +2440,46 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
 
 ### Evidence
 - All [conjecture] — single-source forum. No evidence promotions.
+
+## Forum ingest 2026-08-12 (Batch 66)
+
+- 6 new NVIDIA DGX Spark forum topics found (4 technically relevant, 2 skipped:
+  379763 power supply ordering — buying advice; 379802 crash/reboot — no durable
+  technical findings, support/RMA).
+- 4 new sources registered (Batch 66). 6 topic IDs added to processed_topics.txt
+  (total now 586).
+- **Headline finding 1:** GB10 fan controller tied to SoC power draw, not thermal
+  sensors — fans stop entirely when display blanks (DPMS off) or unit runs headless,
+  causing overheating with no fan response at idle temps of 52-56°C. Multiple
+  independent confirmers (dmayer1 on DGX Spark FE, x1917x on 2× ASUS GX10, sjug).
+  Community-discovered root cause: fan controller responds to SoC power draw, not
+  thermal sensors — adding USB load ≥5W, VNC with active rendering, or a connected
+  monitor spins fans back up. Threshold ~4-5W additional load. NVIDIA staff (Neill)
+  engaged, engineering investigating. **[reported]** for core symptom (3 independent
+  confirmers), [conjecture] for specific power-draw threshold (single investigator).
+  Distinct from the EC fan-curve regression (different mechanism). Workarounds:
+  `xset -dpms`, VNC with active app, sustained USB load.
+- **Headline finding 2:** Driver 595.58.03 / CUDA 13.2 not yet supported on DGX Spark
+  — NVIDIA staff confirms; GB10 absent from supported devices list. CUDA 13.2 had
+  issues, may jump to 13.3. Consistent with existing driver 610/CUDA 13.3 working
+  finding. [conjecture].
+- **Headline finding 3:** OpenGauntlet — 31 conversational LLMs benchmarked on single
+  DGX Spark with systematic methodology (GPT-5.4 judge, TTFT + tok/s at 512/2048/8192
+  prompt contexts across vLLM/sglang/llama.cpp). Notable GB10 findings: vLLM cold-
+  start 376s vs SGLang 151s (same warm decode), vLLM loads 7/7 architectures vs
+  SGLang 4/7, Q4_K_M GGUF TTFT on UMA = 35s for 31B dense (vs 580ms BF16 vLLM),
+  NVFP4 MoE 37-43 tok/s (vLLM, consistent with Atlas ~67), sglang confirmed working
+  on GB10 for BF16 dense. 18-row benchmark table added. [conjecture].
+- **Headline finding 4:** TensorRT-LLM one-forward-pass readout engine — extraordinary
+  unverified claim of 1,014 tokens in 92.3ms on 3× Spark via non-autoregressive
+  readout. Self-described "vibe-coded" by non-expert. ~100-1000× beyond any known
+  GB10 method. Tagged [conjecture] with explicit "extraordinary claim" caveat — do
+  not cite as performance benchmark. Queue for observation only.
+- Pages touched: platform-gb10 (fan DPMS/power-draw [reported] + driver 595 [conjecture]
+  + TRT-LLM readout [conjecture]; sources header + updated date), engines (OpenGauntlet
+  section — vLLM vs SGLang cold-start, arch coverage, GGUF UMA TTFT, sglang on GB10 —
+  all [conjecture]; sources header), benchmarks (18 new [conjecture] rows from
+  OpenGauntlet; sources header), sources/README (Batch 66 — 4 new source rows), index,
+  log.
+- Evidence: fan DPMS symptom [conjecture]→[reported] (3 independent confirmers on 2
+  OEM SKUs). All other findings [conjecture]. No evidence promotions past [reported].

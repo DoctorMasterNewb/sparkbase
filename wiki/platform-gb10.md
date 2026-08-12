@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery
-> **updated:** 2026-08-11
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout
+> **updated:** 2026-08-12
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -1511,3 +1511,86 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   kernel+driver pairing** (S-forum-driver580-173): the user upgraded to an unsupported
   kernel, then driver 595 via `ubuntu-drivers devices`, which cascaded into package
   removals. Single forum thread → [conjecture].
+
+### Batch 66 forum ingest (2026-08-12)
+
+- **[reported]** **Fans stop when display blanks (DPMS off) or headless — GB10 fan controller
+  tied to SoC power draw, not thermal sensors** (S-forum-fan-dpms, dmayer1 + x1917x + sjug;
+  NVIDIA staff Neill engaged): a distinct overheating mechanism from the EC fan-curve
+  regression (S-forum-ec-fan-rollback). **Symptom:** when the display powers off (DPMS
+  blank) or the unit runs headless with no display detected, the fans stop entirely —
+  no RPM reported via hwmon. The chassis becomes "too hot to touch" while `nvidia-smi`
+  shows the GPU idle at P8, 3W, 0% util. ACPI thermal zones climb to 52-56°C with no
+  fan response. Wiggling the mouse / waking the display spins the fans back up within
+  seconds. Reproducible on demand via `xset dpms force off`. Field diagnostics pass
+  (cooling hardware is healthy) — the fans only fail to engage based on display/power
+  state, pointing to firmware/EC logic.
+
+  **Root cause (community-discovered):** the fan controller responds to **SoC power
+  draw**, not thermal sensor readings. x1917x demonstrated this systematically with a
+  smart outlet: both a "hot" (fans off) and "cold" (fans on) unit draw the same ~25W
+  at idle, but adding any external load that raises SoC power above ~29-30W spins the
+  fans:
+  - USB load ≥5W (e.g. charging a phone at 5V/1A) → fans start, unit cools to ~38°C
+  - VNC session with active rendering app (System Monitor/DGX Dashboard) → +8W → fans on
+  - Connected monitor + keyboard + USB hub → +13W → fans on
+  - Idle VNC session (static screen, no rendering) → insufficient power draw → fans stay off
+  - Threshold: fans slow below ~+4-4.5W of additional load
+
+  **This is a different mechanism from the EC fan-curve regression** (S-forum-ec-fan-
+  rollback / S-forum-ec-fan-asus): the EC fan-curve issue is a *broken temperature-to-
+  fan-speed mapping* (fans spin but too slow at high temps). This DPMS/power-draw issue
+  is the fan controller *not engaging at all* when SoC power draw is low, regardless of
+  temperature. Both produce overheating, but the root causes are distinct.
+
+  **Driver version correlation:** x1917x's "cold" unit (fans always work) runs driver
+  580.159.03; the "hot" unit (fans stop) runs 580.173.02 — suggesting the driver/firmware
+  update may be a trigger. sjug reports the issue appeared after a fresh upgrade from
+  OOBE, and downgrading EC firmware helps if CX7 NIC is connected for the update.
+
+  **Workarounds (NVIDIA staff-confirmed):**
+  1. `xset -dpms` — disable display sleep if a monitor is connected
+  2. VNC with an active rendering app (idle VNC is not sufficient)
+  3. Any sustained USB load on the device (≥5W, e.g. phone charging)
+  4. Do not leave the unit fully idle and headless without one of the above
+
+  **Status:** `open` — NVIDIA engineering investigating. dmayer1's unit additionally
+  failed CX7Stress field diagnostic → RMA; the CX7 failure may block the EC firmware
+  downgrade workaround path. Multiple independent users (dmayer1 on DGX Spark FE,
+  x1917x on 2× ASUS GX10, sjug) confirm the core symptom → [reported]. The power-draw
+  threshold finding is from a single systematic investigator (x1917x) → [conjecture]
+  for the specific threshold value.
+
+- **[conjecture]** **Driver 595.58.03 / CUDA 13.2 not yet supported on DGX Spark**
+  (S-forum-driver595, chrm + aniculescu + _cjg): NVIDIA staff (aniculescu) confirms
+  driver 595 is not yet supported on DGX Spark. The 595.58.03 certified Linux-aarch64
+  release's supported-devices list does not include GB10. CUDA 13.2 "had some issues,"
+  and the community speculates the Spark may jump directly to CUDA 13.3 (possibly
+  August). This is consistent with the existing [conjecture] finding that driver
+  610.43.02 + CUDA 13.3 works on Spark (S-forum-driver610) — the supported path may
+  skip 595/13.2 entirely. Single thread, multiple users → [conjecture] (NVIDIA staff
+  comment is authoritative but informal, not an official roadmap statement).
+
+- **[conjecture]** **TensorRT-LLM one-forward-pass readout engine — extraordinary
+  unverified claim** (S-forum-trtllm-readout, lcoleman0422): a forum post claims a
+  TensorRT-LLM branch (`nemoclaw/v9.16-rc14`) that replaces autoregressive decode
+  with a single base-model forward pass + non-autoregressive readout decoder, measured
+  on 3× DGX Spark with `nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4`:
+  - 1,014 tokens in 92.3 ms (live request); 8,192-token envelope in 511 ms
+  - sm_121, CUDA 13.0, TensorRT 10.14.1.48
+  - `NemotronHForCausalLM`: 52 layers, hybrid Mamba+MLP+attention, hidden 2,688, vocab 131,072
+  - Chunked vocabulary projection (8 chunks × 16,384 entries), functional sinusoidal
+    positions (no learned table), in-graph EOS scan, autoregressive fallback hard-disabled
+
+  **Evidence assessment:** the poster self-describes as a "forward-deployed engineer"
+  with "no formal experience in this field" and acknowledges early work was "vibe-coded."
+  The claim of generating 1,014 tokens in 92.3 ms (~10,990 tok/s) is ~100-1000× beyond
+  any known GB10 inference method and would require a fundamentally new architecture
+  (non-autoregressive readout from a single hidden state). No independent verification,
+  no reproducibility details sufficient to replicate, no peer review. The repo
+  (`github.com/lcoleman0422/TensorRT-LLM`) is linked but the approach has not been
+  validated by any other source. **Tagged [conjecture] — this is an extraordinary claim
+  that requires extraordinary evidence.** A hardware agent with 3× Spark could attempt
+  reproduction, but the approach itself (non-autoregressive readout from frozen hidden
+  state) is not a known working paradigm for general text generation. Queue for
+  observation only; do not cite as a performance benchmark.

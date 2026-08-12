@@ -3,7 +3,7 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet
 > **updated:** 2026-08-12
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
@@ -976,4 +976,52 @@ S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m.
 > arrive at the Marlin kernel as defaults (1.0/0.0), causing all 57 MoE layers to compute the
 > wrong activation → silent garbage output. 3-file param-threading fix documented. This is a
 > mainline vLLM bug on the NVFP4 quant-config chain (sibling of #46816/#47552). See
-> `[[wiki/models/minimax.md]]` → M3 NVFP4 official checkpoint section.
+> See `[[wiki/models/minimax.md]]` → M3 NVFP4 official checkpoint section.
+
+## Batch 66 forum ingest (2026-08-12)
+
+**[conjecture]** — all single-source forum benchmarks. S-forum-opengauntlet.
+
+OpenGauntlet conversational LLM benchmark — 31 models on a single DGX Spark (GB10),
+measured TTFT and decode tok/s at 512/2048/8192 prompt-token contexts. Systematic
+methodology (same hardware, judge pipeline with GPT-5.4 pairwise + rubric scoring).
+Models span vLLM (safetensors: BF16, NVFP4), sglang (BF16), and llama.cpp (GGUF:
+Q4_K_M, Q5_K_M, Q6_K_XL, Q8_0). Hardware: single DGX Spark, 128 GB unified. Judge:
+`openai/gpt-5.4`. All measurements single-stream, 2K-prompt token context unless noted.
+
+Notable GB10-specific data points (decode tok/s at 2K prompt context):
+
+|| Model | Quant | Engine | Params | Active | tok/s (2K) | TTFT ms (2K) | ELO | Source ||
+|---|---|---|---|---|---|---|---|---|
+| Gemma 4 26B-A4B Huihui QAT Abliterated MTP NVFP4 | NVFP4 QAT | vLLM | 26B | 4B | 43.1 | 74 | 1490 | S-forum-opengauntlet |
+| Gemma 4 26B-A4B Unsloth NVFP4 | NVFP4 mixed | vLLM | 26B | 4B | 40.6 | 74 | 1660 | S-forum-opengauntlet |
+| Gemma 4 26B-A4B AEON Uncensored NVFP4 | NVFP4 | vLLM | 26B | 4B | 37.6 | 73 | 1496 | S-forum-opengauntlet |
+| Gemma 4 26B-A4B Heretic QAT NVFP4 GGUF | NVFP4 GGUF | llama.cpp | 26B | 4B | 27.1 | 39 | 1492 | S-forum-opengauntlet |
+| gemma4-26b-a4b-it (BF16) | BF16 | vLLM | 26B | 4B | 21.6 | 150 | 1691 | S-forum-opengauntlet |
+| qwen36-35b-styletune (MoE) | BF16 | vLLM | 35B | 3B | 28.0 | 571 | 1656 | S-forum-opengauntlet |
+| ornith-35b-nvfp4 (MoE) | NVFP4 | vLLM | 35B | 3B | 32.7 | 382 | 1357 | S-forum-opengauntlet |
+| NVIDIA Nemotron 3 Super 120B-A12B NVFP4 | NVFP4 mixed | vLLM | 120B | 12B | 13.5 | 1271 | 1102 | S-forum-opengauntlet |
+| Qwen 3.6 27B Polaris Fable NVFP4 (dense) | NVFP4 modelopt | vLLM | 27B | 27B | 9.8 | 313 | 1660 | S-forum-opengauntlet |
+| qwen3.5-27b (dense) | Q4_K_XL | llama.cpp | 27B | 27B | 9.9 | 2730 | 1381 | S-forum-opengauntlet |
+| Gemma 4 31B LilaRest NVFP4 Turbo (dense) | NVFP4 modelopt RTN | vLLM | 31B | 31B | 4.0 | 230 | 1791 | S-forum-opengauntlet |
+| glistening-gem-31b (dense) | BF16 | vLLM | 31B | 31B | 3.1 | 580 | 1839 | S-forum-opengauntlet |
+| glistening-gem-31b Q4_K_M (dense) | Q4_K_M | llama.cpp | 31B | 31B | 8.1 | 35334 | 1876 | S-forum-opengauntlet |
+| designant (MoE) | Q6_K | llama.cpp | 30B | 3B | 54.6 | 25 | 772 | S-forum-opengauntlet |
+| pantheon-proto-rp-1.8-30b-a3b (MoE) | Q4_K_M | llama.cpp | 30B | 3B | 76.9 | 23 | 996 | S-forum-opengauntlet |
+| rocinante-x-12b (dense) | Q5_K_M | llama.cpp | 12B | 12B | 19.5 | 61 | 1150 | S-forum-opengauntlet |
+| anubis-mini-8b (dense) | BF16 | sglang | 8B | 8B | 12.9 | 149 | 1171 | S-forum-opengauntlet |
+
+> **[conjecture]** **OpenGauntlet conversational LLM benchmark** (S-forum-opengauntlet,
+> AI_D3veloper): 31 conversational LLMs benchmarked on a single DGX Spark with
+> systematic methodology (same hardware, GPT-5.4 judge, TTFT + tok/s at 512/2048/8192
+> prompt-token contexts). Key durable findings: (1) NVFP4 MoE models (Gemma-4-26B-A4B
+> variants) achieve 37-43 tok/s — consistent with existing [proven] Atlas measurements
+> of ~67 tok/s for the same model family (the gap likely reflects vLLM vs Atlas, single-
+> stream vs concurrent, and MTP absence). (2) Dense 27-31B models at BF16 are 3-10 tok/s
+> (bandwidth-bound), Q4_K_M GGUF recovers to 8-10 tok/s. (3) The Q4_K_M GGUF TTFT
+> penalty is severe: glistening-gem-31b Q4_K_M = 35s TTFT vs 580ms BF16 — llama.cpp's
+> GGUF load path on UMA is expensive for dense models. (4) Nemotron-3-Super-120B-A12B
+> NVFP4 at 13.5 tok/s is consistent with the existing [conjecture] 13.67-14.33 tok/s
+> 2-node vLLM measurement (S-forum-nemotron-2node). (5) Conversational quality (ELO)
+> and throughput are decoupled — the fastest models (small MoE Q4_K_M) score lowest on
+> conversational EQ. See `[[wiki/engines.md]]` → OpenGauntlet section.

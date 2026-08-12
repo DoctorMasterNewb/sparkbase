@@ -39,6 +39,34 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-12 (Batch 66)
+- 6 new NVIDIA DGX Spark forum topics found (4 technically relevant, 2 skipped: power
+  supply ordering — buying advice; crash/reboot — no durable findings, support/RMA).
+- 4 new sources registered (Batch 66). 6 topic IDs added to processed_topics.txt (total
+  now 586).
+- **Headline finding 1:** GB10 fan controller tied to SoC power draw, not thermal
+  sensors — fans stop when display blanks (DPMS off) or headless, overheating with no
+  fan response at 52-56°C. 3 independent confirmers (DGX Spark FE + 2× ASUS GX10).
+  Root cause: fan controller responds to SoC power draw; USB load ≥5W or VNC with
+  active app spins fans back up. NVIDIA staff engaged. **[reported]** for core symptom.
+  Distinct from EC fan-curve regression (different mechanism). Workarounds: `xset -dpms`,
+  VNC with active app, sustained USB load.
+- **Headline finding 2:** Driver 595.58.03 / CUDA 13.2 not yet supported on DGX Spark
+  — NVIDIA staff confirms; may jump to CUDA 13.3. [conjecture].
+- **Headline finding 3:** OpenGauntlet — 31 conversational LLMs benchmarked on single
+  DGX Spark (GPT-5.4 judge, TTFT + tok/s at 512/2048/8192 contexts). vLLM cold-start
+  376s vs SGLang 151s; vLLM 7/7 arch coverage vs SGLang 4/7; Q4_K_M GGUF TTFT 35s on
+  UMA for 31B dense; NVFP4 MoE 37-43 tok/s; sglang confirmed on GB10. 18-row table.
+  [conjecture].
+- **Headline finding 4:** TensorRT-LLM one-forward-pass readout — extraordinary
+  unverified claim (1,014 tokens in 92.3ms on 3× Spark). Self-described "vibe-coded."
+  [conjecture] with explicit caveat — do not cite as benchmark.
+- Pages touched: platform-gb10 (fan DPMS [reported] + driver 595 [conjecture] + TRT-LLM
+  readout [conjecture]), engines (OpenGauntlet section [conjecture]), benchmarks (18 new
+  [conjecture] rows), sources/README, index, log.
+- Evidence: fan DPMS symptom [conjecture]→[reported] (3 independent confirmers). All
+  other findings [conjecture]. No evidence promotions past [reported].
+
 ## Forum ingest 2026-08-12 (Batch 65)
 - 4 new NVIDIA DGX Spark forum topics found (3 technically relevant, 1 skipped: NIM-vs-Eugr
   question with no replies/data).

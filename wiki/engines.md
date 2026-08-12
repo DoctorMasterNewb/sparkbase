@@ -3,7 +3,7 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet
 > **updated:** 2026-08-12
 
 Three engines run on the Spark pair; pick by arch support and quant.
@@ -896,3 +896,40 @@ Three engines run on the Spark pair; pick by arch support and quant.
   with Open WebUI. Multiple users contribute model recommendations but no quantitative
   tok/s or latency benchmarks → [conjecture]. The `--runner pooling` recipes and memory
   utilization values are the durable GB10-specific findings.
+
+## OpenGauntlet conversational benchmark (2026-08-12)
+
+- **[conjecture]** **31-model conversational LLM benchmark on single DGX Spark**
+  (S-forum-opengauntlet, AI_D3veloper): the OpenGauntlet project benchmarked 31
+  conversational LLMs on a single DGX Spark (GB10, 128 GB unified) with a systematic
+  methodology — same hardware, GPT-5.4 judge for pairwise + rubric ELO scoring,
+  measured TTFT and decode tok/s at 512/2048/8192 prompt-token contexts across vLLM,
+  sglang, and llama.cpp backends. Key durable GB10 findings:
+  - **vLLM cold-start 376s vs SGLang 151s** on a 35B MoE model (same hardware) —
+    vLLM is substantially slower to first request, but warm single-stream decode is
+    identical (a property of the model and memory bandwidth, not the server). This
+    corroborates the existing proven finding that decode is bandwidth-bound on GB10.
+  - **vLLM loads 7/7 candidate model architectures; SGLang loads 4/7** — vLLM's
+    architecture-coverage advantage is quantified here for the first time on GB10.
+  - **Q4_K_M GGUF TTFT penalty on UMA is severe**: glistening-gem-31b Q4_K_M via
+    llama.cpp = 35,334 ms TTFT vs 580 ms for the same model at BF16 via vLLM. The
+    GGUF load path on unified memory is expensive for dense models — the 31B dense
+    model must be fully deserialized into unified memory before first token. This
+    is a GB10-specific finding (on discrete-GPU systems, GGUF mmap avoids this).
+  - **NVFP4 MoE (Gemma-4-26B-A4B) via vLLM: 37-43 tok/s** across community NVFP4
+    variants — consistent with existing [proven] Atlas ~67 tok/s (vLLM is slower
+    than Atlas on supported MoE families, as documented). The Huihui QAT +
+    abliterated + MTP variant is fastest at 43.1 tok/s.
+  - **Conversational quality (ELO) and throughput are decoupled**: the highest-
+    throughput models (small MoE at Q4_K_M: designant 54.6 tok/s, pantheon 76.9
+    tok/s) score lowest on conversational EQ (ELO 772, 996). The highest-ELO models
+    (glistening-gem-31b Q4_K_M at ELO 1876) are among the slowest (8.1 tok/s).
+    This is not GB10-specific but is a durable finding for Spark users selecting
+    models for voice/chat applications.
+  - **sglang confirmed working on GB10** for BF16 dense models (anubis-mini-8b,
+    bluestar-27b, rocinante-xl-16b, skyfall-31b) — a 4th engine option on Spark
+    beyond vLLM/Atlas/llama.cpp, though with narrower architecture coverage.
+  Single source, no independent reproduction → [conjecture]. The benchmark
+  methodology is systematic and the data is published (github.com/D3velop-llc/
+  open-gauntlet-leaderboard), but no other source has corroborated the specific
+  tok/s numbers on GB10. See `[[wiki/benchmarks.md]]` → Batch 66 for the data table.
