@@ -2,6 +2,55 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-13 — Forum ingest: Batch 67 — 4 new topics (4 processed)
+
+- **Sources:** 4 new forum topics found by fetch_new_topics.py. All 4 technically relevant.
+  4 new sources registered (Batch 67) in `sources/README.md`: S-forum-h3-solattn,
+  S-forum-dragonscale, S-forum-openpangu, S-forum-glm52-200k-4x. 4 topic IDs added to
+  `processed_topics.txt` (total now 590).
+- **Topics found:**
+  - 379894 (DGX Spark One-Click Deploy for MiniMax H3 – 12 Workflows + Sol-Attn
+    Acceleration) — **processed**. 1-post thread, 114 views. Open-source deployment
+    package for MiniMax-H3 video generation on DGX Spark with keys-heretic Sol-Attention
+    acceleration pre-patched for Blackwell (sm_121). ~165 GB weights, ~6 min for 5s 720p
+    video with Sol-Attn + Triton + batch VAE. 12 pre-tuned ComfyUI workflows, install
+    wizard. Sol-Attn requires sm_121 adaptation (not drop-in). S-forum-h3-solattn.
+  - 379373 (Everything about benching you were afraid to ask ft. tool-eval-bench) —
+    **processed**. 25-post thread, 698 views. tool-eval-bench v2.5.0 scores 5-8 pts
+    lower than v2.0.1 (version comparability broken — tool author serapis confirmed).
+    DragonScale: new deterministic agentic-coding benchmark (no LLM judge, builds
+    Flappy Bird game). Qwen3.6-35B-A3B scored 96.5 (above cloud models except DSV4-Flash
+    GA 98.75). DSV4-Flash-0731 on 2× Spark: tool-eval-bench 85/100 hardmode v2.5.1
+    (jetspark). S-forum-dragonscale.
+  - 378654 (openPangu-2.0-Flash model is interesting) — **processed**. 4-post thread,
+    451 views. openPangu-2.0-Flash is a 100.14B MoE (92B params, 6B active, 256 experts,
+    512K ctx, BF16 only on HF = 184 GB). Doesn't fit 1× Spark unquantized. Q4_K_M GGUF
+    52 GB exists (mrexodia/openPangu-2.0-Flash-GGUF) with fused DSA/mHC kernels. Key
+    durable finding: GaelicThndr's MTP-on-UMA analysis — speculation helps more on
+    bandwidth-bound UMA (every accepted token past the first is nearly free), but
+    expert-union width grows with draft depth on MoE. Low depth (1-3) wins, high depth
+    (6) collapses. S-forum-openpangu.
+  - 377879 (GLM-5.2 unpruned @ 200K context on 4× DGX Spark — 27 tok/s single / 52.5
+    tok/s @c4) — **processed**. 4-post thread, 579 views. Reproduction + extension of
+    tonyd2wild's QuantTrio Int4-Int8Mix recipe on 4× Spark TP=4. 27 tok/s single, 52.5
+    tok/s @c4, 200K ctx, MTP k=4, fp8_ds_mla KV, FLASHMLA_SPARSE+DSA. Second independent
+    report (52.5 vs 53.5 c4) on independent hardware. Major build gotcha: preset-PR drift
+    (VLLM_APPLY_PRESET_PRS silently merges rebased PR branches → fp8_ds_mla KV page-padding
+    crash). Agent concurrency monitoring: queue depth > token flow > acceptance rate.
+    S-forum-glm52-200k-4x.
+- **Pages touched:** models/glm-5.2 (unpruned QuantTrio 200K 4× recipe + preset-PR drift
+  gotcha + agent concurrency monitoring [conjecture], cross-thread table row),
+  containers-and-tooling (MiniMax-H3 Sol-Attn one-click deploy [conjecture]),
+  engines (tool-eval-bench versioning [conjecture], DragonScale bench [conjecture],
+  DSV4-0731 tool-eval v2.5.1 [conjecture], MTP-on-UMA expert-union analysis [conjecture]),
+  benchmarks (2 new [conjecture] rows: GLM-5.2 4× + DSV4-0731 tool-eval), sources/README,
+  index, log.
+- **Evidence:** all [conjecture] — single-source forum threads. No evidence promotions.
+  The GLM-5.2 4× 200K reproduction is the second independent report but uses the same
+  recipe lineage → stays [conjecture] per independence rules. The preset-PR drift gotcha
+  is a major durable GB10-specific build finding — flagged for priority hardware
+  verification.
+
 ## 2026-08-12 — Forum ingest: Batch 65 — 4 new topics (3 processed, 1 skipped)
 
 - **Sources:** 4 new forum topics found by fetch_new_topics.py. 3 technically relevant, 1 skipped.

@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** evolving
 > **evidence:** conjecture
-> **sources:** S-forum-glm52-4x, S-forum-glm52-mtp-fix, S-forum-glm52-1bit, S-forum-glm52-reapless, S-forum-glm52-800k, S-forum-glm52-iq4xs-4x, S-forum-glm52-8x, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-flashinfer-livelock, S-forum-colibri-glm52, S-forum-6x-cluster, S-forum-glm52-3x-aqlm, S-forum-sparkring, S-forum-glm52-8x-nvfp4
-> **updated:** 2026-08-12
+> **sources:** S-forum-glm52-4x, S-forum-glm52-mtp-fix, S-forum-glm52-1bit, S-forum-glm52-reapless, S-forum-glm52-800k, S-forum-glm52-iq4xs-4x, S-forum-glm52-8x, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-flashinfer-livelock, S-forum-colibri-glm52, S-forum-6x-cluster, S-forum-glm52-3x-aqlm, S-forum-sparkring, S-forum-glm52-8x-nvfp4, S-forum-glm52-200k-4x
+> **updated:** 2026-08-13
 
 **GLM-5.2** is a 744B-parameter / ~40B-active MoE with sparse-MLA (DeepSeek-V4-class) attention and
 MTP speculative decoding support. It is one of the most-discussed large models on the DGX Spark forums
@@ -398,7 +398,61 @@ GLM-5.2 exercises three GB10-specific pressure points simultaneously:
     checkpoint runs on 4× Spark at ~115 GB/node (S-forum-glm52-hybrid, kevin.wu07). At 8× the
     per-node weight footprint drops to ~58 GB, leaving ample room for KV.
 
-## Performance across configurations (cross-thread summary)
+## Unpruned QuantTrio Int4-Int8Mix on 4× Spark — 200K context (2026-08-13 ingest)
+
+- **[conjecture]** **GLM-5.2 QuantTrio Int4-Int8Mix (unpruned, all 256 experts) on 4× Spark TP=4 —
+  27 tok/s single / 52.5 tok/s @c4, 200K context** (S-forum-glm52-200k-4x, baristankut): a
+  reproduction + extension of tonyd2wild's recipe (GLM-5.2-QuantTrio-200K-4x-DGX-Spark, built
+  on eugr/spark-vllm-docker). 200,064-token KV pool on fp8_ds_mla (DeepSeek-style MLA KV),
+  `--kv-cache-memory-bytes 10950000000`, GMU 0.91. MTP k=4, draft_tp=1, FLASHMLA_SPARSE +
+  DSA sparse attention, accept length 3.0–3.2 (author reported 3.3–3.6, explaining the 27.0
+  vs 28.8 single-stream gap). Reasoning + tool-calling parsers: `--reasoning-parser glm45
+  --tool-call-parser glm47`. vLLM native multi-node (mp executor, no Ray). NCCL over IB:
+  `NCCL_IB_HCA=mlx5_1`. 10 CosmicRaisins sm12x Triton kernels bind-mounted. `--max-num-seqs 6`
+  with the indexer MTP-overhang patch. cudagraph FULL (auto → FULL_AND_PIECEWISE for the
+  indexer). This is the **second independent report** of the QuantTrio Int4-Int8Mix recipe on
+  4× Spark — the c4 aggregate (52.5 vs author's 53.5) confirms the recipe on independent
+  hardware, but both reporters are using the same recipe lineage → stays [conjecture] per
+  independence rules.
+
+- **[conjecture]** **Preset-PR drift: `VLLM_APPLY_PRESET_PRS` silently merges rebased PR branches
+  into your "pinned" vLLM build** (S-forum-glm52-200k-4x, baristankut): the eugr-style Dockerfile
+  defaults to `VLLM_APPLY_PRESET_PRS=""` (auto), which applies preset PRs (47392 + 47618) by
+  running `git merge pr-NNNN` on top of the pinned ref (`ab666069`). The trap: PR branches get
+  rebased onto newer vLLM main over time, so the merge silently pulls in a week+ of unrelated
+  mainline drift — the version string showed `dev851+g84710906a` instead of `dev190+gab6660699`.
+  For GLM-5.2, this drift broke **fp8_ds_mla KV page-padding**: `page_size_padded` came back
+  `None`, and the plain-view reshape branch in `gpu/attn_utils.py` crashed with:
+  `shape '[N, 64, 576]' is invalid for input of size N*64656` (656 physical = 512 fp8 + 128 bf16
+  rope + 16 scale; 576 logical — the padding-aware path never engaged).
+  **Fix:** build PURE `ab666069` — set `ARG VLLM_APPLY_PRESET_PRS="0"` in the Dockerfile (no
+  preset merges), apply one hard patch `-p1` for Gemma4 `share_embeddings`
+  (`llm_base_proposer.py` — fails to apply on GLM-5.2, make it tolerant with `|| echo skip`),
+  verify the built version string is exactly `dev190+gab6660699`.
+  **General takeaway:** any pin-and-merge-PRs build system drifts silently as PR branches
+  rebase. Always verify the final version string matches your pinned ref. The presets exist
+  for OTHER models (Gemma4 / DiffusionGemma / MiniMax / Qwen); GLM-5.2's fp8_ds_mla support
+  is in `ab666069` itself. This is a GB10-specific operational gotcha for anyone using
+  eugr/spark-vllm-docker with pinned vLLM refs.
+
+- **[conjecture]** **Agent traffic concurrency monitoring: queue depth > token flow >
+  acceptance rate** (S-forum-glm52-200k-4x, baristankut, WanPiCo): on a real agent run against
+  4× Spark GLM-5.2 (3.2M prompt tokens vs 16.6K generated — 192:1 prefill:decode ratio),
+  per-stream decode tok/s is a poor early indicator of concurrency pressure. Agent traffic
+  shows up as **prefill queueing and TTFT variance** long before decode rate moves. Acceptance
+  length is a bad concurrency signal — it swings with content at c=1 alone (templated output
+  near ceiling, free prose drops by half). In order of usefulness:
+  1. **Queue depth (`num_requests_waiting`)** — the earliest honest signal.
+  2. **Generation-token flow** (not completed-request count) — speed-independent, only
+     freezes when the engine actually wedges. Initial "no completions in N minutes"
+     alerts produced constant false positives on a ~32 tok/s model with thinking enabled.
+  3. **Per-request fixed KV cost** — dominated by a fixed per-request term nearly
+     independent of prompt length. Sets a hard concurrency ceiling that context length
+     barely changes.
+  Caveat: the logged "GPU KV cache size" is derived as `max_concurrency × max_model_len`,
+  not comparable across different `max-model-len` values. This is a general agent-serving
+  finding, not GLM-5.2-specific, but it bites Spark users running tool-calling agents on
+  bandwidth-bound models where the prefill:decode ratio is extreme.
 
 All numbers are **[conjecture]** or **[reported]** as noted. See `[[wiki/benchmarks.md]]` for full rows.
 
@@ -416,6 +470,7 @@ All numbers are **[conjecture]** or **[reported]** as noted. See `[[wiki/benchma
 || TP=4, IQ4_XS GGUF, llama.cpp RPC | IQ4_XS | 4 | 6.28 | 1M | S-forum-glm52-iq4xs-4x |
 || 1× Spark, Colibri expert streaming | int4 MoE + int8 MTP | 1 | 2.4-3.3 | short | S-forum-colibri-glm52 |
 || TP=8, official NVFP4 | NVFP4 (official nvidia) | 8 | 25 | 256K | S-forum-glm52-8x-nvfp4 |
+|| TP=4, QuantTrio Int4-Int8Mix (unpruned) | Int4-Int8 mix | 4 | 27 (c1) / 52.5 (c4) | 200K | S-forum-glm52-200k-4x |
 
 **[reported]** GLM-5.2 decode on 4× Spark is consistently in the 20-25 tok/s range across multiple
 independent threads and quant formats (AWQ-INT4, NVFP4, Hybrid FP8+MXFP4) — the bottleneck is the

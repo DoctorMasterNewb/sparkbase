@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal, S-forum-vllm-2607-xgrammar, S-forum-depfree-dashboard, S-forum-comfyui-triplany, S-forum-acestep-v15-comfyui, S-forum-minimax-h3-comfyui, S-forum-vllm-fwdcompat, S-forum-unsloth-docker
-> **updated:** 2026-08-07
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal, S-forum-vllm-2607-xgrammar, S-forum-depfree-dashboard, S-forum-comfyui-triplany, S-forum-acestep-v15-comfyui, S-forum-minimax-h3-comfyui, S-forum-vllm-fwdcompat, S-forum-unsloth-docker, S-forum-h3-solattn
+> **updated:** 2026-08-13
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -684,6 +684,31 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   Outside core LLM-inference scope (video diffusion, not vLLM/llama.cpp/sglang), but the
   ComfyUI-on-GB10 UMA management context and SageAttention/easycache flags are GB10-relevant.
   Models sourced from `huggingface.co/Comfy-Org/MiniMax-H3`.
+
+### Batch 67 forum ingest (2026-08-13) — MiniMax-H3 Sol-Attention one-click deploy
+
+- **[conjecture]** **MiniMax-H3 one-click deploy with Sol-Attention acceleration on DGX Spark**
+  (S-forum-h3-solattn, alexlu0912): an open-source deployment package
+  (`alexlu0912/dgxspark_comfyui_minimax_h3`) that bundles MiniMax-H3 video generation with
+  keys-heretic **Sol-Attention** acceleration pre-patched for Blackwell (sm_121). Key
+  GB10-specific findings:
+  - **Sol-Attention requires Blackwell (sm_121) adaptation** — the project pre-patches
+    Sol-Attn + Triton + batch VAE for GB10's sm_121, confirming Sol-Attn is not a drop-in
+    on GB10 and needs platform-specific patching.
+  - **~165 GB total model weights** scattered across HuggingFace and ModelScope — the
+    project bundles them with an install wizard that handles the multi-source download.
+    ~165 GB is consistent with the prior Comfy-Org/MiniMax-H3 finding (S-forum-minimax-h3-comfyui).
+  - **~6 min for 5s 720p video** with Sol-Attn acceleration — substantially faster than the
+    prior 174s/143s/215s timings for 5s/0.2M video without Sol-Attn
+    (S-forum-minimax-h3-comfyui). The speedup is from Sol-Attn + Triton + batch VAE, not
+    from a different model. Different resolution/quality (720p vs 0.2M), so not directly
+    comparable, but the order-of-magnitude improvement suggests Sol-Attn is a meaningful
+    acceleration path for video diffusion on GB10.
+  - **12 pre-tuned ComfyUI workflows**: text-to-video, image-to-video, multi-shot,
+    keyframes, full pipeline. Built and tested on Ubuntu 24.04 aarch64, CUDA 13.0+,
+    GB10 (sm_121), disk ≥ 200 GB.
+  Single source → [conjecture]. Outside core LLM-inference scope (video diffusion), but
+  the Sol-Attn sm_121 adaptation and the UMA tuning details are GB10-specific.
 
 ### Batch 57 forum ingest (2026-08-07) — vLLM forward-compat ceiling + Unsloth recipe
 

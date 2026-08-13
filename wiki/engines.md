@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet
-> **updated:** 2026-08-12
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet, S-forum-dragonscale, S-forum-openpangu, S-forum-glm52-200k-4x
+> **updated:** 2026-08-13
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -933,3 +933,68 @@ Three engines run on the Spark pair; pick by arch support and quant.
   methodology is systematic and the data is published (github.com/D3velop-llc/
   open-gauntlet-leaderboard), but no other source has corroborated the specific
   tok/s numbers on GB10. See `[[wiki/benchmarks.md]]` → Batch 66 for the data table.
+
+## Benchmarking tools: tool-eval-bench versioning + DragonScale (2026-08-13)
+
+- **[conjecture]** **tool-eval-bench v2.5.0 scores 5-8 points lower than v2.0.1 — version
+  comparability is broken** (S-forum-dragonscale, 0rand + serapis): tool-eval-bench v2.5.0
+  produces scores 5-8 points lower than v2.0.1 for the same model, because harder scenarios
+  keep being added. A v2.0.1 "84" and a v2.5.0 "84" are **not the same number** — nothing
+  stops people from comparing them as if they were. The tool author (serapis) acknowledged
+  the issue and committed to making the version more prominent in output + adding per-version
+  score deltas. **Practical implication for Spark users:** never compare tool-eval-bench
+  scores across versions. Always cite the version string (e.g. `v2.5.1.dev11+g95e2b5021`).
+  The existing GLM-5.2 tool-eval-bench scores on this page (86/100 v2, 85/100 v3-GPTQ,
+  93/100 v2.5.1, 87/100 v2.3.2) span multiple versions and are **not directly comparable**.
+  Single thread, but the versioning issue is confirmed by the tool author → [conjecture].
+
+- **[conjecture]** **DragonScale: deterministic agentic-coding benchmark (no LLM judge)**
+  (S-forum-dragonscale, 0rand): a new benchmark that tests full agentic-coding integration —
+  tool calls, git work, bash/terminal, Linux, attention to details, grepping — via a
+  deterministic rubric (0-100, no LLM judge). The model builds a TUI-based ASCII Flappy Bird
+  game. Score components: hidden_suite (25), passability (12), replay (8), own_tests (5),
+  mutation (3.75), contract (8), git (5), human_play (30), packaging (2). Sample results:
+  - DeepSeek V4 Flash GA (cloud API): 98.75/100
+  - GPT-5.6 Luna (cloud API): 90/100
+  - Qwen3.6-35B-A3B (8-bit MLX, local): 96.5/100
+  - Qwen3.6-27B (8-bit MLX, local): 67.5/100
+  - Qwen3.5-122B (3.7-bit MLX, local): 47.33/100
+  - Laguna-S-2.1 (4-bit MLX, local): 46.5/100
+  Key finding: Qwen3.6-35B-A3B scored 96.5 — above all cloud models except DSV4-Flash GA
+  and above Qwen3.6-27B (67.5) — supporting the community consensus that 35B-A3B is the best
+  single-Spark coding model. The 122B's low score (47.33) and Laguna's (46.5) corroborate
+  the existing finding that larger models don't always outperform on agentic tasks.
+  Note: these are MLX (Apple Silicon) results, not GB10, but the benchmark itself is
+  engine-agnostic and directly applicable to Spark-served models. Single source → [conjecture].
+
+- **[conjecture]** **DSV4-Flash-0731 on 2× Spark: tool-eval-bench 85/100 hardmode (v2.5.1)**
+  (S-forum-dragonscale, jetspark): DeepSeek-V4-Flash-0731, kv-cache-dtype fp8,
+  `{"temperature":0.5,"top_p":0.95}`, TP2, spec=4. Score: 85/100 (64 passed, 15 partial,
+  5 failed, 143/168 points). Benchmark: tool-eval-bench v2.5.1.dev11+g95e2b5021. Engine:
+  vLLM 0.11.2.dev279+eldritch.final (b12x, CUDA 13.2, 2026-06-26 build). Max context 524,288
+  tokens. This corroborates the existing DSV4-Flash-0731 tool-eval-bench 87/100 (v2.3.2,
+  S-forum-dsv4-0731-bench) — the 2-point difference is consistent with the version drift
+  finding above (v2.5.1 is harder than v2.3.2). Single source → [conjecture].
+
+## MTP on unified memory: expert-union width analysis (2026-08-13)
+
+- **[conjecture]** **Speculation helps more on UMA, not less — but expert-union width grows
+  with draft depth on MoE** (S-forum-openpangu, GaelicThndr): challenges the claim that MTP
+  is "mainly a net loss on bandwidth-bound unified-memory devices." On GB10, decode is
+  bandwidth-bound on active parameters — a verify pass reads the same weights whether it
+  checks 1 candidate or 3, so every accepted token past the first is nearly free. This
+  argues speculation helps **more** on UMA, not less. **The MoE-specific catch:** a batch
+  of draft tokens can route to a **union of experts wider than the top-k** (e.g. 8/256),
+  so bytes-read does grow with draft depth. Measured on a 122B MoE on GB10 (vLLM, seqs=1,
+  its own MTP head):
+  - `num_spec_tokens=2` → 44.8 tok/s at accept-len 2.50
+  - `num_spec_tokens=3` → 44.5 tok/s (flat)
+  - `num_spec_tokens=6` → 29 tok/s (collapses once expert union outgrows amortization)
+  **Low depth wins, high depth loses** on MoE + UMA. With 6B active and `moe_intermediate_size`
+  1024, experts are ~7.9M params each — the union is cheap in absolute bytes at low depth.
+  The drafter's 9.9 GB resident isn't its per-token cost: 3 NextN layers at 8/256 experts
+  is ~0.2 GB of actual reads per draft step, roughly 6% of a main pass. This is a durable
+  GB10-specific finding: MTP depth on MoE should be kept low (1-3) to avoid expert-union
+  width overwhelming the bandwidth savings from speculation. Consistent with the existing
+  finding that MTP nst=2 beats nst=4 (S-forum-spark-field-notes) and that high MTP depth
+  can hurt quality (see MTP quality section above). Single source → [conjecture].

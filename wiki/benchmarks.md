@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet
-> **updated:** 2026-08-12
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x
+> **updated:** 2026-08-13
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
 anchor the rules on
@@ -1025,3 +1025,23 @@ Notable GB10-specific data points (decode tok/s at 2K prompt context):
 > 2-node vLLM measurement (S-forum-nemotron-2node). (5) Conversational quality (ELO)
 > and throughput are decoupled — the fastest models (small MoE Q4_K_M) score lowest on
 > conversational EQ. See `[[wiki/engines.md]]` → OpenGauntlet section.
+
+## Forum-reported benchmarks (2026-08-13 ingest, Batch 67)
+
+|| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source |
+||---|---|---|---|---|---|---|---|
+|| GLM-5.2 (744B/40B MoE) | QuantTrio Int4-Int8Mix (unpruned, 256 experts) | vLLM native multi-node (mp executor, no Ray) | 4 (TP=4) | 27 (c1) / 30.7 (c2) / 52.5 (c4) | 200K | fp8_ds_mla KV, MTP k=4, FLASHMLA_SPARSE+DSA, accept len 3.0-3.2; 2nd independent reproduction of tonyd2wild recipe (52.5 vs 53.5 c4) | S-forum-glm52-200k-4x |
+|| DSV4-Flash-0731 | FP8 | vLLM 0.11.2.dev279+eldritch (b12x, CUDA 13.2) | 2 (TP=2) | — (tool-eval 85) | 524K | tool-eval-bench v2.5.1 hardmode: 85/100 (64 pass, 15 partial, 5 fail); spec=4, fp8 KV, temp 0.5/top_p 0.95 | S-forum-dragonscale |
+
+> **[conjecture]** **GLM-5.2 QuantTrio Int4-Int8Mix unpruned on 4× Spark** (S-forum-glm52-200k-4x,
+> baristankut): 27 tok/s single-stream, 52.5 tok/s @c4 aggregate at 200K context. Second
+> independent report of the tonyd2wild recipe (52.5 vs 53.5 @c4 on independent hardware),
+> but same recipe lineage → stays [conjecture]. Consistent with existing [reported] 4× Spark
+> decode range (20-25 tok/s c1). The c4 aggregate (52.5) shows useful scaling under
+> concurrency. See `[[wiki/models/glm-5.2.md]]` → Unpruned QuantTrio section.
+
+> **[conjecture]** **DSV4-Flash-0731 tool-eval-bench v2.5.1 on 2× Spark** (S-forum-dragonscale,
+> jetspark): 85/100 hardmode on vLLM 0.11.2.dev279+eldritch (b12x), TP2, spec=4, fp8 KV. The
+> 2-point drop from the existing 87/100 (v2.3.2, S-forum-dsv4-0731-bench) is consistent with
+> the tool-eval-bench version drift finding (v2.5.1 is harder than v2.3.2). See
+> `[[wiki/engines.md]]` → Benchmarking tools section.

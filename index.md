@@ -39,6 +39,34 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-13 (Batch 67)
+- 4 new NVIDIA DGX Spark forum topics found, all technically relevant.
+- 4 new sources registered (Batch 67). 4 topic IDs added to processed_topics.txt (total
+  now 590).
+- **Headline finding 1:** GLM-5.2 unpruned QuantTrio Int4-Int8Mix on 4× Spark — 27 tok/s
+  single / 52.5 tok/s @c4, 200K context. Second independent reproduction of tonyd2wild
+  recipe (52.5 vs 53.5 c4). Major build gotcha: `VLLM_APPLY_PRESET_PRS` silently merges
+  rebased PR branches into pinned vLLM build → fp8_ds_mla KV page-padding crash
+  (`shape '[N, 64, 576]' is invalid`). Fix: build PURE ref with `VLLM_APPLY_PRESET_PRS="0"`.
+  Agent concurrency monitoring: queue depth > token flow > acceptance rate. [conjecture].
+- **Headline finding 2:** tool-eval-bench v2.5.0 scores 5-8 pts lower than v2.0.1 —
+  version comparability is broken. Tool author (serapis) confirmed. DragonScale: new
+  deterministic agentic-coding benchmark (no LLM judge, builds Flappy Bird game).
+  Qwen3.6-35B-A3B scored 96.5, above all cloud models except DSV4-Flash GA (98.75).
+  DSV4-Flash-0731 on 2× Spark: 85/100 hardmode v2.5.1. [conjecture].
+- **Headline finding 3:** MTP speculation helps more on UMA, not less — but expert-union
+  width grows with draft depth on MoE. Low depth (1-3) wins, high depth (6) collapses
+  (44.8→44.5→29 tok/s on 122B MoE). Challenges "MTP is net loss on UMA" assumption.
+  [conjecture].
+- **Headline finding 4:** MiniMax-H3 one-click deploy with Sol-Attention acceleration
+  on DGX Spark — Sol-Attn pre-patched for sm_121, ~6 min for 5s 720p video, 12 ComfyUI
+  workflows, install wizard. [conjecture].
+- Pages touched: models/glm-5.2 (200K 4× recipe + preset-PR drift + concurrency
+  monitoring [conjecture]), containers-and-tooling (MiniMax-H3 Sol-Attn [conjecture]),
+  engines (tool-eval-bench versioning + DragonScale + DSV4 tool-eval + MTP-on-UMA
+  [conjecture]), benchmarks (2 new [conjecture] rows), sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+
 ## Forum ingest 2026-08-12 (Batch 66)
 - 6 new NVIDIA DGX Spark forum topics found (4 technically relevant, 2 skipped: power
   supply ordering — buying advice; crash/reboot — no durable findings, support/RMA).
