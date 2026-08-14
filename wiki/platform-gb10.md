@@ -3,7 +3,7 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup
 > **updated:** 2026-08-14
 
 The hardware facts every model bring-up assumes. Read this first.
@@ -74,6 +74,30 @@ delta to be found — because on identical hardware, it always is.
   `--gpu-memory-utilization` with headroom, account for the OS + server process on the head, and for
   cross-node watch the asymmetry (head also runs OS + launcher). For llama.cpp, `--no-mmap` is mandatory
   to avoid the page-cache filling unified memory (see `[[wiki/llama-cpp-rpc.md]]`).
+- **[conjecture]** **Silent idle hard lockup — LPI-3 deep-idle wake failure (distinct from
+  OOM/thermal/wedge freezes)** (S-forum-idle-lockup, luis.poveda9321): a DGX Spark (ASUS GX10,
+  DGX OS 7.5.0, driver 580.173.02, kernel 6.17.0-1029-nvidia) reproducibly hard-locks at
+  **idle** — ~97% memory free (3.5 GB / 123 GB used), zero GPU workload, zero GPU processes,
+  load average ~0.1, GPU at P8 / ~4W / 41°C. The same "zero forensic trace" signature as
+  other GB10 freezes (no panic, no OOM-killer, no hung_task, no soft-lockup, no RCU-stall,
+  no Xid, no NVRM error — kernel log ends mid-write on a routine `nvidia_ctl_close`), but
+  **the trigger is the opposite of OOM**: the SoC is descending into its deepest idle state
+  (LPI-3) with PCIe ASPM at default when it locks. An out-of-band vitals logger (fsync'd
+  every 3s, outside journald) confirms the idle state to within ~15s of each freeze.
+  **Only happens at idle, never under load.** 7+ occurrences across Aug 6–12 on one unit;
+  a second user (icoicqico123) reports the same idle-lockup pattern with embedding models
+  via the `transformers` library — the starting VRAM is much larger on Spark than x86
+  (even for the same script), and a UMA-specific memory leak is absent on x86 CUDA. NVIDIA
+  staff (aniculescu) confirms the OOM freeze is a known issue being worked on, but the
+  idle/non-OOM variant is a **different failure mode** — the driver's memory-usage-based
+  process killer can't engage when there's no memory pressure. `hung_task_panic`,
+  `softlockup_panic`, `panic_on_rcu_stall` armed + kdump active — if the next freeze
+  leaves any kernel code running, it should capture a panic + core dump. **Status:**
+  `open` — no known workaround; suspected to be a CPU/PCIe idle power-state transition
+  (LPI-3 wake) failing to complete. This is the **fourth distinct GB10 freeze mechanism**
+  documented: (1) OOM/UVM livelock (memory pressure), (2) thermal shutdown (temp), (3)
+  power-controller wedge (firmware), (4) idle deep-state wake failure (this finding).
+  Relevant for always-on deployments where the Spark sits idle between inference bursts.
 - **[proven]** **`--gpu-memory-utilization` is NOT a hard cap here.** On a discrete GPU, util × VRAM
   bounds allocation. On GB10 the KV-pool probe reads **free *system* RAM** and sees the whole 121 GB, so
   an engine can allocate well past `util × 121` (observed: Atlas at util 0.40 ≈ 48 GB "budget" still took
@@ -199,6 +223,22 @@ only after unexplained slow tok/s).
   — USB subsystem stability issue.
 - **[conjecture]** **MT7925e WiFi** cannot connect to any network after OOBE on some DGX OS builds
   — "Failed to set PTK to the driver" / "key addition failed" (S-forum-wifi-mt7925).
+- **[conjecture]** **MT7925e WiFi mesh network incompatibility — auth loop on mesh WiFi
+  equipment** (S-forum-wifi-mesh, simply_today): on 2× new DGX Sparks, the MT7925e WiFi
+  requires 8+ connection attempts to authenticate against mesh WiFi networks (both 2.4G
+  and 5G), but connects immediately to a simple non-mesh router. Factory reset, system
+  recovery reimage, and firmware updates did not fix the issue. The auth loop is
+  **specific to the mesh WiFi equipment**, not the Spark hardware itself — but it
+  affects both units identically. A second user (hoesing) reports that a **cheap/unshielded
+  CX-7 DAC cable** in the ConnectX ports causes similar WiFi authentication failures (EMI
+  interference), with two fixes: move the DAC to the outermost CX-7 port, or use the
+  NVIDIA-recommended shielded DAC cable. This is GB10-specific: the MT7925e WiFi chip and
+  CX-7 NIC are on the same compact SoC board, so high-speed 200G serdes traffic can
+  interfere with WiFi RF if the DAC shielding is inadequate. The OP's CX-7 ports were
+  empty during testing, so the mesh incompatibility is a distinct issue from the DAC EMI
+  problem — but both point to MT7925e WiFi fragility on the Spark platform. See the
+  existing MT7925e OOBE failure (S-forum-wifi-mt7925) and CX-7 DAC thermal/power findings
+  (S-forum-cx7-dac-power).
 - **[conjecture]** **Soft lockup** in `nvidia_modeset` DisplayPort path during Xorg logout on
   kernel 6.17.0-1018-nvidia (S-forum-soft-lockup-dp).
 
@@ -1607,3 +1647,18 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   reproduction, but the approach itself (non-autoregressive readout from frozen hidden
   state) is not a known working paradigm for general text generation. Queue for
   observation only; do not cite as a performance benchmark.
+
+### Batch 69 forum ingest (2026-08-14)
+
+- **[conjecture]** **Sparkup Ansible playbook — `spbm` firmware module for whole-system power
+  telemetry** (S-forum-sparkup, vladtemian): an open-source Ansible playbook that provisions
+  a DGX Spark from a fresh DGX OS install to a working training box (Docker + NVIDIA runtime,
+  users + GitHub SSH keys, signed kernel, firmware staged, ufw). The notable GB10-specific
+  component is the **`spbm` firmware module** (OFF by default) that exposes **whole-system
+  power** (wall draw) into Prometheus — because `nvidia-smi` sees only the GPU rail, which is
+  about half the wall draw. This corroborates the existing **[reported]** finding that
+  `nvidia-smi` accounts for only 12-27% of real GB10 power draw (S-forum-clock-energy-sweep).
+  Observability stack: node + GPU exporters, Prometheus with 1-year retention, Grafana on
+  `http://spark.local` with a provisioned dashboard. GitHub: `vtemian/sparkup`. Single source
+  → [conjecture]. Relevant for cluster operators wanting wall-power monitoring without
+  external smart plugs (cf. S-forum-power-mgmt smart-plug pattern).

@@ -39,6 +39,32 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-14 (Batch 69)
+- 3 new NVIDIA DGX Spark forum topics found, all technically relevant.
+- 3 new sources registered (Batch 69). 3 topic IDs added to processed_topics.txt (total
+  now 597).
+- **Headline finding 1:** Silent idle hard lockup — LPI-3 deep-idle wake failure on
+  ASUS GX10. ~97% memory free, zero GPU workload, zero forensic trace (no panic/OOM/
+  Xid/hung_task). SoC descending into deepest idle state (LPI-3) at moment of freeze.
+  Only happens at idle, never under load. 7+ occurrences. Fourth distinct GB10 freeze
+  mechanism: (1) OOM/UVM livelock, (2) thermal shutdown, (3) power-controller wedge,
+  (4) idle deep-state wake failure. NVIDIA staff confirms OOM freeze is known but
+  idle variant is different. Also: embedding models via transformers show UMA-specific
+  memory leak absent on x86. [conjecture].
+- **Headline finding 2:** MT7925e WiFi mesh network incompatibility — auth loop (8+
+  retries) specific to mesh WiFi equipment, works with simple router. CX-7 DAC cable
+  EMI also causes WiFi auth failures (cheap unshielded DAC → fix: outermost port or
+  recommended shielded DAC). Both MT7925e and CX-7 on same compact SoC board.
+  [conjecture].
+- **Headline finding 3:** Sparkup — Ansible provisioning tool with `spbm` firmware
+  module for whole-system power telemetry. Corroborates [reported] finding that
+  nvidia-smi accounts for only 12-27% of real GB10 power draw. Prometheus + Grafana
+  observability stack. [conjecture].
+- Pages touched: platform-gb10 (idle LPI-3 lockup [conjecture], WiFi mesh + CX-7 DAC
+  EMI [conjecture], Sparkup spbm power telemetry corroboration [conjecture]),
+  containers-and-tooling (Sparkup Ansible tool [conjecture]), sources/README, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+
 ## Forum ingest 2026-08-14 (Batch 68)
 - 4 new NVIDIA DGX Spark forum topics found, all technically relevant.
 - 4 new sources registered (Batch 68). 4 topic IDs added to processed_topics.txt (total

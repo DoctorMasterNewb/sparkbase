@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal, S-forum-vllm-2607-xgrammar, S-forum-depfree-dashboard, S-forum-comfyui-triplany, S-forum-acestep-v15-comfyui, S-forum-minimax-h3-comfyui, S-forum-vllm-fwdcompat, S-forum-unsloth-docker, S-forum-h3-solattn
-> **updated:** 2026-08-13
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal, S-forum-vllm-2607-xgrammar, S-forum-depfree-dashboard, S-forum-comfyui-triplany, S-forum-acestep-v15-comfyui, S-forum-minimax-h3-comfyui, S-forum-vllm-fwdcompat, S-forum-unsloth-docker, S-forum-h3-solattn, S-forum-sparkup
+> **updated:** 2026-08-14
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -758,3 +758,20 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   Single thread → [conjecture]. The torchao-nightly-PyTorch conflict is a GB10-specific
   dependency pattern (cf. the ARM64 wheel gaps documented in S-forum-qwen-tts-arm64,
   S-forum-nvidia-vfx, S-forum-qwen3tts-ggml).
+
+### Batch 69 forum ingest (2026-08-14)
+
+- **[conjecture]** **Sparkup — Ansible provisioning + whole-system power telemetry for DGX
+  Spark** (S-forum-sparkup, vladtemian): an Ansible playbook that provisions a DGX Spark
+  from a fresh DGX OS install to a working training box. Defaults: Docker with NVIDIA
+  runtime, users + GitHub SSH keys, signed kernel, firmware staged, ufw. Observability:
+  node + GPU exporters, Prometheus with 1-year retention, Grafana on `http://spark.local`
+  with a provisioned dashboard. The notable GB10-specific component is the **`spbm` firmware
+  module** (OFF by default) that exposes **whole-system power** (wall draw) into Prometheus
+  — because `nvidia-smi` sees only the GPU rail (~half the wall draw), corroborating the
+  existing [reported] nvidia-smi undercount finding (S-forum-clock-energy-sweep). Designed
+  to be driven by an AI agent pointing at `INSTALL_CLAUDE.md`. GitHub: `vtemian/sparkup`.
+  Single source → [conjecture]. Reinforces the pattern of community-built Spark
+  orchestration/observability tools (cf. sparkrun, sparkctl, Spark Studio, sparkdash,
+  DGX-Spark-Dashboard). See `[[wiki/platform-gb10.md]]` → Batch 69 for the power-telemetry
+  corroboration.

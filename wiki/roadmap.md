@@ -3,8 +3,8 @@
 > **area:** roadmap
 > **status:** open-problem
 > **evidence:** mixed
-> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-inkling, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-intern-s2, S-forum-pmu-amu, S-forum-6x-ring-rdma, S-forum-gridbook, S-forum-ling3-flash, S-forum-glm52-vision, S-forum-sm121-support, S-forum-inkling-small-2x, S-forum-dsv4-0731-caching, S-forum-powerstress
-> **updated:** 2026-08-03
+> **sources:** S-xnode-cudagraph, S-m3-20tps, S-sess-jun4, S-sess-jun5, S-mimo-results, S-dgxspark-report, S-forum-mxfp4-patches, S-forum-cx7-13gbps, S-forum-nvfp4-100b, S-forum-cx7-bricked, S-forum-sdpa-corruption, S-forum-nvmeof-expert, S-forum-vllm-019-vs-023, S-forum-colibri-glm52, S-forum-glm52-8x, S-forum-bonsai27b, S-forum-mtp-lossless, S-forum-ec-fan-rollback, S-forum-ec-fan-asus, S-forum-inkling, S-forum-6x-cluster, S-forum-inkling-nvfp4, S-forum-intern-s2, S-forum-pmu-amu, S-forum-6x-ring-rdma, S-forum-gridbook, S-forum-ling3-flash, S-forum-glm52-vision, S-forum-sm121-support, S-forum-inkling-small-2x, S-forum-dsv4-0731-caching, S-forum-powerstress, S-forum-idle-lockup
+> **updated:** 2026-08-14
 
 The unsolved stuff. Each item links to the page with the detail. Close an item by moving its finding
 onto the relevant page and deleting it here.
@@ -414,3 +414,21 @@ onto the relevant page and deleting it here.
   codebook L1 routing benefit generalizes to other AQLM-quantized models on GB10 (the L2 cache
   size vs codebook working set interaction is sm_121-specific). See
   `[[wiki/models/glm-5.2.md]]` → v3 kernel L1/L2 stream optimizations.
+
+## Forum-sourced open problems (2026-08-14 ingest, Batch 69)
+
+- **[conjecture]** **Silent idle hard lockup — LPI-3 deep-idle wake failure on GB10**
+  (S-forum-idle-lockup, luis.poveda9321): a DGX Spark (ASUS GX10) reproducibly hard-locks
+  at idle (~97% memory free, zero GPU workload) — the SoC descends into LPI-3 deepest
+  idle state and never wakes. Zero forensic trace (no panic/OOM/Xid/hung_task). 7+
+  occurrences; only happens at idle, never under load. Fourth distinct GB10 freeze
+  mechanism. `hung_task_panic`/`softlockup_panic`/`panic_on_rcu_stall` armed + kdump
+  active for next occurrence. Hardware agent should: (1) leave a Spark idle for extended
+  periods with an out-of-band vitals logger (fsync'd every 3s, outside journald)
+  capturing CPU idle-state trajectory (LPI levels) + PCIe ASPM state; (2) check if
+  disabling deep idle states (`cpuidle.off=1` kernel param or `processor.max_cstate=1`)
+  prevents the lockup; (3) try `pcie_aspm=off` to disable PCIe ASPM; (4) if kdump
+  captures a vmcore, analyze the CPU/PCIe power-state transition path. This is the
+  highest-priority platform stability issue for always-on deployments — a Spark that
+  dies when idle between inference bursts is operationally worse than one that dies
+  under load. See `[[wiki/platform-gb10.md]]` → idle LPI-3 lockup finding.

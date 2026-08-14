@@ -2,6 +2,49 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-14 — Forum ingest: Batch 69 — 3 new topics (3 processed)
+
+- **Sources:** 3 new forum topics found by fetch_new_topics.py. All 3 technically relevant.
+  3 new sources registered (Batch 69) in `sources/README.md`: S-forum-wifi-mesh,
+  S-forum-idle-lockup, S-forum-sparkup. 3 topic IDs added to `processed_topics.txt`
+  (total now 597).
+- **Topics found:**
+  - 379782 ([solved.. disappointing GB10 wifi card/fw/drivers] WIFI Authentication Loop
+    - Post Setup) — **processed**. 6-post thread, 158 views. MT7925e WiFi mesh network
+    incompatibility on 2× new DGX Sparks: auth loop (8+ retries) specific to mesh WiFi
+    equipment, connects immediately to simple non-mesh router. Factory reset + system
+    recovery reimage + firmware updates did not fix. Second user (hoesing): cheap/unshielded
+    CX-7 DAC cable causes similar WiFi auth failures (EMI) — fix: move DAC to outermost
+    port or use recommended shielded DAC. Both MT7925e and CX-7 on same compact SoC board.
+    S-forum-wifi-mesh.
+  - 358951 (Spark `hangs` - requires a hard-reset) — **processed**. 13-post thread, 749
+    views. Two distinct freeze mechanisms documented: (1) classic UMA OOM host freeze
+    (already [proven]/[reported] in KB) — NVIDIA staff (aniculescu) confirms known issue,
+    next major Spark OS release should have better OOM handling. (2) **NEW: silent idle
+    hard lockup** at ~97% memory free — LPI-3 deep-idle wake failure. ASUS GX10, DGX OS
+    7.5.0, driver 580.173.02, kernel 6.17.0-1029-nvidia. Zero forensic trace (no panic/
+    OOM/Xid/hung_task/soft-lockup/RCU-stall). SoC descending into deepest idle state
+    (LPI-3) with PCIe ASPM at default at moment of freeze. Only happens at idle, never
+    under load. 7+ occurrences Aug 6-12. Second user (icoicqico123): embedding models via
+    transformers show UMA-specific memory leak absent on x86, starting VRAM much larger
+    on Spark. `hung_task_panic`/`softlockup_panic`/`panic_on_rcu_stall` armed + kdump
+    active for next occurrence. Fourth distinct GB10 freeze mechanism. S-forum-idle-lockup.
+  - 379218 (Sparkup - DGX Spark as code) — **processed**. 1-post thread, 227 views.
+    Ansible playbook provisioning DGX Spark from fresh DGX OS install to working training
+    box. Notable GB10-specific component: `spbm` firmware module for whole-system power
+    telemetry (nvidia-smi sees only GPU rail, ~half wall draw) — corroborates existing
+    [reported] nvidia-smi undercount finding. Docker+NVIDIA runtime, Prometheus+Grafana
+    observability with 1-year retention. S-forum-sparkup.
+- **Pages touched:** platform-gb10 (idle LPI-3 lockup [conjecture], WiFi mesh + CX-7 DAC
+  EMI [conjecture], Sparkup spbm power telemetry corroboration [conjecture]),
+  containers-and-tooling (Sparkup Ansible tool [conjecture]), sources/README, index, log.
+- **Evidence:** all [conjecture] — single-source forum threads. No evidence promotions.
+  The idle LPI-3 lockup is a major new durable GB10 finding — fourth distinct freeze
+  mechanism, flagged for priority hardware verification (would confirm whether LPI-3
+  wake failure is reproducible on other units, potentially [reported] with a second
+  independent confirmer). The Sparkup spbm module corroborates the existing [reported]
+  nvidia-smi undercount finding but does not promote it further.
+
 ## 2026-08-14 — Forum ingest: Batch 68 — 4 new topics (4 processed)
 
 - **Sources:** 4 new forum topics found by fetch_new_topics.py. All 4 technically relevant.
