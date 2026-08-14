@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-nemotron-rpc, S-swapper, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-nemotron-super-abi, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-nemotron-2node
-> **updated:** 2026-08-02
+> **sources:** S-nemotron-rpc, S-swapper, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-nemotron-super-abi, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-nemotron-2node, S-forum-nemotron35-lightning
+> **updated:** 2026-08-14
 
 NVIDIA Nemotron-3 — **hybrid Mamba-2 + attention MoE** (`nemotron_h_moe`). Most layers are SSM with a
 few attention layers (2 KV heads), so KV is cheap and native context is huge. Two paths on GB10.
@@ -108,3 +108,28 @@ few attention layers (2 KV heads), so KV is cheap and native context is huge. Tw
   accuracy issues`. These indicate the NVFP4 checkpoint lacks calibrated q/prob/kv scaling
   factors for the fp8 attention path — defaults to 1.0. May cause accuracy issues but does not
   block serving. No fix reported; treat as a known checkpoint limitation.
+
+ ## Forum ingest: Nemotron-3.5-Lightning-30B-A3B on single Spark (2026-08-14)
+
+ - **[conjecture]** **NVIDIA Nemotron-3.5-Lightning-30B-A3B-NVFP4-DFlash on single DGX Spark**
+ (S-forum-nemotron35-lightning, Schampuswerner, styles01): a new Nemotron variant —
+ 30B total / **3B active** MoE with hybrid Mamba-2 + attention (same `nemotron_h_moe`
+ family), ~21 GiB NVFP4 weights including draft head. Native 1M context. Official
+ ARM64 vLLM 0.27.1 path works, including `nemotron_v3` reasoning separation and native
+ `qwen3_coder` tool calls.
+ - **Throughput:** target-only ~78.5 tok/s; with DSpark draft model at speculative
+   depth 3: ~90.7 tok/s (**+15.6%**), 53.0% draft-token acceptance, 1.59 accepted
+   tokens/draft. styles01 reports **120+ tok/s** decode via sparkrun-recipes YAML
+   (`vllm/vllm-openai:v0.27.1`, TP=1, gpu_memory_utilization 0.91, fp8 KV, Marlin MoE,
+   mamba flashinfer, max_model_len 1048576, DSpark num_speculative_tokens=4).
+ - **Quality:** tool-eval-short 77/100 (target-only) / 80/100 (DSpark) — below
+   Qwen3.6-35B-A3B FP8 reference (100/100 on same eval). Recurring misses:
+   multi-value extraction, tool-error recovery, permissive follow-up after refusing
+   destructive requests, unnecessary calculator use. Community consensus: "a model
+   with no advanced skills" designed for finetuning, not a top-tier coding/reasoning
+   model. 0rand notes hybrid Mamba attention may limit finetuning potential.
+ - **Why it bites on Spark:** 3B active MoE at NVFP4 (~21 GiB) is extremely fast on
+   bandwidth-bound GB10 — the 78-120 tok/s range is among the fastest MoE decode on
+   single Spark. 1M native context (Mamba-2 hybrid = cheap KV) and DSpark support
+   make it a throughput-oriented model. The low tool-eval score (77-80 vs Qwen 100)
+   limits agentic use. See `[[wiki/benchmarks.md]]` → Batch 68.

@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout
-> **updated:** 2026-08-12
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt
+> **updated:** 2026-08-14
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -620,6 +620,19 @@ only after unexplained slow tok/s).
   inference deployments — the default disabled-suspend is correct for serving workloads,
   but users who intentionally want suspend (e.g. desktop use) need to know it's a deliberate
   default, not a bug.
+
+- **[reported]** **Smart plug + Auto Boot is the only viable power-management solution for
+  multi-node Spark clusters** (S-forum-power-mgmt, CosmicRaisins, jetspark, mashie,
+  peter.h177): no sleep/suspend mechanism reliably preserves inference state, and
+  stopping all LLM services + ConnectX-7 to save power, then restarting, takes the same
+  time as a cold start. Multiple independent users converged on the same pattern: **full
+  shutdown → smart plug cuts AC → smart plug restores AC on demand → Auto Boot BIOS
+  setting powers the node back on**. This corroborates the existing "No WoL" finding
+  (S-forum-thermal-shutdown) and the sleep-disabled-by-default finding above. Quantified
+  power draw: a 4-node cluster idles at **238 W** (no switch) or **260 W** (with CRS504),
+  and hits **800 W+** during inference. Clock-capping to 1400 MHz saves ~200 W across
+  4 nodes for ~5-10% decode speed loss (prefill suffers more), consistent with the
+  [reported] clock energy-efficiency sweep (S-forum-clock-energy-sweep).
 
 ## Reference cluster
 

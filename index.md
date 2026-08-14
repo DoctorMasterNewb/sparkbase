@@ -39,6 +39,38 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-14 (Batch 68)
+- 4 new NVIDIA DGX Spark forum topics found, all technically relevant.
+- 4 new sources registered (Batch 68). 4 topic IDs added to processed_topics.txt (total
+  now 594).
+- **Headline finding 1:** Smart plug + Auto Boot is the only viable power-management
+  solution for multi-node Spark clusters — multiple independent users converge on this
+  pattern. 4-node cluster idles 238-260W, 800W+ during inference. Clock cap at 1400 MHz
+  saves ~200W for ~5-10% speed loss. Corroborates existing No-WoL and sleep-disabled
+  findings. **[reported]** (4 independent users agree).
+- **Headline finding 2:** NVIDIA Nemotron-3.5-Lightning-30B-A3B-NVFP4-DFlash on single
+  Spark — 78.5 tok/s target, 90.7 tok/s DSpark (+15.6%), 120+ tok/s via sparkrun.
+  Hybrid Mamba-2+MoE+Attention, 3B active, ~21 GiB, 1M ctx. Tool-eval 77-80/100
+  (vs Qwen3.6-35B 100/100) — throughput-oriented, not agentic-tier. [conjecture].
+- **Headline finding 3:** DSV4-Flash-0731 on mainline llama.cpp single Spark — 19.7 tok/s
+  single-stream, 52 tok/s @ 4 concurrent, 131K ctx/slot. IQ3_XXS hits reproducible
+  throughput dip at c=4 (47.6→26.3). KV q8_0 garbles output (llama.cpp can't represent
+  DSV4 native mixed fp8/fp4 KV). coder543 ds4 comparison: DSpark 0% accept in
+  continuous-batch path. [conjecture].
+- **Headline finding 4:** DSV4 Flash + Qwen3.5-9B vision co-hosting on 2× Spark at 0.75
+  util — corroborates memory-starved co-hosting finding. stu.miller uses 3rd Spark for
+  vision (offload pattern). Pilco-mmbridge text-to-multimodal bridge + MixedInt4-AutoRound
+  vision quant. [conjecture].
+- Pages touched: platform-gb10 (smart plug power management [reported], cluster power
+  draw data), models/nemotron-3 (Nemotron-3.5-Lightning-30B-A3B [conjecture]), llama-cpp-rpc
+  (DSV4-0731 mainline llama.cpp recipe + IQ3_XXS c=4 dip + KV q8_0 garble + ds4 comparison
+  [conjecture]), engines (DSV4+Qwen vision co-hosting + Pilco-mmbridge [conjecture]),
+  benchmarks (3 new [conjecture] rows), sources/README, index, log.
+- Evidence promotion: smart plug power management pattern → **[reported]** (4 independent
+  users — CosmicRaisins, jetspark, mashie, peter.h177 — converge on identical solution,
+  corroborating existing No-WoL [conjecture] and sleep-disabled [conjecture] findings).
+  All other findings [conjecture].
+
 ## Forum ingest 2026-08-13 (Batch 67)
 - 4 new NVIDIA DGX Spark forum topics found, all technically relevant.
 - 4 new sources registered (Batch 67). 4 topic IDs added to processed_topics.txt (total

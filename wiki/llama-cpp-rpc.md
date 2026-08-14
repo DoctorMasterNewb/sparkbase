@@ -3,8 +3,8 @@
 > **area:** llama.cpp
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-nemotron-rpc, S-forum-m3-llamacpp-2x, S-forum-dsv4-llamacpp-fan, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-dspark-llamacpp
-> **updated:** 2026-08-10
+> **sources:** S-nemotron-rpc, S-forum-m3-llamacpp-2x, S-forum-dsv4-llamacpp-fan, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-dspark-llamacpp, S-forum-dsv4-0731-llamacpp-bugzy
+> **updated:** 2026-08-14
 
 llama.cpp is the path for **GGUF** checkpoints and for archs vLLM/Atlas don't support (e.g.
 `nemotron_h_moe` hybrid Mamba-2+attn MoE). Its 2-node story is **pipeline RPC**, not tensor-parallel —
@@ -119,10 +119,40 @@ cmake --build build-rpc --target llama-server rpc-server -j
   **Why it bites on Spark:** this is the first reported DSpark speculative decoding on a single
   GB10 via llama.cpp, and the first public dflash-format drafter for DSV4-Flash-0731. The 31 t/s
   on code (1.87× over plain) is the highest reported single-Spark DSV4-Flash-0731 throughput via
-  llama.cpp. The KLD-vs-fit analysis is a durable GB10 finding: on 121GB unified memory, the
-  practical quant trade is binary (IQ3_XXS+DSpark=31 t/s at KLD 0.24, or Q3_K_XL=9 t/s at KLD
-  0.106) with no intermediate viable due to uniform layer importance. Consistent with the
-  proven `--no-mmap` requirement and bandwidth-bound decode ceiling.
+  llama.cpp. The KLD-vs-fit analysis is a durable GB10 finding: on 121GB unified memory,
+  the practical quant trade is binary (IQ3_XXS+DSpark=31 t/s at KLD 0.24, or Q3_K_XL=9 t/s
+  at KLD 0.106) with no intermediate viable due to uniform layer importance. Consistent
+  with the proven `--no-mmap` requirement and bandwidth-bound decode ceiling.
+
+- **[conjecture]** **DeepSeek-V4-Flash-0731 UD-IQ2_M on single Spark via mainline llama.cpp —
+  19.7 tok/s single-stream, 52 tok/s @ 4 concurrent, 131K ctx/slot**
+  (S-forum-dsv4-0731-llamacpp-bugzy, bugzy): mainline llama.cpp build 10235 (221f0f635),
+  no custom engine or forks. Config: `llama-server -m UD-IQ2_M --n-gpu-layers 999
+  --flash-attn on --ctx-size 524288 --parallel 4 --cont-batching --batch-size 2048
+  --ubatch-size 1024 --jinja --threads 10 --no-mmap --metrics`. 524288 ÷ 4 = 131072
+  tokens guaranteed per concurrent request. Decode holds flat (19.3-19.7 tok/s) across
+  2,700+ token generations. Prefill 200-370 tok/s. 96% correctness on 5-category eval
+  (code_generation, code_quality, reasoning, tool_calling, tool_chaining).
+  - **IQ3_XXS throughput dip at concurrency=4**: UD-IQ3_XXS hits a sharp, reproducible
+    throughput dip at c=4 (47.6 → 26.3 tok/s, latency doubling) that IQ2_M never shows.
+    Capability scores identical → memory/scheduling issue at that quant size, not quality.
+    IQ2_M is the more reliable choice under load.
+  - **KV q8_0 garbles output on DSV4-Flash-0731** in llama.cpp — corroborated by coder543
+    in the same thread. Root cause: llama.cpp can't represent DSV4's native mixed fp8/fp4
+    KV cache format, forcing 16-bit (quality-preserving but memory-hungry) or 8-bit
+    (memory-saving but quality-degrading). This is a fundamental llama.cpp limitation for
+    this model architecture.
+  - **coder543 ds4-on-spark comparison**: tried Entrpi/ds4-on-spark fork — got the prefill
+    boost but DSpark never fired (0.0% accept) because continuous-batch path was rejected
+    on memory floor at target context. Single-stream ~22 tok/s vs llama.cpp 19.7. Could
+    not reach 107GB for 1M context (at ~117GB with no drafter at 131K). ds4 env vars for
+    1M ctx: `DS4_CUDA_NO_HBM_CACHE=1`, `DS4_BATCH_FIT_HEADROOM_MB=6272`,
+    `DS4_BATCH_VMM_BUDGET_MB=6144`, `DS4_SERVER_COALESCE_MAX=8`,
+    `DS4_CONT_PREFILL_CHUNK=2048`, `DS4_CONT_CAPTURE=1`, `--kv-disk-dir` for KV offload.
+  **Why it bites on Spark:** the 19.7 tok/s single-stream and 52 tok/s @ c=4 on a single
+  121 GB node with mainline llama.cpp (no custom engine) is a practical baseline for
+  DSV4-Flash-0731 at IQ2_M. The IQ3_XXS concurrency dip and KV q8_0 garbled output are
+  durable GB10-specific findings for llama.cpp users on this model.
 
 ## See also
 `[[wiki/multinode-tp-and-networking.md]]` · `[[wiki/engines.md]]` · `[[wiki/models/nemotron-3.md]]` · `[[wiki/benchmarks.md]]`

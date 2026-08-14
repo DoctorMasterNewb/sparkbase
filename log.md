@@ -2,6 +2,50 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-14 — Forum ingest: Batch 68 — 4 new topics (4 processed)
+
+- **Sources:** 4 new forum topics found by fetch_new_topics.py. All 4 technically relevant.
+  4 new sources registered (Batch 68) in `sources/README.md`: S-forum-power-mgmt,
+  S-forum-nemotron35-lightning, S-forum-dsv4-qwen-vision, S-forum-dsv4-0731-llamacpp-bugzy.
+  4 topic IDs added to `processed_topics.txt` (total now 594).
+- **Topics found:**
+  - 379778 (What is your power management solution?) — **processed**. 17-post thread,
+    533 views. 4-node GB10 cluster power management. Multiple independent users
+    (CosmicRaisins, jetspark, mashie, peter.h177) converge on smart plug + Auto Boot
+    as the only viable solution — no sleep/suspend preserves inference state, and
+    stopping/restarting services takes as long as cold start. 4-node idle 238W (no
+    switch) / 260W (with CRS504), 800W+ during inference. Clock cap 1400 MHz saves
+    ~200W for ~5-10% speed loss. **[reported]** promotion (4 independent users agree).
+    S-forum-power-mgmt.
+  - 379832 (New Nemotron 3.5 Lighting 30B-A3B) — **processed**. 7-post thread, 1081
+    views. NVIDIA Nemotron-3.5-Lightning-30B-A3B-NVFP4-DFlash on single DGX Spark.
+    vLLM 0.27.1 ARM64, hybrid Mamba-2+MoE+Attention, 3B active, ~21 GiB. 78.5 tok/s
+    target, 90.7 tok/s DSpark (+15.6%, 53% acceptance). styles01: 120+ tok/s via
+    sparkrun-recipes. Tool-eval 77-80/100 vs Qwen3.6-35B 100/100. S-forum-nemotron35-lightning.
+  - 379791 (Deepseekv4 flash with QWEN for vision) — **processed**. 3-post thread,
+    488 views. DSV4 Flash + Qwen3.5-9B vision co-hosting on 2× Spark. 230 GB total
+    (200 DSV4 + 30 Qwen), 0.75 util. stu.miller uses 3rd Spark for Qwen3.5-122B vision.
+    PILCOTHINK Pilco-mmbridge text-to-multimodal bridge + Qwen3.5-9B-MixedInt4-AutoRound.
+    S-forum-dsv4-qwen-vision.
+  - 379129 (1x DGX Spark: DeepSeek-V4-Flash-0731 on llama.cpp: 131K ctx/slot, 19.7 tok/s
+    single-stream, 52 tok/s @ 4 concurrent) — **processed**. 4-post thread, 656 views.
+    Mainline llama.cpp build 10235, UD-IQ2_M, no custom engine. 19.7 tok/s single,
+    52 tok/s @ c4, 131K ctx/slot. IQ3_XXS hits c=4 dip (47.6→26.3). KV q8_0 garbles
+    output. coder543 ds4-on-spark comparison: DSpark 0% accept in continuous-batch,
+    ~22 vs 19.7 tok/s single. ds4 env vars for 1M ctx documented.
+    S-forum-dsv4-0731-llamacpp-bugzy.
+- **Pages touched:** platform-gb10 (smart plug + Auto Boot power management [reported],
+  cluster power draw 238-800W, clock cap 200W savings), models/nemotron-3
+  (Nemotron-3.5-Lightning-30B-A3B recipe + throughput + tool-eval [conjecture]),
+  llama-cpp-rpc (DSV4-0731 mainline llama.cpp recipe + IQ3_XXS c=4 dip + KV q8_0 garble
+  + ds4 comparison [conjecture]), engines (DSV4+Qwen vision co-hosting + Pilco-mmbridge
+  [conjecture]), benchmarks (3 new [conjecture] rows: Nemotron-3.5-Lightning ×2 configs
+  + DSV4-0731 llama.cpp), sources/README, index, log.
+- **Evidence:** smart plug power management → **[reported]** (4 independent users
+  converge on identical solution, corroborating existing No-WoL and sleep-disabled
+  findings). All other findings [conjecture] — single-source forum threads.
+  No evidence promotions past [reported].
+
 ## 2026-08-13 — Forum ingest: Batch 67 — 4 new topics (4 processed)
 
 - **Sources:** 4 new forum topics found by fetch_new_topics.py. All 4 technically relevant.

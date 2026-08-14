@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet, S-forum-dragonscale, S-forum-openpangu, S-forum-glm52-200k-4x
-> **updated:** 2026-08-13
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet, S-forum-dragonscale, S-forum-openpangu, S-forum-glm52-200k-4x, S-forum-dsv4-qwen-vision
+> **updated:** 2026-08-14
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -231,6 +231,24 @@ Three engines run on the Spark pair; pick by arch support and quant.
 - **[conjecture]** **Qwen3.5-4B with vision tower fits in worker node spare memory** (0rand): 2–3 GB
   more room available on a worker node for a small vision model. Lower quality but sufficient for
   debugging / screenshot analysis.
+
+## Forum ingest: DSV4 Flash + Qwen3.5-9B vision co-hosting on 2× Spark (2026-08-14)
+
+- **[conjecture]** **DeepSeek V4 Flash + Qwen3.5-9B vision on 2× DGX Spark**
+  (S-forum-dsv4-qwen-vision, aditya1503): DSV4 uses ~200 GB across both nodes, Qwen3.5-9B
+  vision adds ~30 GB → 230 GB total. `--gpu-memory-utilization 0.75` on the DSV4 cluster
+  squeezes KV cache room for the vision model. GitHub repo with scripts and benchmarks
+  (`aditya1503/dgx-spark-inference-recipes`). This corroborates the existing
+  [reported] finding that co-hosting vision alongside DSV4 on 2× Spark is memory-starved
+  (S-forum-dsv4-vision) — 0.75 util is even tighter than the 0.73 reported previously.
+  stu.miller (same thread) uses a **3rd Spark** dedicated to Qwen3.5-122B for vision
+  instead, consistent with the [reported] "offload vision to a separate machine" pattern.
+- **[conjecture]** **Pilco-mmbridge — text-to-multimodal bridge for text-only LLMs**
+  (S-forum-dsv4-qwen-vision, PILCOTHINK): a generic approach combining a text-based LLM
+  with a smaller vision model to give the text model "eyes." Not DGX-Spark-specific but
+  demonstrated on Spark. Also published `Pilcothink/Qwen3.5-9B-MixedInt4-AutoRound` — a
+  mixed 4-bit quantized vision model for the Spark. Community quant extends the Spark
+  Auto Round tooling (S-forum-spark-auto-round) to a vision model.
 
 ## Forum ingest: LLM + ComfyUI co-hosting on 2× Spark (2026-07-15)
 

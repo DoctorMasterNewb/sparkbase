@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x
-> **updated:** 2026-08-13
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy
+> **updated:** 2026-08-14
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
 anchor the rules on
@@ -1045,3 +1045,27 @@ Notable GB10-specific data points (decode tok/s at 2K prompt context):
 > 2-point drop from the existing 87/100 (v2.3.2, S-forum-dsv4-0731-bench) is consistent with
 > the tool-eval-bench version drift finding (v2.5.1 is harder than v2.3.2). See
 > `[[wiki/engines.md]]` → Benchmarking tools section.
+
+## Forum-reported benchmarks (2026-08-14 ingest, Batch 68)
+
+**[conjecture]** — all single-source forum benchmarks. S-forum-nemotron35-lightning,
+S-forum-dsv4-0731-llamacpp-bugzy.
+
+|| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source |
+|---|---|---|---|---|---|---|---|
+| Nemotron-3.5-Lightning-30B-A3B | NVFP4 + DSpark (spec=3) | vLLM 0.27.1 (ARM64) | 1 | 78.5 (target) / 90.7 (DSpark, +15.6%) | 1M | 3B active MoE, ~21 GiB weights; 53% acceptance, 1.59 accepted/draft; tool-eval 77/100 (target) / 80/100 (DSpark); fp8 KV, Marlin MoE, mamba flashinfer | S-forum-nemotron35-lightning |
+| Nemotron-3.5-Lightning-30B-A3B | NVFP4 + DSpark (spec=4) | vLLM 0.27.1 (sparkrun) | 1 | 120+ | 1M | styles01 sparkrun-recipes YAML; TP=1, util 0.91, fp8 KV, Marlin MoE; higher than Schampuswerner's 90.7 — different spec depth (4 vs 3) or measurement method | S-forum-nemotron35-lightning |
+| DeepSeek-V4-Flash-0731 | UD-IQ2_M | llama.cpp (mainline build 10235) | 1 | 19.7 (c1) / 52 (c4 aggregate) | 131K/slot (524K÷4) | --parallel 4 --cont-batching --batch-size 2048 --ubatch-size 1024 --no-mmap; pp2048 459 tok/s; 96% correctness on 5-category eval; IQ3_XXS hits c=4 dip (47.6→26.3) absent in IQ2_M | S-forum-dsv4-0731-llamacpp-bugzy |
+
+> **[conjecture]** **Nemotron-3.5-Lightning-30B-A3B on single Spark** (S-forum-nemotron35-lightning):
+> 78.5 tok/s target-only, 90.7 tok/s with DSpark at spec=3 (+15.6%), and 120+ tok/s reported
+> by styles01 at spec=4. The 3B active MoE at NVFP4 (~21 GiB) is among the fastest MoE decode
+> on single Spark. Tool-eval 77-80/100 limits agentic use vs Qwen3.6-35B (100/100). See
+> `[[wiki/models/nemotron-3.md]]` → Nemotron-3.5-Lightning section.
+>
+> **[conjecture]** **DSV4-Flash-0731 UD-IQ2_M on mainline llama.cpp — 19.7 tok/s single, 52 tok/s
+> @ c4** (S-forum-dsv4-0731-llamacpp-bugzy, bugzy): a practical mainline-llama.cpp baseline for
+> DSV4-Flash-0731 at IQ2_M on single Spark. The 52 tok/s @ 4 concurrent (131K ctx/slot) is
+> notable — useful concurrency without a custom engine. The IQ3_XXS concurrency-4 dip
+> (47.6→26.3 tok/s) and KV q8_0 garbled output are durable llama.cpp-specific findings for
+> this model. See `[[wiki/llama-cpp-rpc.md]]` → bugzy section.
