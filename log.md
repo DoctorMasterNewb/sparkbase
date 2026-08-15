@@ -2,6 +2,16 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-15 — Forum ingest: Batch 70 — 1 new topic (0 processed)
+
+- **Sources:** 1 new forum topic found by fetch_new_topics.py. 0 technically relevant.
+  Topic ID 380045 added to `processed_topics.txt` (total now 598).
+- **Topics found:**
+  - 380045 ("GX10 arrived with broken box seal + missing side QR sticker") — **skipped**.
+    Early-batch RMA / buying-advice question (broken seal, missing QR sticker, power-on-vs-return).
+    No GB10 technical content. 1 post, 96 views.
+- **Pages touched:** none. No sources registered. No wiki changes.
+
 ## 2026-08-14 — Forum ingest: Batch 69 — 3 new topics (3 processed)
 
 - **Sources:** 3 new forum topics found by fetch_new_topics.py. All 3 technically relevant.
