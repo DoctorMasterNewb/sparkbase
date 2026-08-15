@@ -32,12 +32,45 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [inkling](wiki/models/inkling.md) — Thinking Machines multimodal MoE (975B/41B-active + Small 276B/12B-active); NVFP4 on 8× and 2× Spark, paged-KV cliff, FP8 KV absent (BF16 only), tool-calling parser bug, Lamport-on-RoCE escape hatch, kernel bugs filed.
 - [glm-5.2](wiki/models/glm-5.2.md) — Zhipu AI 744B/40B-active MoE (sparse-MLA); 4×–8× Spark recipes, hybrid FP8+NVFP4+MXFP4 quant, MTP quality, reasoning-parser bug, KV kernel constraints.
 - [kimi-k3](wiki/models/kimi-k3.md) — Moonshot AI Kimi K3 (~2.8T MoE); REAP-320 MXFP4 on 8× Spark 21-30 tok/s; full model needs 16× GB10; REAP variant loops.
+- [muse-glimmer](wiki/models/muse-glimmer.md) — Meta 30B dense with DFlash; llama.cpp 44.6 tok/s Q6_K_XL, vLLM NVFP4 18.65 tok/s; tool-calling BFCL 10-12% (multi-tool fails); vLLM DFlash broken.
 
 ## Reference
 - [benchmarks](wiki/benchmarks.md) — collated decode tok/s + concurrency table; append rows.
 - [roadmap](wiki/roadmap.md) — open problems & areas of further development.
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
+
+## Forum ingest 2026-08-15 (Batch 71)
+- 5 new NVIDIA DGX Spark forum topics found, 3 technically relevant (2 skipped: DIY cooling
+  fans — accessory modding; beginner deploy question — resource recommendations).
+- 3 new sources registered (Batch 71). 5 topic IDs added to processed_topics.txt (total
+  now 603).
+- **Headline finding 1:** GB10 spontaneous reboots after July 2026 firmware bundle — GSP
+  health check fail (kgspHealthCheck_TU102), NVRM assert flood (gpu_user_shared_data.c:373),
+  Xid 120 GSP task exception (supervisor timer interrupt). sbsa_gwdt watchdog action=1
+  (DGX OS default) panics after GPU wedges → auto-reboot at ~2h intervals. Root cause:
+  fwupd capsules (EC + SBIOS) applied on warm reboots without AC power disconnect. Fix:
+  full AC power disconnect → 24+ hours clean. Extends existing power-controller wedge
+  pattern to routine firmware updates. Dell Pro Max EC versioning differs from FE.
+  [conjecture].
+- **Headline finding 2:** Meta Muse Glimmer 30B dense model on DGX Spark — llama.cpp
+  UD-Q6_K_XL + DFlash: 44.6 tok/s @ d0, 26.7 @ d8192 (tg128 c1). vLLM NVFP4 + DFlash:
+  18.65 tok/s agg (2.42× BF16). vLLM DFlash broken (DFlashMuseGlimmerAssistantModel
+  missing); llama.cpp/SGLang DFlash work. Tool-calling BFCL 10-12% — multi-tool
+  serialization fails across all runtimes. Controlled A/B: 20/20 single-tool, DFlash
+  4.08× speedup. Model sensitive to reasoning truncation. NEW model page created.
+  [conjecture].
+- **Headline finding 3:** Pilco-mmbridge dedicated thread — detailed vLLM recipes for
+  DSV4-Flash + Qwen3.5-9B vision co-hosting on 2× Spark. Key tuning finding:
+  `--kv-cache-memory-bytes` explicit allocation is the critical knob for stable
+  co-hosting with DSpark spec decode. Initial recipe OOMs → final: 11.9 GB KV for DSV4,
+  367 MB for Qwen vision at 0.05 util. Image persistence bug found+fixed. FE-only tested.
+  [conjecture].
+- Pages touched: platform-gb10 (GSP firmware reboot [conjecture]), models/muse-glimmer
+  (NEW — full model page), engines (Pilco-mmbridge detailed recipes + --kv-cache-memory-bytes
+  tuning [conjecture]), benchmarks (4 new [conjecture] rows: Muse Glimmer ×4 configs),
+  sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
 
 ## Forum ingest 2026-08-14 (Batch 69)
 - 3 new NVIDIA DGX Spark forum topics found, all technically relevant.

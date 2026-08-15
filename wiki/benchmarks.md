@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy
-> **updated:** 2026-08-14
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy, S-forum-muse-glimmer
+> **updated:** 2026-08-15
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
 anchor the rules on
@@ -1069,3 +1069,23 @@ S-forum-dsv4-0731-llamacpp-bugzy.
 > notable — useful concurrency without a custom engine. The IQ3_XXS concurrency-4 dip
 > (47.6→26.3 tok/s) and KV q8_0 garbled output are durable llama.cpp-specific findings for
 > this model. See `[[wiki/llama-cpp-rpc.md]]` → bugzy section.
+
+## Forum-reported benchmarks (2026-08-15 ingest, Batch 71)
+
+All rows below are **[conjecture]** — single-source community-reported numbers, not first-party.
+
+||| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+|---|---|---|---|---|---|---|---|---|
+|| Muse Glimmer 30B (dense) | UD-Q6_K_XL + DFlash | llama.cpp (b10354) | 1 | 44.6 (d0) / 35.0 (d4096) / 26.7 (d8192) | 8K | pp2048 ~680 tok/s flat; tg128 c1; ~31 GiB; DFlash spec decode; llama-benchy 3 runs | S-forum-muse-glimmer |
+|| Muse Glimmer 30B (dense) | UD-Q6_K_XL (no DFlash) | llama.cpp | 1 | 13 | — | coder543; DFlash → 25 prose / 35 code; prefill 1000→725 with DFlash | S-forum-muse-glimmer |
+|| Muse Glimmer 30B (dense) | NVFP4 (Preyazz) + DFlash | vLLM (patched spark-vllm-docker) | 1 | 18.65 aggregate (19.66 mean/turn) | 131K | 2.42× over BF16 (7.72 agg); util 0.45, max-num-seqs 16, nst=15; max_tokens ≥1500 required | S-forum-muse-glimmer |
+|| Muse Glimmer 30B (dense) | BF16 + DFlash | vLLM (patched spark-vllm-docker) | 1 | 7.72 aggregate (8.19 mean/turn) | 131K | NVFP4 2.42× faster; same DFlash recipe as above | S-forum-muse-glimmer |
+
+> **[conjecture]** **Muse Glimmer 30B on DGX Spark** (S-forum-muse-glimmer): a 30B dense model
+> from Meta with DFlash speculative decoding. On llama.cpp with UD-Q6_K_XL, decode ranges 13-44.6
+> tok/s depending on DFlash and context depth. On vLLM with NVFP4 + DFlash, 18.65 tok/s aggregate
+> (2.42× over BF16). Tool-calling quality is poor — BFCL 10-12% due to multi-tool serialization
+> failures across all runtimes (vLLM, SGLang, llama.cpp). Model is sensitive to reasoning budget
+> truncation. DFlash provides 4.08× end-to-end speedup on controlled single-tool suites.
+> vLLM DFlash support is broken (`DFlashMuseGlimmerAssistantModel` missing); llama.cpp and SGLang
+> DFlash work. See `[[wiki/models/muse-glimmer.md]]`.

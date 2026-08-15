@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup
-> **updated:** 2026-08-14
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026
+> **updated:** 2026-08-15
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -1662,3 +1662,55 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   `http://spark.local` with a provisioned dashboard. GitHub: `vtemian/sparkup`. Single source
   → [conjecture]. Relevant for cluster operators wanting wall-power monitoring without
   external smart plugs (cf. S-forum-power-mgmt smart-plug pattern).
+
+### Batch 71 forum ingest (2026-08-15)
+
+- **[conjecture]** **GB10 spontaneous reboots after July 2026 firmware bundle — GSP health
+  check fail + Xid 120 + NVRM assert flood; root cause is warm-rebooted fwupd capsules, fix is
+  full AC power disconnect** (S-forum-gsp-reboot-jul2026, nathanviveiros + dgxspark + elsaco):
+  a Dell Pro Max with GB10 (kernel 6.17.0-1029-nvidia, driver 580.173.02, CUDA 13.0, headless)
+  applied the July 2026 system update bundle: EC 0x01000800 → 0x02000b00, SBIOS 5.36_2.1.0 →
+  5.36_4.0.0, device firmware 0x507 → 0x516. The capsules applied on warm reboots only. Within
+  ~4 hours, the machine spontaneously rebooted 3 times at near-exact 2-hour intervals (14:07,
+  16:07, 18:16). Crash signatures:
+
+  1. **GSP health check failure**: `NVRM: kgspHealthCheck_TU102` + `_issueRpcAndWait:
+     rpcRecvPoll failed with status 0x00000062 for fn 76 sequence 5742` + GSP "critical error
+     120" — the same `0x62` status seen in existing GSP init timeout reports
+     (S-forum-gsp-timeout).
+  2. **NVRM assert flood**: hundreds of repeated
+     `nvAssertFailedNoLog: Assertion failed: (status == NV_OK) || (status ==
+     NV_ERR_GPU_IN_FULLCHIP_RESET) @ gpu_user_shared_data.c:373` over ~12 seconds, then reboot.
+  3. **Silent wedge**: third crash had NO NVRM/GSP errors at all — journal simply stops. The
+     GSP errors in crashes 1-2 are likely a symptom, not root cause.
+  4. **Xid 120 mid-uptime** (spotted by elsaco): `Xid 120, GSP task exception: supervisor timer
+     interrupt (cause:0x8000000000000005) @ pc:0x1a232ec, partition:4#0, task:3` — GSP throwing
+     exceptions during normal operation well before each crash. Per the Xid catalog, XID=120
+     indicates an error in GSP core code or a timeout waiting for GSP to respond to an RPC.
+
+  **Watchdog mechanism:** `sbsa_gwdt` is loaded and armed with `action=1` (panic on WS0
+  interrupt). This is the DGX OS default — `/etc/modprobe.d/sbsa_gwdt.conf` contains
+  `options sbsa_gwdt action=1`, owned by the `nvidia-sbsa-gwdt-options` package. The reboots
+  are the watchdog firing after the GPU driver wedges, not a power or EC issue. The older
+  sbsa_gwdt blacklist issue from prior reboot threads does not apply.
+
+  **Root cause + fix:** `fwupd-refresh.service` ran seconds before two of the three crashes,
+  making it the initial suspect (masked as a test). However, the real root cause was that the
+  fwupd capsules (EC + SBIOS + device firmware) were applied on **warm reboots only** — a
+  full AC power disconnect was never done. Per dgxspark's suggestion, a clean shutdown +
+  wall power disconnect for a few minutes at ~19:00 local resulted in **24+ hours clean**:
+  zero reboots, zero Xid/NVRM/GSP events. `fwupd-refresh.timer` was subsequently unmasked and
+  fired cleanly with no GPU events — exonerated. It was only ever poking firmware that had
+  been applied without a full power cycle.
+
+  **Takeaway:** after fwupd applies EC/SBIOS capsules on a GB10 (Dell or FE), **do a full AC
+  power disconnect, not just a reboot.** Warm-rebooted firmware left the GSP throwing task
+  exceptions and health-check failures until the cold cycle. This is consistent with the
+  existing [proven] power-controller wedge finding that a soft reboot does not clear firmware-
+  level state — the same AC-disconnect fix applies. This finding extends the pattern: the
+  issue isn't limited to post-crash recovery; it can also manifest after routine firmware
+  updates applied without a cold power cycle. The Xid 120 / GSP task exception is a new
+  symptom variant (existing reports had Xid 119 GSP_INIT_DONE timeout, S-forum-gsp-timeout).
+  Note: Dell Pro Max EC versioning (0x02000b00) differs from FE Spark (0x3000508) — the FE
+  comparison doesn't apply to Dell units. Single thread → [conjecture]. Flagged for hardware
+  verification: any GB10 unit receiving the July 2026 bundle should cold-cycle to confirm.

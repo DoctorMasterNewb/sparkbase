@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet, S-forum-dragonscale, S-forum-openpangu, S-forum-glm52-200k-4x, S-forum-dsv4-qwen-vision
-> **updated:** 2026-08-14
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet, S-forum-dragonscale, S-forum-openpangu, S-forum-glm52-200k-4x, S-forum-dsv4-qwen-vision, S-forum-pilco-mmbridge
+> **updated:** 2026-08-15
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -249,6 +249,81 @@ Three engines run on the Spark pair; pick by arch support and quant.
   demonstrated on Spark. Also published `Pilcothink/Qwen3.5-9B-MixedInt4-AutoRound` — a
   mixed 4-bit quantized vision model for the Spark. Community quant extends the Spark
   Auto Round tooling (S-forum-spark-auto-round) to a vision model.
+
+## Forum ingest: Pilco-mmbridge dedicated thread — DSV4-Flash + Qwen vision on 2× Spark (2026-08-15)
+
+- **[conjecture]** **Pilco-mmbridge text-to-multimodal bridge — detailed vLLM recipes and memory
+  tuning on 2× DGX Spark** (S-forum-pilco-mmbridge, PILCOTHINK): a project that combines a
+  text-only LLM (DeepSeek-V4-Flash-0731) with a vision model (Qwen3.5-9B) to give the text model
+  vision capabilities without fine-tuning. Qwen handles images/OCR; DSV4 handles reasoning and
+  final response. Used with Claude Code + MCP/agent tools. Tested on FE Spark only.
+
+  **Initial recipe (OOMs under real use):**
+  ```
+  vllm serve DeepSeek-V4-Flash-0731 \
+    --distributed-executor-backend ray --tensor-parallel-size 2 \
+    --gpu-memory-utilization 0.75 --max-num-batched-tokens 4096 \
+    --max-model-len 1048576 --block-size 256 --kv-cache-dtype fp8 \
+    --speculative-config '{"method":"dspark","num_speculative_tokens":5,"draft_sample_method":"greedy"}' \
+    --max-num-seqs 10
+  ```
+  This recipe "quickly runs out of memory during actual use."
+
+  **Tuned stable recipe (DSV4):**
+  ```
+  vllm serve DeepSeek-V4-Flash-0731 \
+    --distributed-executor-backend ray --tensor-parallel-size 2 \
+    --gpu-memory-utilization 0.77 --max-num-batched-tokens 2048 \
+    --max-model-len 524288 --block-size 256 --kv-cache-dtype fp8 \
+    --speculative-config '{"method":"dspark","num_speculative_tokens":5,"draft_sample_method":"greedy"}' \
+    --max-num-seqs 5
+  ```
+  Key changes: `max-num-seqs` 10→5, `max-num-batched-tokens` 4096→2048, `max-model-len` 1M→524K.
+
+  **Final production recipe (DSV4, with explicit KV bytes):**
+  ```
+  vllm serve DeepSeek-V4-Flash-0731 \
+    --distributed-executor-backend ray --tensor-parallel-size 2 \
+    --gpu-memory-utilization 0.75 \
+    --kv-cache-memory-bytes 11859478446 \
+    --max-num-batched-tokens 8192 --max-model-len 1048576 --block-size 256 \
+    --kv-cache-dtype fp8 \
+    --speculative-config '{"method":"dspark","num_speculative_tokens":5,"draft_sample_method":"greedy"}' \
+    --max-num-seqs 10
+  ```
+  The `--kv-cache-memory-bytes 11859478446` (~11.9 GB) explicit allocation provides a good balance
+  between stability and performance. Note `max-num-batched-tokens` is back up to 8192 and
+  `max-num-seqs` back to 10 with the explicit KV bytes cap.
+
+  **Vision model (Qwen3.5-9B) — final recipe:**
+  ```
+  vllm serve Qwen3.5-9B-quantized.w4a16 \
+    --distributed-executor-backend ray --tensor-parallel-size 2 \
+    --gpu-memory-utilization 0.05 \
+    --kv-cache-memory-bytes 367001600 \
+    --max-model-len 32768 --max-num-batched-tokens 2048 \
+    --kv-cache-dtype fp8 --max-num-seqs 10
+  ```
+  Vision model uses only 5% util (~6 GB) + 367 MB explicit KV cache. W4A16 quantized. The tiny
+  footprint makes co-hosting viable on the same 2× Spark cluster.
+
+  **Durable findings:**
+  - `--kv-cache-memory-bytes` explicit allocation is the key knob for stable co-hosting on 2×
+    Spark — without it, vLLM's auto-sized KV pool + DSpark speculation OOMs under real
+    multi-request load. This corroborates the existing [conjecture] co-hosting memory-starvation
+    finding (S-forum-dsv4-vision, S-forum-dsv4-qwen-vision).
+  - DSpark spec decode (`num_speculative_tokens:5, greedy`) works on 2× Spark with DSV4-Flash-0731
+    + `--distributed-executor-backend ray` + `--kv-cache-dtype fp8`.
+  - A critical bug was found and fixed: once an image was uploaded, the previously uploaded image
+    would continue to be sent to the vision model on subsequent requests even without a new image.
+    Image analysis is now only triggered when the current request actually contains an image.
+  - Gemma 4 12B can also be used as the vision model, but OCR performance is "relatively weak"
+    vs Qwen3.5-9B for reading error messages, warning dialogs, file paths, logs, and UI text.
+  - `--distributed-executor-backend ray` can be omitted in no-Ray mode but is required when
+    running with Ray.
+
+  This extends the existing Pilco-mmbridge mention (S-forum-dsv4-qwen-vision) with full recipes
+  and the `--kv-cache-memory-bytes` tuning finding. Single source → [conjecture].
 
 ## Forum ingest: LLM + ComfyUI co-hosting on 2× Spark (2026-07-15)
 

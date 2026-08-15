@@ -2,6 +2,65 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-15 — Forum ingest: Batch 71 — 5 new topics (3 processed, 2 skipped)
+
+- **Sources:** 5 new forum topics found by fetch_new_topics.py. 3 technically relevant, 2 skipped.
+  3 new sources registered (Batch 71) in `sources/README.md`: S-forum-gsp-reboot-jul2026,
+  S-forum-muse-glimmer, S-forum-pilco-mmbridge. 5 topic IDs added to `processed_topics.txt`
+  (total now 603).
+- **Topics found:**
+  - 367883 (My DGX Spark extra cooling solution) — **skipped**. DIY 3D-printed fan mounts
+    (40mm USB fans, Noctua 120mm, cooling cage). Accessory modding — no GB10 inference
+    findings, no flags/env vars/errors/tok-s. 15 posts, 4636 views.
+  - 379959 (GB10 spontaneous reboots after July 2026 update: GSP health check fail, NVRM
+    assert flood) — **processed**. 9-post thread, 172 views. Dell Pro Max with GB10,
+    kernel 6.17.0-1029-nvidia, driver 580.173.02. Applied July 2026 bundle (EC 0x02000b00,
+    SBIOS 5.36_4.0.0) on warm reboots. 3 spontaneous reboots at ~2h intervals. Crash
+    signatures: GSP kgspHealthCheck_TU102 fail, rpcRecvPoll 0x62, NVRM assert flood at
+    gpu_user_shared_data.c:373, Xid 120 GSP task exception (supervisor timer interrupt).
+    sbsa_gwdt watchdog action=1 (DGX OS default via nvidia-sbsa-gwdt-options package) →
+    panic after GPU wedge → auto-reboot. Root cause: fwupd capsules applied without AC
+    power disconnect. Fix: full AC power disconnect → 24+ hours clean. fwupd-refresh.timer
+    exonerated. Extends existing [proven] power-controller wedge pattern to routine
+    firmware updates. S-forum-gsp-reboot-jul2026.
+  - 380002 (Easy way to deploy any HF model on DGX Spark?) — **skipped**. Beginner
+    question. Replies point to NVIDIA playbooks, vLLM recipes, spark-arena.com, eugr
+    spark-vllm-docker, OpenZeka blog. No durable GB10-specific findings beyond what's
+    already in the KB. 5 posts, 217 views.
+  - 379722 (Meta releases Muse Glimmer 30B, runs on 18GB RAM) — **processed**. 29-post
+    thread, 2666 views. Meta Muse Glimmer 30B dense model on DGX Spark. llama.cpp
+    UD-Q6_K_XL + DFlash: 44.6 tok/s @ d0, 35.0 @ d4096, 26.7 @ d8192 (tg128 c1, 3 runs).
+    coder543: 13 tok/s no DFlash, 25 prose / 35 code with DFlash, prefill 1000→725 with
+    DFlash. vLLM NVFP4 (Preyazz) + DFlash: 18.65 tok/s agg vs BF16 7.72 (2.42×). vLLM
+    DFlash broken (DFlashMuseGlimmerAssistantModel missing). Tool-calling BFCL 10-12%
+    — multi-tool serialization fails across vLLM+SGLang. Controlled A/B: 20/20
+    single-tool, DFlash 4.08× speedup, 35.9% draft acceptance. Model sensitive to
+    reasoning truncation. ~31 GiB memory. NEW model page: models/muse-glimmer.md.
+    S-forum-muse-glimmer.
+  - 378850 (Running DeepSeek-V4-Flash and Other Text-Only LLMs as Multimodal with
+    Pilco-mmbridge) — **processed**. 3-post thread, 663 views. Pilco-mmbridge
+    text-to-multimodal bridge on 2× DGX Spark (FE only). DSV4-Flash-0731 + Qwen3.5-9B
+    vision. Three recipe iterations documented: initial (OOMs) → tuned (max-num-seqs
+    10→5, mnbt 4096→2048, ctx 1M→524K) → final production with --kv-cache-memory-bytes
+    11859478446 (~11.9 GB) explicit KV allocation. Vision model Qwen3.5-9B-quantized.w4a16
+    at util 0.05, --kv-cache-memory-bytes 367001600. DSpark spec decode works. Image
+    persistence bug found+fixed. Key finding: --kv-cache-memory-bytes is the critical
+    knob for stable co-hosting with DSpark. S-forum-pilco-mmbridge.
+- **Pages touched:** platform-gb10 (GSP firmware reboot + Xid 120 + sbsa_gwdt watchdog
+  + AC power disconnect for firmware updates [conjecture]), models/muse-glimmer (NEW —
+  full model page: architecture, llama.cpp benchmarks, vLLM NVFP4+DFlash recipe,
+  tool-calling quality analysis, assessment [conjecture]), engines (Pilco-mmbridge
+  detailed vLLM recipes + --kv-cache-memory-bytes tuning finding [conjecture]),
+  benchmarks (4 new [conjecture] rows: Muse Glimmer ×4 configs), sources/README, index,
+  log.
+- **Evidence:** all [conjecture] — single-source forum threads. No evidence promotions.
+  The GSP firmware reboot finding is a major durable GB10 platform finding — extends the
+  existing [proven] AC-power-disconnect pattern to routine firmware updates, and documents
+  a new Xid 120 variant. Flagged for hardware verification. The Muse Glimmer tool-calling
+  multi-tool failure is notable — reproduces across vLLM+SGLang+llama.cpp, suggesting a
+  model limitation rather than runtime bug. The Pilco-mmbridge --kv-cache-memory-bytes
+  tuning finding is a durable GB10-specific co-hosting recipe detail.
+
 ## 2026-08-15 — Forum ingest: Batch 70 — 1 new topic (0 processed)
 
 - **Sources:** 1 new forum topic found by fetch_new_topics.py. 0 technically relevant.
