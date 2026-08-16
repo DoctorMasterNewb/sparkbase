@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal, S-forum-vllm-2607-xgrammar, S-forum-depfree-dashboard, S-forum-comfyui-triplany, S-forum-acestep-v15-comfyui, S-forum-minimax-h3-comfyui, S-forum-vllm-fwdcompat, S-forum-unsloth-docker, S-forum-h3-solattn, S-forum-sparkup
-> **updated:** 2026-08-14
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal, S-forum-vllm-2607-xgrammar, S-forum-depfree-dashboard, S-forum-comfyui-triplany, S-forum-acestep-v15-comfyui, S-forum-minimax-h3-comfyui, S-forum-vllm-fwdcompat, S-forum-unsloth-docker, S-forum-h3-solattn, S-forum-sparkup, S-forum-spark-comfyui
+> **updated:** 2026-08-16
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -775,3 +775,48 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
   orchestration/observability tools (cf. sparkrun, sparkctl, Spark Studio, sparkdash,
   DGX-Spark-Dashboard). See `[[wiki/platform-gb10.md]]` → Batch 69 for the power-telemetry
   corroboration.
+
+### Batch 72 forum ingest (2026-08-16) — spark-comfyui self-healing ComfyUI manager
+
+- **[conjecture]** **spark-comfyui — self-healing ComfyUI lifecycle manager for DGX Spark**
+  (S-forum-spark-comfyui, Turrican/bjarkebolding): a single-script tool that manages the
+  full ComfyUI lifecycle on GB10 — `install`, `run`, `update`, `doctor`, `status`, `tune`,
+  `service`, `backup`, `restore`, `reset`, `recipe`. Key GB10-specific features:
+  - **PyTorch cu130 for aarch64** — verified and auto-repaired before every launch if a
+    custom node swapped in a CPU build (the #1 cause of silent ComfyUI breakage on Spark).
+  - **SageAttention compiled natively for sm_121** — not just installed, but verified
+    at runtime (see below).
+  - **GPU onnxruntime** — so DWPose/ControlNet preprocessors don't silently fall back to CPU.
+  - **UMA `get_free_memory` patch** — patches ComfyUI's `get_free_memory` to read the
+    unified pool instead of `cudaMemGetInfo`, fixing the 5-15× offload slowdown when vLLM
+    or another CUDA process shares the GPU. This is the same fix documented in
+    S-forum-comfyui-optimized (Haidij) — spark-comfyui makes it automatic.
+  - **NVFP4 kernel verification** — `doctor` runs a forced kernel rather than trusting the
+    backend listing, because ComfyUI silently falls back to pure-PyTorch with nothing
+    surfaced (cf. S-forum-sage-attn silent-fallback pattern).
+  - **Per-call SageAttention fallback detection** — ComfyUI catches kernel errors per
+    attention call and quietly uses PyTorch attention instead; `doctor` detects this by
+    checking dev headers directly (cf. S-forum-sage-attn `python3.12-dev` fix).
+  - **Stuck-clock detection** — detects the GPU power-controller wedge (SM pinned at
+    513-721 MHz, no throttle flag) by running a short matmul and sampling under load —
+    only a power cycle clears it (see `[[wiki/platform-gb10.md]]` → GPU power-controller
+    wedge). The check runs under load because clocks idle low by design.
+  - **`TRITON_PTXAS_PATH` fix** — `run` sets `TRITON_PTXAS_PATH` so `triton.jit()` custom
+    nodes don't hit "no kernel image" on sm_121 (triton-lang/triton#10331).
+  - **`tune --persist`** — persists clock caps via systemd, retaining previous cap when
+    invoked without `--clock-cap` (systems relying on cap to prevent overcurrent restarts
+    keep protection across reconfiguration).
+  - **Full containerization** — hardened Docker image with cu130 torch, native sm_121
+    SageAttention, GPU onnxruntime, and all Spark mods; content stays in a plain `data/`
+    directory bind-mounted in. `--shm-size 16g` default for UMA bus errors.
+  - **MiniMax-H3 support** — runs MiniMax-H3 workflows out of the box with no porting or
+    flag changes; four models resident at once (32B NVFP4 AWQ text encoder + int8 video
+    UNET + two VAEs) on a single Spark.
+  - **Recipes** — JSON files bundling a workflow with its required models (paths, sizes,
+    sha256); `recipe check`, `recipe install`, `recipe capture` for reproducible setups.
+  - **Backup/restore** — archives workflows, settings, custom nodes (pinned commits),
+    model manifests; `restore` rebuilds on a fresh Spark with missing-model reporting.
+  - Repo: `bjarkebolding/spark-comfyui`. 1785 views, 16 posts, confirmed working on ASUS
+    Ascent GX10 (jeffrey16). Single source (tool author) → [conjecture]. Reinforces
+    multiple existing GB10 ComfyUI findings (S-forum-comfyui-optimized, S-forum-comfyui-crash,
+    S-forum-sage-attn, S-forum-comfyui-container) and the power-controller wedge pattern.

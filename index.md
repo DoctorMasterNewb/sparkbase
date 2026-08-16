@@ -40,6 +40,28 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-16 (Batch 72)
+- 3 new NVIDIA DGX Spark forum topics found, 2 technically relevant (1 skipped: OpenClaw/
+  NemoClaw onboarding Docker pull timeout — tool-specific bug, not GB10-specific).
+- 2 new sources registered (Batch 72). 3 topic IDs added to processed_topics.txt (total
+  now 606).
+- **Headline finding 1:** spark-comfyui — self-healing ComfyUI lifecycle manager for DGX
+  Spark. Single script (install/run/update/doctor/status/tune/service/backup/restore/
+  reset/recipe) with GB10-specific features: SageAttention sm_121 compile + runtime
+  verification, UMA get_free_memory patch (same fix as S-forum-comfyui-optimized), NVFP4
+  kernel verification, stuck-clock (power-controller wedge) detection under load,
+  TRITON_PTXAS_PATH fix (triton#10331), full containerization, MiniMax-H3 out-of-the-box,
+  recipes with sha256 model manifests. Confirmed on ASUS Ascent GX10. [conjecture].
+- **Headline finding 2:** DSV4-Flash-0731 b12x build hangs at 92% safetensors load on 2×
+  Spark — InstantTensor hybrid draft loader mod is the trigger. Workaround:
+  INSTANTTENSOR_DRAFT_LOADER=instanttensor. Upstream bug: fastsafetensors ParallelLoader
+  broadcasts on group.WORLD, deadlocking PP-scoped draft loads (vllm-project/vllm bug).
+  sparkrun auto-determines NCCL config as alternative. 5 users in thread. [conjecture].
+- Pages touched: containers-and-tooling (spark-comfyui [conjecture]), engines
+  (DSV4-0731 b12x hang + fastsafetensors PP deadlock + sparkrun alternative
+  [conjecture]), sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+
 ## Forum ingest 2026-08-15 (Batch 71)
 - 5 new NVIDIA DGX Spark forum topics found, 3 technically relevant (2 skipped: DIY cooling
   fans — accessory modding; beginner deploy question — resource recommendations).

@@ -496,6 +496,13 @@ sources cite the experiment (what/config/when), never a private path.
 | S-forum-sm121-support | forum | DGX Spark (SM121) software support is severely lacking — 43-post thread; NVIDIA official response (johnny_nv) with version roadmap + community fact-checking (baristankut); vLLM --enforce-eager 20-30% perf loss, CuTE DSL FP4 restricted to sm_100a (Issue #2800), SGLang unofficial branch (sglang#11658), PyTorch 2.10 + FBGEMM/CUTLASS for sm12x, Triton 3.6.0 RC, FlashInfer 0.5.3+/0.6.1, CUTLASS 4.2.0+/4.3.5/4.4.x, vLLM 0.14.0 expected, MoE kernels no optimized GB10 configs, tcgen05/DSMEM/TMEM/TMA/multicast lacking, CUDA 12.0f vs 12.1a distinction (baristankut, johnny_nv, christopher_owen, vegax87, trystan1, josephbreda) | https://forums.developer.nvidia.com/t/357663 | 2026-07-29 |
 | S-forum-170hx-spark | forum | Cheaper 1T VRAM via CMP 170HX + 4 Sparks — confirms DGX Spark has NO locked/hidden memory (unlike 170HX crypto cards); tcgen05/DSMEM/TMEM/TMA/multicast gap referenced from dgx-spark-playbooks; 8× 170HX benchmark 30 tg/s GLM5.2 4-bit (not GB10-specific) (Ria33, FlossingEnthusiast, alexander.korolev.germany) | https://forums.developer.nvidia.com/t/378348 | 2026-07-29 |
 
+## Batch 72 forum sources (2026-08-16 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+|| S-forum-spark-comfyui | forum | spark-comfyui — self-healing ComfyUI lifecycle manager for DGX Spark: one script (install/run/update/doctor/status/tune/service), SageAttention compiled for sm_121, GPU onnxruntime, UMA get_free_memory patch, NVFP4 kernel verification, TRITON_PTXAS_PATH fix, stuck-clock detection, backup/restore/reset, full containerization, MiniMax-H3 support, recipes (Turrican) | https://forums.developer.nvidia.com/t/376542 | 2026-07-11 |
+|| S-forum-dsv4-0731-b12x-hang | forum | DeepSeek-V4-Flash-0731 b12x build hangs on 2× Spark during safetensors load at 92% — InstantTensor draft loader mod, fix-dspark-sm120-topk mod, upstream fastsafetensors PP-scoped draft load deadlock (vllm-project/vllm), sparkrun auto-determines NCCL config, INSTANTTENSOR_DRAFT_LOADER=instanttensor workaround (vincenzoa, frankyyyyy, hypermac.6502, Ama5u, dbsci) | https://forums.developer.nvidia.com/t/379184 | 2026-08-04 |
+
 ## Batch 44 forum sources (2026-07-31 ingest)
 
 || ID | type | What it is | Reference | Date |

@@ -2,6 +2,41 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-16 — Forum ingest: Batch 72 — 3 new topics (2 processed, 1 skipped)
+
+- **Sources:** 3 new forum topics found by fetch_new_topics.py. 2 technically relevant,
+  1 skipped (OpenClaw/NemoClaw onboarding Docker pull timeout — tool-specific, not
+  GB10-specific). 2 new sources registered (Batch 72) in `sources/README.md`:
+  S-forum-spark-comfyui, S-forum-dsv4-0731-b12x-hang. 3 topic IDs added to
+  `processed_topics.txt` (total now 606).
+- **Topics found:**
+  - 380188 (OpenClaw/NemoClaw on an NVIDIA DGX Spark system) — **skipped**. Single-post
+    bug report about NemoClaw onboarding workflow Docker pull timing out at 900s. The
+    manual Docker pull succeeds. No durable GB10-specific findings (no flags, env vars,
+    error strings, tok/s, quant formats). Tool-specific onboarding issue, not inference
+    or platform. 1 post, 71 views.
+  - 376542 (Spark-comfyui, a self-healing ComfyUI setup for DGX Spark) — **processed**.
+    16-post thread, 1785 views. spark-comfyui by Turrican (bjarkebolding) — a single-
+    script ComfyUI lifecycle manager with GB10-specific features: PyTorch cu130
+    auto-repair, SageAttention sm_121 compile + runtime verification, GPU onnxruntime,
+    UMA get_free_memory patch (same fix as S-forum-comfyui-optimized), NVFP4 kernel
+    verification, per-call SageAttention fallback detection, stuck-clock (power-
+    controller wedge) detection under load, TRITON_PTXAS_PATH fix (triton#10331),
+    tune --persist clock caps, full containerization, backup/restore/reset, MiniMax-H3
+    support, recipes with sha256 model manifests. Confirmed on ASUS Ascent GX10.
+    S-forum-spark-comfyui. → containers-and-tooling.md.
+  - 379184 (Latest Eugr vLLM deepseek v4 0731 hangs when loading) — **processed**.
+    12-post thread, 716 views. DSV4-Flash-0731 b12x build hangs at 92% (44/48 shards)
+    during safetensors load on 2× Spark. Trigger: `instanttensor-hybrid-draft-loader`
+    mod. Workaround: `INSTANTTENSOR_DRAFT_LOADER=instanttensor` or remove mod. Upstream
+    bug filed: fastsafetensors ParallelLoader broadcasts on group.WORLD, deadlocking
+    PP-scoped draft loads (vllm-project/vllm). sparkrun auto-determines NCCL config as
+    alternative. 5 users in thread. S-forum-dsv4-0731-b12x-hang. → engines.md.
+- **Pages touched:** containers-and-tooling (spark-comfyui [conjecture]), engines
+  (DSV4-0731 b12x hang + fastsafetensors PP deadlock + sparkrun alternative
+  [conjecture]), sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+
 ## 2026-08-15 — Forum ingest: Batch 71 — 5 new topics (3 processed, 2 skipped)
 
 - **Sources:** 5 new forum topics found by fetch_new_topics.py. 3 technically relevant, 2 skipped.

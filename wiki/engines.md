@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet, S-forum-dragonscale, S-forum-openpangu, S-forum-glm52-200k-4x, S-forum-dsv4-qwen-vision, S-forum-pilco-mmbridge
-> **updated:** 2026-08-15
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet, S-forum-dragonscale, S-forum-openpangu, S-forum-glm52-200k-4x, S-forum-dsv4-qwen-vision, S-forum-pilco-mmbridge, S-forum-dsv4-0731-b12x-hang
+> **updated:** 2026-08-16
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -1091,3 +1091,46 @@ Three engines run on the Spark pair; pick by arch support and quant.
   width overwhelming the bandwidth savings from speculation. Consistent with the existing
   finding that MTP nst=2 beats nst=4 (S-forum-spark-field-notes) and that high MTP depth
   can hurt quality (see MTP quality section above). Single source → [conjecture].
+
+## Forum ingest: DSV4-Flash-0731 b12x build hang on 2× Spark (2026-08-16)
+
+- **[conjecture]** **DSV4-Flash-0731 b12x vLLM build hangs during safetensors load on 2×
+  Spark — InstantTensor draft loader mod is the trigger** (S-forum-dsv4-0731-b12x-hang,
+  vincenzoa, frankyyyyy): when using eugr's spark-vllm-docker with the b12x build and the
+  `instanttensor-hybrid-draft-loader` mod, the model load hangs at **92% (44/48 shards)**
+  during safetensors checkpoint loading and never progresses — left for over an hour with
+  ~21 GB free on each host. The `InstantTensor` loader completes but the draft model load
+  stalls. **Workaround:** `export INSTANTTENSOR_DRAFT_LOADER=instanttensor` (force the
+  drafter to use InstantTensor instead of lazy safetensors) — or remove the mod from the
+  recipe entirely. With the workaround, the model loads and serves. A second user
+  (hypermac.6502) reports no issues on a 4-node cluster with `--cleanup` build and the
+  same recipe, suggesting the hang may be environment-dependent (stale build, cache
+  state, or node count). A third user (Ama5u) found that `num_speculative_tokens: 7` with
+  `draft_sample_method: "greedy"` (per the HF model card example) also avoids the hang.
+  Single thread (5 users) → [conjecture].
+
+- **[conjecture]** **Upstream bug: fastsafetensors ParallelLoader broadcasts on
+  group.WORLD — PP-scoped draft loads deadlock** (S-forum-dsv4-0731-b12x-hang,
+  frankyyyyy → vllm-project/vllm bug report): the `fastsafetensors` loader hard-codes
+  `torch.distributed.group.WORLD` for its per-tensor broadcast chain. When a DSpark
+  draft model is instantiated only on the last PP stage (correct per vLLM PR #50514),
+  its weight load goes through `--load-format fastsafetensors`, which broadcasts on
+  the WORLD group — but ranks on PP0 never call the broadcast, so the first mismatched
+  broadcast hangs without error until the 600s watchdog:
+  `WorkNCCL(SeqNum=497221, OpType=BROADCAST, NumelIn=1, NumelOut=1, Timeout(ms)=600000)`.
+  **The overlap — spec × PP × `--load-format fastsafetensors` — is unreachable in shipped
+  vLLM today** (DSpark×PP used `--load-format auto`), but vendor recipes that pin
+  `--load-format fastsafetensors` for load speed hit this. **Suggested fix:** scope `pg`
+  to the weight-loading participants (drafter's TP group), not WORLD. This is a general
+  vLLM bug (filed on Blackwell B200 with Kimi-K3), not GB10-specific — but it bites on
+  Spark because eugr's b12x recipes use fastsafetensors + DSpark. Single source (bug
+  report linked from forum) → [conjecture].
+
+- **[conjecture]** **sparkrun auto-determines NCCL config for DSV4-Flash-0731 b12x
+  DSpark** (S-forum-dsv4-0731-b12x-hang, dbsci): the Spark Arena Team released
+  `sparkrun run @official/deepseek-v4-flash-0731-b12x-dspark-vllm` for 2-node deployment.
+  sparkrun auto-determines NCCL configuration (IFNAME, IB_HCA, etc.), which may resolve
+  the hang if it was caused by a missing/misconfigured NCCL env var. The sparkrun recipe
+  is an alternative to manually managing eugr's spark-vllm-docker recipe + mods. Single
+  source → [conjecture]. See existing DSV4-Flash-0731 DSpark sparkrun packaging finding
+  (S-forum-dsv4-0731-sparkrun).
