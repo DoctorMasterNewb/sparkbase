@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** evolving
 > **evidence:** conjecture
-> **sources:** S-forum-glm52-4x, S-forum-glm52-mtp-fix, S-forum-glm52-1bit, S-forum-glm52-reapless, S-forum-glm52-800k, S-forum-glm52-iq4xs-4x, S-forum-glm52-8x, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-flashinfer-livelock, S-forum-colibri-glm52, S-forum-6x-cluster, S-forum-glm52-3x-aqlm, S-forum-sparkring, S-forum-glm52-8x-nvfp4, S-forum-glm52-200k-4x
-> **updated:** 2026-08-13
+> **sources:** S-forum-glm52-4x, S-forum-glm52-mtp-fix, S-forum-glm52-1bit, S-forum-glm52-reapless, S-forum-glm52-800k, S-forum-glm52-iq4xs-4x, S-forum-glm52-8x, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-flashinfer-livelock, S-forum-colibri-glm52, S-forum-6x-cluster, S-forum-glm52-3x-aqlm, S-forum-sparkring, S-forum-glm52-8x-nvfp4, S-forum-glm52-200k-4x, S-forum-4xdgx-glm52
+> **updated:** 2026-08-16
 
 **GLM-5.2** is a 744B-parameter / ~40B-active MoE with sparse-MLA (DeepSeek-V4-class) attention and
 MTP speculative decoding support. It is one of the most-discussed large models on the DGX Spark forums
@@ -471,6 +471,7 @@ All numbers are **[conjecture]** or **[reported]** as noted. See `[[wiki/benchma
 || 1× Spark, Colibri expert streaming | int4 MoE + int8 MTP | 1 | 2.4-3.3 | short | S-forum-colibri-glm52 |
 || TP=8, official NVFP4 | NVFP4 (official nvidia) | 8 | 25 | 256K | S-forum-glm52-8x-nvfp4 |
 || TP=4, QuantTrio Int4-Int8Mix (unpruned) | Int4-Int8 mix | 4 | 27 (c1) / 52.5 (c4) | 200K | S-forum-glm52-200k-4x |
+|| TP=4, ciprianveg gb10-glm-5.2:v18-vision | NVFP4 + DCP2 + NVFP4 KV | 4 | 25 | 300K | S-forum-4xdgx-glm52 |
 
 **[reported]** GLM-5.2 decode on 4× Spark is consistently in the 20-25 tok/s range across multiple
 independent threads and quant formats (AWQ-INT4, NVFP4, Hybrid FP8+MXFP4) — the bottleneck is the
@@ -478,6 +479,21 @@ sparse-MLA attention + bandwidth-bound decode, not the quant choice. The 8× TP=
 is the outlier, attributed to the DCP collectives + b12x W4A8 backend + 2× the nodes. The 3× TP=3
 run (15.2–16.1 tok/s, NVFP4+AQLM) continues the sublinear scaling trend — fewer nodes, lower
 throughput, same bandwidth-bound regime.
+
+### 4× DGX setup discussion (2026-08-16 ingest)
+
+- **[conjecture]** **ciprianveg gb10-glm-5.2:v18-vision stack on 4× Spark — 25 tok/s decode,
+  700+ tok/s prefill at 300K context** (S-forum-4xdgx-glm52, rdoiron): a user running
+  ciprianveg's `gb10-glm-5.2:v18-vision` container stack on 4× DGX Spark with DCP2 +
+  decode-aware prefill + NVFP4 KV at 300K context reports **prefill 700+ tok/s, decode
+  25 tok/s**. This is consistent with the cross-thread [reported] 20-25 tok/s decode
+  range for 4× Spark. The thread also links two GLM-5.2 4× recipes: `0xdfi/GLM-5.2-R9-
+  Adaptive-MTP-FULL-CUDA-4x-DGX-Spark` (adaptive MTP K2/K4/K5, FULL CUDA graphs, DCP2,
+  520K context, ARM64 runtime image) and `tonyd2wild/GLM-5.2-QuantTrio-200K-4x-DGX-Spark`
+  (already in KB as S-forum-glm52-200k-4x). The rest of the thread is model preference
+  debate (GLM-5.2 vs DSv4-Flash for coding) with no additional durable technical
+  findings. Single data point → [conjecture], but corroborates existing [reported]
+  decode range.
 
 ## See also
 

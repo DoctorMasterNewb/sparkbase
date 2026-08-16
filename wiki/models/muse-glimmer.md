@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** evolving
 > **evidence:** conjecture
-> **sources:** S-forum-muse-glimmer
-> **updated:** 2026-08-15
+> **sources:** S-forum-muse-glimmer, S-forum-muse-glimmer-nvfp4-w4a4
+> **updated:** 2026-08-16
 
 Meta's Muse Glimmer 30B — a 30B dense model with DFlash speculative decoding support. Community
 tested it on DGX Spark across llama.cpp and vLLM. Early findings: throughput is reasonable for a
@@ -59,6 +59,16 @@ is very sensitive to reasoning budget truncation.
   DFlash integration is not working. llama.cpp DFlash works fine. SGLang DFlash also works
   (faster than vLLM). As of the thread date, vLLM is not the best place to run Muse Glimmer
   with spec decode.
+
+- **[conjecture]** **Inferact/Muse-Glimmer-30B-NVFP4-W4A4 — 52.55 tok/s on DGX Spark with vLLM**
+  (S-forum-muse-glimmer-nvfp4-w4a4, kuscsik): a Spark Arena Benchmark submission reports
+  **52.55 tok/s** text generation for the `Inferact/Muse-Glimmer-30B-NVFP4-W4A4` model
+  (NVFP4 W4A4 activation-quantized variant) on DGX Spark with vLLM. Single-post benchmark
+  report with no recipe details (no flags, env vars, context length, or concurrency info
+  provided). The number is higher than the previously reported 18.65 tok/s for Preyazz NVFP4
+  + DFlash — the W4A4 activation quant path (real FP4 compute via Triton, similar to
+  S-forum-flux2-nvfp4-compute) and absence of DFlash overhead may explain the difference,
+  but without recipe details this remains an unverified single-source claim.
 
 ## Tool-calling quality
 

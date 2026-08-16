@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026
-> **updated:** 2026-08-15
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug
+> **updated:** 2026-08-16
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -1714,3 +1714,101 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   Note: Dell Pro Max EC versioning (0x02000b00) differs from FE Spark (0x3000508) — the FE
   comparison doesn't apply to Dell units. Single thread → [conjecture]. Flagged for hardware
   verification: any GB10 unit receiving the July 2026 bundle should cold-cycle to confirm.
+
+### Batch 73 forum ingest (2026-08-16)
+
+- **[conjecture]** **GB10 Grace CPU energy telemetry — full audit: GPU rail measurable via
+  DCGM, CPU rail is a blind spot; SPBM driver fails on GX10 due to MTKW9000 ACPI memory
+  conflict; spark_hwmon works on Acer GN100; July EC update does NOT fix the gap**
+  (S-forum-energy-telemetry, deepak.panigrahy03 + aniculescu): a systematic audit of all
+  seven known energy interfaces on GB10 (DGX Spark / ASUS GX10, not GH200), now
+  peer-reviewed and accepted at LOCO 2026 workshop (arXiv:2605.27599). Findings:
+
+  **What works (GPU energy):**
+  - **DCGM field 156** (`total_energy_consumption`) — cumulative millijoule counter,
+    delta-read method validated. Covers GPU compute rail only. Install:
+    `sudo apt install -y datacenter-gpu-manager && sudo systemctl start nvidia-dcgm`,
+    then `dcgmi dmon -e 155,156 -c 3`. Counter increments ~3,471 mJ between 1-second
+    samples at 3.5W idle — consistent with field 155 instantaneous watts.
+  - **DCGM field 155/157** — instantaneous watts, working.
+  - **ARMv8 PMUv3** — 70+ performance counter events per cluster (cycles, IPC, L1/L2/L3
+    cache, branch prediction) after `perf_event_paranoid = -1`. Zero energy events.
+
+  **What does NOT work (CPU/system energy):**
+  - `nvidia-smi --query-gpu=energy.consumption` → "Field not valid."
+  - SCMI bus active (scmi-clocks, scmi-regulator, scmi-mpam loaded) but **no powercap
+    or sensor protocol** present.
+  - All six I2C buses empty — no INA monitors on the board.
+  - No `hwmon` `energy_uj` or `power_input` files anywhere.
+  - **DCGM fields 1130/1132/1133** (CPU/SysIO/Module power) — recognized by DCGM but
+    return `0.000` on this firmware.
+  - `/sys/class/powercap/` is **empty** on the most current retail DGX Spark firmware
+    (BIOS 5.36_0ACUM027, Jun 2026 + July EC update 0x03000508).
+  - `stress-ng` 8-core CPU load (15s) → **zero change** in DCGM field 156. Grace CPU
+    rail confirmed excluded empirically.
+
+  **SPBM driver (NVDA8800:00) — the core conflict:**
+  - NVDA8800:00 is present at `_SB_.MTEL`. SPBM driver v0.3.0 installed via DKMS.
+  - **Fails on GX10/DGX Spark at boot**: `platform NVDA8800:00: failed to claim resource
+    0: [mem 0x05170000-0x051cffff]` → `acpi NVDA8800:00: platform device creation
+    failed: -16 (EBUSY)`.
+  - **Root cause**: MTKW9000:00 (MediaTek wireless peripheral) claims overlapping memory
+    `[0x05160000-0x051affff]` before SPBM initializes. The SSPM shared memory SPBM needs
+    falls within MTKW9000's claimed range. This is a **firmware ACPI resource allocation
+    conflict**, not a driver bug.
+  - **Board-specific**: on the **Acer Veriton GN100** (same GB10 SoC, kernel
+    6.17.0-1021-nvidia), `spark_hwmon` (antheas/spark_hwmon) loads cleanly with no
+    resource conflict: `spbm NVDA8800:00: resolved 45/45 register offsets from _DSM` →
+    14 power + 4 energy + 8 temp channels readable. Acer's firmware allocates resources
+    without overlap. The fix on GX10 is a **firmware ACPI table change**, not hardware.
+
+  **GN100 full energy chain (spark_hwmon working):**
+  - `sys_total: 27,686 mW`, `dc_input: 29,125 mW`, `soc_pkg: 17,069 mW`,
+    `cpu_gpu: 5,773 mW`, `cpu_p: 454 mW` (P-cores), `cpu_e: 19 mW` (E-cores),
+    `gpu: 4,853 mW`, `dla: 1 mW`.
+  - Cumulative energy accumulators in µJ: `pkg`, `cpu_p`, `cpu_e`, `gpu` all incrementing.
+  - DCGM field 156 rate (~4,437 mJ/s) matches SPBM gpu accumulator (~5,354 mW) with
+    ~992 mW difference — consistent with GPU memory and NVLink-C2C overhead that DCGM
+    doesn't count. The two interfaces are complementary.
+
+  **NVIDIA staff response + firmware status:**
+  - aniculescu (NVIDIA): "This should be fixed in our July Updates." User checked: the
+    July update is an **EC firmware update only** (0x03000302 → 0x03000508, LVFS Release
+    ID 143461), unrelated to energy attribution. `fwupdmgr get-updates` returns nothing
+    further — the retail DGX Spark is fully up to date.
+  - Full platform device scan after the July EC update: NVDA8800:00 still has no driver
+    bound, `/sys/class/powercap/` remains empty.
+  - The process-level GPU energy attribution gap persists on the most current firmware
+    available on any GB10 unit as of August 14, 2026.
+
+  **Why this matters for agentic AI on Spark:**
+  - Agentic workloads are dominated by CPU-bound orchestration, not inference compute.
+    Measurements show OOI (orchestration overhead index) reaching 4.33×–7.63× over
+    linear baselines. Without CPU energy counters, orchestration overhead is
+    unmeasurable on GB10 — precisely the component that dominates cost.
+
+  **Implication for sparkbase**: this finding strongly corroborates the existing
+  **[reported]** finding that `nvidia-smi` accounts for only 12-27% of real GB10 power
+  draw (S-forum-clock-energy-sweep). The DCGM field 156 method is the practical GPU-side
+  energy measurement tool today. The CPU rail gap means any energy-efficiency
+  calculation on GB10 that relies on `nvidia-smi` or DCGM alone is missing the CPU
+  component — which dominates agentic workloads. Single thread (one researcher, one
+  paper) → [conjecture], though the audit is thorough and peer-reviewed. Flagged for
+  hardware verification: a hardware agent could run `dcgmi dmon -e 155,156` and verify
+  the DCGM field 156 method on their own unit.
+
+- **[conjecture]** **ASM2464PD USB4 NVMe enclosure falls back to USB 2.0 (480 Mbps) on
+  ASUS GX10 after every boot — soft-replug script automates the fix**
+  (S-forum-asm2464pd-replug, JW2026 + paulsc.liu + gaborm + vedcsolution): ASM2464PD-based
+  USB4 NVMe enclosures consistently fall back to USB 2.0 speed (480 Mbps) on the ASUS
+  Ascent GX10 after every power-up. Manual cable replug restores full 20 Gbps (20000M/x2).
+  A community script (`jsconsultancy/asm2464pd-soft-replug`) automates the reset after
+  boot by sending a software-triggered CPU reset to the ASM2464PD controller (based on
+  reverse engineering from `cyrozap/usb-to-pcie-re`: the `e8 50 + 13×00` register write
+  sequence). Users modify VID/PID, mount point, and expected speed in the script. Multiple
+  users confirm the issue has existed since October 2025. This is related to but distinct
+  from the existing USB2 fallback finding (S-forum-usb2-fallback) — that finding covers
+  the MediaTek T-PHY ACPI binding gap affecting all USB3 SuperSpeed; this finding is
+  specific to ASM2464PD USB4 enclosures and has a software workaround. Single thread,
+  multiple users agreeing on the symptom → [conjecture] (the workaround is a single-source
+  script). Relevant for Spark users relying on external USB4 NVMe for model storage.

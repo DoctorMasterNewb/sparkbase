@@ -2,6 +2,62 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-16 — Forum ingest: Batch 73 — 4 new topics (4 processed)
+
+- **Sources:** 4 new forum topics found by fetch_new_topics.py. All 4 technically relevant.
+  4 new sources registered (Batch 73) in `sources/README.md`: S-forum-muse-glimmer-nvfp4-w4a4,
+  S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-4xdgx-glm52. 4 topic IDs
+  added to `processed_topics.txt` (total now 610).
+- **Topics found:**
+  - 380229 ([Benchmark] Inferact/Muse-Glimmer-30B-NVFP4-W4A4) — **processed**. 1-post
+    benchmark submission. 52.55 tok/s text generation on DGX Spark with vLLM. NVFP4 W4A4
+    activation-quantized variant. No recipe details provided (no flags, env vars, context,
+    or concurrency). Higher than prior 18.65 tok/s Preyazz NVFP4 + DFlash — W4A4 compute
+    path may explain the difference, but without recipe details this is an unverified
+    single-source claim. S-forum-muse-glimmer-nvfp4-w4a4. → models/muse-glimmer,
+    benchmarks.
+  - 371614 (GB10 Grace CPU Energy Telemetry — Full Audit + Paper) — **processed**.
+    5-post thread, 427 views. Major durable GB10 platform finding: systematic audit of
+    all 7 energy interfaces on GB10 (peer-reviewed, arXiv:2605.27599, LOCO 2026 accepted).
+    DCGM field 156 (cumulative mJ) works for GPU rail — practical RAPL equivalent. No CPU
+    energy interface works: SCMI has no powercap/sensor protocol, all I2C buses empty,
+    no hwmon energy files, DCGM fields 1130/1132/1133 return 0.000, /sys/class/powercap/
+    empty, nvidia-smi --query-gpu=energy.consumption returns "Field not valid." SPBM
+    driver (NVDA8800:00) fails on GX10 due to MTKW9000 ACPI memory conflict (MediaTek
+    wireless claims overlapping 0x05170000 range). spark_hwmon loads cleanly on Acer GN100
+    (no conflict) — 14 power + 4 energy + 8 temp channels. NVIDIA staff (aniculescu) says
+    "should be fixed in July Updates" but the July update is EC-only (0x03000302→0x03000508),
+    does NOT address energy attribution. Gap persists on most current firmware as of
+    Aug 14, 2026. Strongly corroborates existing [reported] nvidia-smi 12-27% undercount.
+    S-forum-energy-telemetry. → platform-gb10.
+  - 380009 (ASM2464PD USB-C 3.2 2x2 Enclosure always fall back to USB2.0) — **processed**.
+    10-post thread, 170 views. ASM2464PD USB4 NVMe enclosures fall back to USB 2.0 (480
+    Mbps) on ASUS GX10 after every boot. Soft-replug script automates the fix using
+    reverse-engineered CPU reset sequence (cyrozap/usb-to-pcie-re: e8 50 + 13×00 register
+    write). Multiple users confirm issue since Oct 2025. Related to but distinct from
+    existing USB2 fallback (S-forum-usb2-fallback) — this is ASM2464PD-specific with a
+    software workaround. S-forum-asm2464pd-replug. → platform-gb10.
+  - 379295 (4xDGX recent setup?) — **processed**. 22-post thread, 459 views. Mostly model
+    preference debate (GLM-5.2 vs DSv4-Flash for coding). One durable technical data
+    point: rdoiron running ciprianveg's gb10-glm-5.2:v18-vision stack on 4× Spark with
+    DCP2 + decode-aware prefill + NVFP4 KV @ 300K context — prefill 700+ tok/s, decode
+    25 tok/s. Corroborates existing [reported] 20-25 tok/s 4× Spark decode range. Also
+    links 0xdfi adaptive MTP 4× recipe (520K ctx, FULL CUDA graphs). S-forum-4xdgx-glm52.
+    → models/glm-5.2.
+- **Pages touched:** platform-gb10 (energy telemetry audit + DCGM field 156 + SPBM
+  conflict + spark_hwmon on GN100 + July EC gap [conjecture], ASM2464PD USB4 soft-replug
+  [conjecture]), models/muse-glimmer (NVFP4 W4A4 52.55 tok/s benchmark [conjecture]),
+  models/glm-5.2 (ciprianveg v18-vision 4× 300K data point [conjecture] + cross-thread
+  table row), benchmarks (1 new [conjecture] row: Muse Glimmer NVFP4 W4A4), sources/README,
+  index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions. The energy
+  telemetry audit is a major durable GB10 platform finding with a peer-reviewed paper
+  behind it, but remains [conjecture] per the analysis-agent ceiling (single research
+  group). It strongly corroborates the existing [reported] nvidia-smi undercount finding.
+  Flagged for hardware verification: a hardware agent could verify DCGM field 156 on their
+  own unit and test whether the July EC update or any subsequent firmware resolves the
+  SPBM conflict on GX10.
+
 ## 2026-08-16 — Forum ingest: Batch 72 — 3 new topics (2 processed, 1 skipped)
 
 - **Sources:** 3 new forum topics found by fetch_new_topics.py. 2 technically relevant,

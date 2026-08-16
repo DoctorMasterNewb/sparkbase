@@ -40,6 +40,33 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-16 (Batch 73)
+- 4 new NVIDIA DGX Spark forum topics found, all 4 technically relevant.
+- 4 new sources registered (Batch 73). 4 topic IDs added to processed_topics.txt (total
+  now 610).
+- **Headline finding 1:** GB10 Grace CPU energy telemetry full audit (peer-reviewed,
+  arXiv:2605.27599, LOCO 2026). DCGM field 156 (cumulative mJ) works for GPU rail.
+  No CPU energy interface works — SCMI, I2C, hwmon, powercap all empty. SPBM driver
+  (NVDA8800:00) fails on GX10 due to MTKW9000 ACPI memory conflict (0x05170000 overlap).
+  spark_hwmon loads cleanly on Acer GN100 (no conflict, 14 power + 4 energy channels).
+  NVIDIA staff says "fixed in July Updates" but July EC update does NOT address energy.
+  nvidia-smi --query-gpu=energy.consumption returns "Field not valid." Strongly
+  corroborates [reported] nvidia-smi 12-27% undercount. [conjecture].
+- **Headline finding 2:** Inferact/Muse-Glimmer-30B-NVFP4-W4A4 — 52.55 tok/s on DGX
+  Spark with vLLM (Spark Arena Benchmark). NVFP4 W4A4 activation-quantized variant.
+  No recipe details provided. [conjecture].
+- **Headline finding 3:** ASM2464PD USB4 NVMe enclosure falls back to USB 2.0 on ASUS
+  GX10 after every boot — soft-replug script automates fix (cyrozap/usb-to-pcie-re
+  reverse-engineered CPU reset). Multiple users confirm since Oct 2025. [conjecture].
+- **Headline finding 4:** GLM-5.2 on 4× Spark via ciprianveg gb10-glm-5.2:v18-vision
+  stack — 25 tok/s decode, 700+ tok/s prefill at 300K context with DCP2 + decode-aware
+  prefill + NVFP4 KV. Corroborates [reported] 20-25 tok/s 4× decode range. [conjecture].
+- Pages touched: platform-gb10 (energy telemetry + USB4 soft-replug [conjecture]),
+  models/muse-glimmer (NVFP4 W4A4 benchmark [conjecture]), models/glm-5.2 (ciprianveg
+  4× data point [conjecture] + cross-thread table row), benchmarks (1 new [conjecture]
+  row), sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+
 ## Forum ingest 2026-08-16 (Batch 72)
 - 3 new NVIDIA DGX Spark forum topics found, 2 technically relevant (1 skipped: OpenClaw/
   NemoClaw onboarding Docker pull timeout — tool-specific bug, not GB10-specific).
