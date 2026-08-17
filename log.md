@@ -2,6 +2,48 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-17 — Forum ingest: Batch 74 — 2 new topics (1 processed, 1 skipped)
+
+- **Sources:** 2 new forum topics found by fetch_new_topics.py. 1 technically relevant,
+  1 skipped (380062 "Buyer beware Amazon MSI DGX Spark" — buying advice, no durable
+  GB10 technical findings). 1 new source registered (Batch 74) in `sources/README.md`:
+  S-forum-fe-thermal-rma. 2 topic IDs added to `processed_topics.txt` (total now 612).
+- **Topics found:**
+  - 380062 (Buyer beware Amazon MSI DGX Spark) — **skipped**. Buying advice / seller
+    reputation thread, 27 posts. No durable GB10 technical findings (no flags, env
+    vars, error strings, tok/s numbers, or hardware configs). Per ingest rules:
+    skip buying advice.
+  - 380238 (2× DGX Spark FE: silent hard-locks under sustained inference) —
+    **processed**. 1-post thread, 110 views. Major durable GB10 thermal finding:
+    two Founders Edition units hard-locked silently under sustained DSV4-Flash-0731
+    inference (vLLM TP=2, 262K prefill, dual-rail RoCE). 12 lock events over 3 days;
+    zero forensic trace (no panic/OOM/Xid/NVRM). At death: HW_THERMAL_SLOWDOWN,
+    GPU 88→90 °C, CPU zones 97→98 °C. NVIDIA fieldiag PowerStress FAIL (error
+    020000600139) on both units, 3× reproduced each across fieldiag 1.0.9 + 2.0.4.
+    One unit hard-locked mid-PowerStress under MODS-only (no OS) — eliminates
+    software. This is the **3rd independent forum thread** documenting PowerStress
+    thermal failure on GB10 (after S-forum-powerstress, S-forum-thermal-freeze),
+    now extending to Founders Edition (EC rollback to 0x02004e18 has no effect on FE
+    — OEM fan-curve issue is OEM-specific). Two measured mitigations: (1) GPU clock
+    cap `nvidia-smi -lgc 300,2100` — zero locks after, −21% decode / −7% prefill at
+    32K but 2.3× decode improvement at 262K (stable clock beats oscillating); (2)
+    CPU frequency cap `scaling_max_freq` → 2.4 GHz — free: 92→84 °C, zero perf cost,
+    +16% decode (thermal jitter removed). New durable finding: CPU governor is not
+    the lever — only capping active cores' max frequency helps; vLLM TP workers
+    busy-poll at 200-350% CPU up to 3.9 GHz. fieldiag 2.0.4 install gotchas
+    (ofed-scripts dep, 1.0.9 launcher leftover, CX7Stress link-down) corroborate
+    existing S-forum-ec-fan-asus / S-forum-powerstress. RMA process notes: fieldiag
+    is the RMA qualification tool; both units RMA'd within ~48h. S-forum-fe-thermal-rma.
+    → platform-gb10.
+- **Pages touched:** platform-gb10 (FE thermal hard-lock + PowerStress 3rd corroboration
+  + GPU clock cap 2100 MHz + CPU freq cap 2.4 GHz free mitigation + fieldiag 2.0.4
+  gotchas + RMA process notes [conjecture]), sources/README, index, log.
+- All [conjecture] — single-source forum thread. No evidence promotions. The PowerStress
+  thermal failure pattern is now corroborated by 3 independent forum threads
+  (S-forum-powerstress, S-forum-thermal-freeze, S-forum-fe-thermal-rma) — a hardware
+  agent could promote this to [reported] by noting the cross-thread consensus on the
+  symptom. The CPU frequency cap finding is new and flagged for hardware verification.
+
 ## 2026-08-16 — Forum ingest: Batch 73 — 4 new topics (4 processed)
 
 - **Sources:** 4 new forum topics found by fetch_new_topics.py. All 4 technically relevant.

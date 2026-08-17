@@ -40,6 +40,25 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-17 (Batch 74)
+- 2 new NVIDIA DGX Spark forum topics found, 1 technically relevant (1 skipped: buyer
+  beware Amazon MSI — buying advice).
+- 1 new source registered (Batch 74). 2 topic IDs added to processed_topics.txt (total
+  now 612).
+- **Headline finding:** 2× DGX Spark FE silent hard-locks under sustained DSV4-Flash-0731
+  inference — fieldiag PowerStress FAIL (020000600139) on both units at stock, latest
+  firmware; 12 lock events, 3× reproduced per unit across fieldiag 1.0.9 + 2.0.4; one
+  unit hard-locked mid-PowerStress under MODS-only (no OS). 3rd independent forum thread
+  documenting PowerStress thermal failure on GB10 (now on Founders Edition). Two measured
+  mitigations: GPU clock cap 2100 MHz (−21% decode / 32K, +2.3× decode @ 262K, zero locks
+  after); CPU freq cap 2.4 GHz (free — 92→84 °C, zero perf cost, +16% decode). New durable
+  finding: CPU governor is not the lever — only capping active cores' max frequency helps;
+  vLLM TP workers busy-poll at 200-350% CPU up to 3.9 GHz. RMA approved ~48h. [conjecture].
+- Pages touched: platform-gb10 (FE thermal hard-lock + PowerStress 3rd corroboration +
+  GPU clock cap 2100 + CPU freq cap 2.4 GHz + fieldiag 2.0.4 gotchas + RMA notes
+  [conjecture]), sources/README, index, log.
+- All [conjecture] — single-source forum thread. No evidence promotions.
+
 ## Forum ingest 2026-08-16 (Batch 73)
 - 4 new NVIDIA DGX Spark forum topics found, all 4 technically relevant.
 - 4 new sources registered (Batch 73). 4 topic IDs added to processed_topics.txt (total

@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug
-> **updated:** 2026-08-16
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma
+> **updated:** 2026-08-17
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -1812,3 +1812,77 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   specific to ASM2464PD USB4 enclosures and has a software workaround. Single thread,
   multiple users agreeing on the symptom → [conjecture] (the workaround is a single-source
   script). Relevant for Spark users relying on external USB4 NVMe for model storage.
+
+### Batch 74 forum ingest (2026-08-17)
+
+- **[conjecture]** **2× DGX Spark FE silent hard-locks under sustained DSV4-Flash-0731
+  inference — fieldiag PowerStress FAIL on both units, RMA approved ~48h**
+  (S-forum-fe-thermal-rma, tniccum): Two Founders Edition units hard-locked silently
+  under sustained long-context inference (DeepSeek-V4-Flash-0731, vLLM TP=2 over
+  dual-rail RoCE, 262K-token prefill). **12 lock events across the pair over 3 days.**
+  No panic, no OOM, no NVRM error, no shutdown record; peer logs `mlx5 Port: 1 Link
+  DOWN`. Physical power cycle required — a 120 s systemd hardware watchdog failed to
+  recover 3 of 4 events. At the moment of death: `CLOCK THROTTLED 2197/3003 MHz
+  [HW_THERMAL_SLOWDOWN]`, GPU 88→90 °C, CPU zones 97→98 °C, ACPI zones 92–98 °C
+  against a single critical trip at 104 °C. Serving a single ordinary request drives
+  the hotter unit's zones to 97.4 °C. Fans remain inaudible throughout (EC-internal
+  fan control, no OS surface — corroborates S-forum-fan-firmware). One unit was
+  dust-degraded (failed GpuStress before intake cleaning, passed after — brush the
+  front grille); the PowerStress failure survives cleaning on both units.
+  - **fieldiag PowerStress FAIL — 3rd independent report, now on Founders Edition:**
+    `partnerdiag --field --run_on_error`, stock clocks, Secure Boot disabled. Results
+    identical across 3 runs per unit (fieldiag 1.0.9 on 2026-08-10, 2.0.4 on 08-11/12):
+    GpuStress, C2C, CpuStress1/2, ThermalStress, FioSSD, MemStress, CX7Stress all OK;
+    **PowerStress FAIL @ ~8:10** on both units. Error **020000600139** ("Acceptable
+    temperature limits exceeded or the thermal sensor is broken or miscalibrated") —
+    same error class as S-forum-powerstress (082-000-1-020000600139) and
+    S-forum-thermal-freeze (MODS-020000610139). During the very first run, unit A
+    **hard-locked mid-PowerStress with no OS loaded** (MODS diagnostic driver only),
+    eliminating all software explanations. This is the **3rd independent forum thread**
+    documenting PowerStress thermal failure on GB10 (after S-forum-powerstress,
+    S-forum-thermal-freeze) — strengthens the pattern to [reported]-level consensus
+    on the symptom, but the analysis-agent ceiling caps the promotion here at
+    [conjecture] for this single-source thread's specific claims. FE config: DGX OS
+    7.2.3, OTA 7.5.0, kernel 6.17.0-1026-nvidia, driver 580.173.02, EC 0x03000508;
+    EC rollback to 0x02004e18 tested — no effect on FE (OEM fan-curve issue does not
+    apply to Founders Edition).
+  - **Mitigation 1 — GPU clock cap (`nvidia-smi -lgc 300,2100`) stabilizes the cluster:**
+    2100 MHz sits just under the observed throttle floor of ~2197 MHz. After capping,
+    HW Thermal Slowdown drops to 0 µs cumulative on both nodes, and ~12 consecutive
+    262K-context runs against DSV4-Flash complete with zero locks (previously 3/3
+    killed a node). Measured cost: **−21% decode / −7% prefill at 32K depth**; at
+    262K depth decode actually improved **2.3×** because a stable clock beats one
+    oscillating in and out of thermal slowdown. 2200 MHz also survives but re-engages
+    mild throttling on the hotter unit. The lock does not survive reboots — persist
+    via a systemd oneshot. Corroborates the existing **[reported]** clock-cap
+    mitigation pattern (S-forum-clock-energy-sweep, S-forum-cooler-temps,
+    S-forum-thermal-freeze). Note this is a *higher* cap than the 2000 MHz commonly
+    recommended — the OP measured 2100 as the clean value for their units.
+  - **Mitigation 2 — CPU frequency cap (`scaling_max_freq` → 2.4 GHz) is free:**
+    the hottest sensors are CPU-cluster zones, 8–10 °C above the GPU. vLLM TP workers
+    busy-poll at 200–350% CPU, spinning cores at up to 3.9 GHz doing nothing useful.
+    Capping all 20 cores to 2.4 GHz (stock ships the performance governor, all cores
+    unpinned): sustained zones **92→84 °C** (hot unit) / 85→80 °C, **identical wall
+    time — zero performance cost**. Decode at unchanged GPU cap actually improved
+    **16%** (thermal jitter had been costing throughput). This is a **new durable
+    GB10-specific finding**: the CPU governor is not the lever — only capping the
+    active cores' max frequency helps, and it is free thermal headroom for any
+    multi-node vLLM deployment where TP workers busy-poll. Single source → [conjecture].
+    Flagged for hardware verification: a hardware agent could A/B the CPU freq cap
+    on their own cluster and measure the thermal/throughput delta.
+  - **fieldiag 2.0.4 install gotchas** (corroborates S-forum-ec-fan-asus,
+    S-forum-powerstress on the ofed-scripts gap):
+    - hard-depends on `ofed-scripts` (add the DOCA repo, then `apt install
+      dgx-spark-fieldiag kernel-mft-dkms`);
+    - in-place upgrade from 1.0.9 leaves the old launcher behind — `partnerdiag`
+      aborts with "More than one fieldiag packages found" (remove the old
+      `onediagfield.r9.257.3`);
+    - CX7Stress leaves the ConnectX links DOWN when it finishes — `ip link set
+      <if> up && netplan apply` to restore the fabric.
+  - **RMA process notes**: fieldiag is the RMA qualification tool (per its user guide).
+    Run it at stock config before filing and attach `summary.json`, `run.log`, and
+    per-test logs. The portal accepts .zip/.txt/.pdf (not .md/.gz/.tgz — even when
+    support asks for .tgz, wrap it in a .zip) and rejects attachments above ~10 MB.
+    Exclude the ~46 MB GpuStress video stimulus files (.vp9/.h264) from the log dir.
+    Standard RMA is ship-first. Both units RMA'd within ~48 h of filing
+    (Case #260812-000102).
