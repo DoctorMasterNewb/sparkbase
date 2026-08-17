@@ -40,6 +40,26 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-17 (Batch 75)
+- 4 new NVIDIA DGX Spark forum topics found, 2 technically relevant (2 skipped:
+  Asus GX10 OS image — buying advice; VoiceChat 11B NIM arm64 roadmap — no
+  GB10 findings).
+- 2 new sources registered (Batch 75). 4 topic IDs added to processed_topics.txt
+  (total now 616).
+- **Headline finding 1:** DGX Spark fans do not spin in headless boot mode — temp
+  rises to ~60-70°C at idle. Display-hotplug dependent, unit-specific (1 of 2
+  identical ASUS GX10 units). Corroborates existing [reported] fan-DPMS finding
+  (S-forum-fan-dpms): same mechanism, new manifestation. Not driver-version-
+  specific (580.126.09 and 580.173.02 both affected). [conjecture].
+- **Headline finding 2:** s2idle suspend fails on DGX Spark GB10 —
+  nvidia-suspend.service crashes inside the driver (nv.c:4784 WARNING), PCI PM
+  returns -5, suspend never completes. `/sys/module/nvidia/parameters/` does not
+  exist. New durable error string. Confirms suspend is not viable on GB10 (use
+  full shutdown + smart plug). [conjecture].
+- Pages touched: platform-gb10 (headless-boot fan [conjecture], s2idle suspend
+  failure nv.c:4784 [conjecture]), sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+
 ## Forum ingest 2026-08-17 (Batch 74)
 - 2 new NVIDIA DGX Spark forum topics found, 1 technically relevant (1 skipped: buyer
   beware Amazon MSI — buying advice).

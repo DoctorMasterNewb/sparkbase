@@ -3,7 +3,7 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma, S-forum-fan-headless-boot, S-forum-suspend-fail
 > **updated:** 2026-08-17
 
 The hardware facts every model bring-up assumes. Read this first.
@@ -1886,3 +1886,72 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
     Exclude the ~46 MB GpuStress video stimulus files (.vp9/.h264) from the log dir.
     Standard RMA is ship-first. Both units RMA'd within ~48 h of filing
     (Case #260812-000102).
+
+### Batch 75 forum ingest (2026-08-17)
+
+- **[conjecture]** **Fans do not spin in headless boot — temperature rises to ~70°C;
+  display-hotplug dependent, unit-specific** (S-forum-fan-headless-boot,
+  jasonzhou_spk + aniculescu + josephbreda + solodu1116): On a DGX Spark FE (DGX OS
+  7.4.0, driver 580.126.09, kernel 6.17.0-1008-nvidia, BIOS 5.36_0ACUM018), booting
+  headless (no HDMI monitor connected) causes the fans to remain inactive even as
+  the chassis temperature rises to 60–70°C at idle (GPU P8, 3W, 0% util). Connecting
+  an HDMI monitor and rebooting restores normal fan behavior, stabilizing temps at
+  35–40°C. `gnome-remote-desktop-daemon` appears in the process list when a monitor
+  is connected. NVIDIA staff (aniculescu) could not reproduce and asked whether the
+  display manager was still active in headless mode; josephbreda reports running
+  dual Sparks fully headless 24/7 with no such behavior. A third user (solodu1116)
+  reproduced a closely related issue on **1 of 2 identical ASUS Ascent GX10 units**
+  (both same kernel 6.17.0-1029-nvidia, driver 580.173.02, DGX OTA 7.5.0, same BIOS/
+  EC/UEFI/PD firmware): the affected unit idled at GPU 55–58°C / ACPI 58.5–61.7°C
+  (P8, 3.8–4.0 W) with an audibly slower fan; the control unit (fully headless at
+  GDM greeter, never logged in) stayed at GPU 34–35°C. On the affected unit, HDMI +
+  local X11 login reduced temps to 36–40°C; setting GNOME blank-screen timeout to
+  Never cooled further to 36–37°C; physically unplugging HDMI while the session
+  stayed active caused a monotonic rise to GPU 45°C / ACPI 47.9°C over 5 minutes
+  (P8, 3.48–3.71 W). This is **display-hotplug dependent, not purely headless**,
+  and only manifests on some units. **This corroborates the existing [reported]
+  finding that GB10 fan control is tied to display/SoC-power-draw state, not
+  thermal sensors** (S-forum-fan-dpms): the headless-boot symptom is a specific
+  manifestation of the same fan-controller-doesn't-engage pattern. The
+  unit-specific nature (1 of 2 identical units) is new data — suggests a hardware
+  or EC firmware variation, not a universal platform bug. The older driver
+  (580.126.09) on the OP's unit and newer driver (580.173.02) on solodu1116's
+  affected unit both exhibit the issue → not driver-version-specific. No
+  resolution provided in thread; NVIDIA staff engaged but unable to reproduce.
+  Single thread (3 users, 1 reproducer + 1 non-reproducer + 1 partial reproducer)
+  → [conjecture] for this specific headless-boot manifestation; corroborates
+  existing [reported] fan-DPMS finding at the mechanism level. Flagged for
+  hardware verification: a hardware agent could test whether `systemctl status
+  display-manager` is active in headless mode and whether a dummy HDMI EDID
+  emulator prevents the issue.
+
+- **[conjecture]** **s2idle suspend fails on DGX Spark GB10 — nvidia-suspend.service
+  crashes inside the driver (nv.c:4784), PCI PM returns -5** (S-forum-suspend-fail,
+  tsetjpc): Running `sudo systemctl suspend` on a DGX Spark FE (kernel
+  6.17.0-1029-nvidia, driver 580.173.02 open kernel module for aarch64, BIOS
+  5.36_0ACUM018, s2idle mode confirmed via dmesg) starts the suspend sequence but
+  never actually suspends. `nvidia-suspend.service` fails with exit code 1;
+  `/usr/bin/nvidia-sleep.sh` line 45 (`echo "$1" > /proc/driver/nvidia/suspend`)
+  hits an I/O error. dmesg shows a kernel **WARNING at `nv_set_system_power_state`
+  (nv.c:4784)** inside the nvidia driver, then the generic PCI PM layer fails with
+  **error -5** (`pci_pm_suspend(): nv_pmops_suspend [nvidia] returns -5`), and the
+  system immediately resumes a fraction of a second after entering. Diagnostics:
+  all three nvidia power-management services (`nvidia-suspend`, `nvidia-resume`,
+  `nvidia-hibernate`) are enabled; `/sys/module/nvidia/parameters/` **does not
+  exist** (no `PreserveVideoMemoryAllocations` / `TemporaryFilePath` sysfs
+  entries), even though `modinfo nvidia` confirms the module declares
+  `NVreg_PreserveVideoMemoryAllocations`; `/etc/modprobe.d/nvidia-power-
+  management.conf` does not exist. This is consistent with the existing
+  **[conjecture]** finding that sleep/suspend is **disabled by default on DGX OS**
+  (S-forum-sleep-disabled, allanmac + aniculescu) — this user attempted to override
+  the default and discovered the driver itself cannot complete the suspend path.
+  The `nv.c:4784` WARNING is a new durable error string for the KB. The missing
+  `/sys/module/nvidia/parameters/` path suggests the open kernel module may not
+  fully instantiate the power-management sysfs surface on GB10/aarch64, or that
+  the `NVreg_PreserveVideoMemoryAllocations` parameter needs to be explicitly set
+  at module load time. Single post, no replies, no resolution → [conjecture].
+  Relevant for users who attempt to enable suspend on a Spark (against the default
+  disabled configuration): the driver-level suspend path is broken, not just
+  disabled by convention. Corroborates the platform-level guidance that **suspend
+  is not a viable power-management mechanism on GB10** — use full shutdown + smart
+  plug instead (S-forum-power-mgmt [reported]).

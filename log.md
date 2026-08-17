@@ -2,6 +2,62 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-17 — Forum ingest: Batch 75 — 4 new topics (2 processed, 2 skipped)
+
+- **Sources:** 4 new forum topics found by fetch_new_topics.py. 2 technically
+  relevant, 2 skipped. 2 new sources registered (Batch 75) in `sources/README.md`:
+  S-forum-fan-headless-boot, S-forum-suspend-fail. 4 topic IDs added to
+  `processed_topics.txt` (total now 616).
+- **Topics found:**
+  - 351007 (Asus GX10 and DGX Spark software image) — **skipped**. Buying advice
+    / OS installation logistics. OP asks whether the NVIDIA DGX OS ISO can be
+    installed on an ASUS GX10 (like loading vanilla Windows on a Dell/Lenovo).
+    Replies clarify the GX10 already ships with DGX OS (NVIDIA OS), no separate
+    ISO exists (only a recovery image), and ASUS only adds cosmetic packages.
+    No durable GB10 technical findings (no flags, env vars, error strings, tok/s
+    numbers, or hardware configs). 14 posts, 2408 views.
+  - 379924 (NemotronLabs VoiceChat 11B NIM — ARM64 / DGX Spark support roadmap?)
+    — **skipped**. The `nemotron-labs-voicechat:1.0.0` NIM is published as
+    linux/amd64 only (single-arch manifest, no arm64 variant). OP asks if an
+    arm64 build is planned. No durable GB10 technical findings (no recipe,
+    benchmarks, error strings, or platform bugs). Thread includes a link to a
+    community project (pipecat-ai/nemotron-voicechat-dgx-spark) and personal
+    voice agent architecture discussion, but no GB10-specific inference findings.
+    7 posts, 328 views.
+  - 361960 (DGX Spark GB10 — Fans do not spin in headless boot mode, temperature
+    rises to ~70°C) — **processed**. 4-post thread, 446 views. Durable GB10
+    platform finding: DGX Spark fans remain inactive when booting headless (no
+    HDMI monitor), temperature rises to 60-70°C at idle (GPU P8, 3W). HDMI
+    connected + reboot fixes. NVIDIA staff (aniculescu) cannot reproduce;
+    josephbreda runs dual Sparks headless 24/7 without issue. Third user
+    (solodu1116) reproduced on 1 of 2 identical ASUS GX10 units —
+    display-hotplug dependent, unit-specific. Corroborates existing [reported]
+    fan-DPMS finding (S-forum-fan-dpms): same mechanism (fan controller tied to
+    display/SoC-power-draw state, not thermal sensors). New data: unit-specific
+    nature (1 of 2 identical units), not driver-version-specific (580.126.09
+    and 580.173.02 both affected). S-forum-fan-headless-boot. → platform-gb10.
+  - 380263 (nvidia-suspend.service fails: nv_set_system_power_state WARNING
+    (nv.c:4784) — s2idle suspend does not complete on DGX Spark GB10) —
+    **processed**. 1-post thread, 36 views. Durable GB10 platform bug: s2idle
+    suspend fails at the driver level. `nvidia-suspend.service` crashes;
+    `nvidia-sleep.sh` echo to `/proc/driver/nvidia/suspend` hits I/O error;
+    dmesg shows WARNING at `nv_set_system_power_state` (nv.c:4784) inside the
+    nvidia driver; PCI PM suspend returns -5; system immediately resumes.
+    `/sys/module/nvidia/parameters/` does not exist (no
+    PreserveVideoMemoryAllocations sysfs entries) despite modinfo confirming
+    the parameter is declared. New durable error string: `nv.c:4784`.
+    Consistent with existing [conjecture] sleep-disabled-by-default finding
+    (S-forum-sleep-disabled) — the driver-level suspend path is broken, not
+    just disabled by convention. Corroborates platform guidance that suspend is
+    not viable on GB10 (S-forum-power-mgmt [reported]). S-forum-suspend-fail.
+    → platform-gb10.
+- **Pages touched:** platform-gb10 (headless-boot fan issue [conjecture],
+  s2idle suspend failure nv.c:4784 [conjecture]), sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+  The headless-boot fan finding corroborates existing [reported] fan-DPMS
+  finding at the mechanism level. The suspend failure is a new durable error
+  string and confirms the platform-level guidance against using suspend on GB10.
+
 ## 2026-08-17 — Forum ingest: Batch 74 — 2 new topics (1 processed, 1 skipped)
 
 - **Sources:** 2 new forum topics found by fetch_new_topics.py. 1 technically relevant,

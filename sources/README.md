@@ -496,6 +496,13 @@ sources cite the experiment (what/config/when), never a private path.
 | S-forum-sm121-support | forum | DGX Spark (SM121) software support is severely lacking — 43-post thread; NVIDIA official response (johnny_nv) with version roadmap + community fact-checking (baristankut); vLLM --enforce-eager 20-30% perf loss, CuTE DSL FP4 restricted to sm_100a (Issue #2800), SGLang unofficial branch (sglang#11658), PyTorch 2.10 + FBGEMM/CUTLASS for sm12x, Triton 3.6.0 RC, FlashInfer 0.5.3+/0.6.1, CUTLASS 4.2.0+/4.3.5/4.4.x, vLLM 0.14.0 expected, MoE kernels no optimized GB10 configs, tcgen05/DSMEM/TMEM/TMA/multicast lacking, CUDA 12.0f vs 12.1a distinction (baristankut, johnny_nv, christopher_owen, vegax87, trystan1, josephbreda) | https://forums.developer.nvidia.com/t/357663 | 2026-07-29 |
 | S-forum-170hx-spark | forum | Cheaper 1T VRAM via CMP 170HX + 4 Sparks — confirms DGX Spark has NO locked/hidden memory (unlike 170HX crypto cards); tcgen05/DSMEM/TMEM/TMA/multicast gap referenced from dgx-spark-playbooks; 8× 170HX benchmark 30 tg/s GLM5.2 4-bit (not GB10-specific) (Ria33, FlossingEnthusiast, alexander.korolev.germany) | https://forums.developer.nvidia.com/t/378348 | 2026-07-29 |
 
+## Batch 75 forum sources (2026-08-17 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-fan-headless-boot | forum | DGX Spark (GB10) fans do not spin in headless boot mode — temp rises to ~60-70°C at idle; HDMI connected + reboot fixes; NVIDIA staff cannot reproduce; 2nd user reproduces on 1 of 2 identical ASUS GX10 units (display-hotplug dependent, unit-specific); driver 580.126.09, kernel 6.17.0-1008-nvidia, DGX OS 7.4.0 (jasonzhou_spk, aniculescu, josephbreda, solodu1116) | https://forums.developer.nvidia.com/t/361960 | 2026-02-28 |
+| S-forum-suspend-fail | forum | nvidia-suspend.service fails on DGX Spark GB10 — nv_set_system_power_state WARNING (nv.c:4784), PCI PM suspend returns -5, s2idle suspend never completes; /sys/module/nvidia/parameters/ does not exist; nvidia-sleep.sh echo to /proc/driver/nvidia/suspend hits I/O error; driver 580.173.02, kernel 6.17.0-1029-nvidia (tsetjpc) | https://forums.developer.nvidia.com/t/380263 | 2026-08-15 |
+
 ## Batch 72 forum sources (2026-08-16 ingest)
 
 || ID | type | What it is | Reference | Date |
