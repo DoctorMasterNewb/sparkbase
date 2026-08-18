@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet, S-forum-dragonscale, S-forum-openpangu, S-forum-glm52-200k-4x, S-forum-dsv4-qwen-vision, S-forum-pilco-mmbridge, S-forum-dsv4-0731-b12x-hang
-> **updated:** 2026-08-16
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet, S-forum-dragonscale, S-forum-openpangu, S-forum-glm52-200k-4x, S-forum-dsv4-qwen-vision, S-forum-pilco-mmbridge, S-forum-dsv4-0731-b12x-hang, S-forum-mediallmproxy
+> **updated:** 2026-08-18
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -1134,3 +1134,23 @@ Three engines run on the Spark pair; pick by arch support and quant.
   is an alternative to manually managing eugr's spark-vllm-docker recipe + mods. Single
   source → [conjecture]. See existing DSV4-Flash-0731 DSpark sparkrun packaging finding
   (S-forum-dsv4-0731-sparkrun).
+
+### Batch 77 forum ingest (2026-08-18)
+
+- **[conjecture]** **MediaLLMProxy — OpenAI-compatible vision bridge for
+  text-only LLMs, production-deployed on DGX Spark** (S-forum-mediallmproxy,
+  0rand): An OpenAI-compatible media bridge that gives a local text-only LLM
+  "eyes" via vision detour + observation injection. Architecture: main vision
+  model (Qwen 3.6 35B A3B VL) runs on Mac; backup vision model (Qwen 3.0 3B VL)
+  runs on llama.cpp on one of the Sparks; cloud model API key also configured
+  (tested with OpenRouter Gemini). Sampling parameter overrides per model.
+  DeepSeek-OCR-2 was explored as a specialized OCR-only VLM (SAM + Qwen2
+  encoder, ~3 GB, fits in a corner of Spark RAM) but found weak for non-OCR
+  tasks (visual grounding, icon/button location all failed). Final production
+  config: dual-model setup with Mac for primary vision + Spark llama.cpp for
+  backup. Extends the Pilco-mmbridge pattern (S-forum-pilco-mmbridge) with a
+  different architecture: MediaLLMProxy uses a proxy/bridge approach (intercept
+  + detour + inject) rather than co-hosting on the same Spark. The Qwen 3.0 3B
+  VL on llama.cpp is a durable GB10 data point — tiny VLM co-located on Spark
+  RAM without impacting inference workload. Single source, production-deployed
+  → [conjecture].

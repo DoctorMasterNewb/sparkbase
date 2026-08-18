@@ -40,6 +40,35 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-18 (Batch 77)
+- 5 new NVIDIA DGX Spark forum topics found, 4 technically relevant (1 skipped:
+  ThinLinc VDI — project announcement, no GB10 inference findings).
+- 4 new sources registered (Batch 77). 5 topic IDs added to processed_topics.txt
+  (total now 624).
+- **Headline finding 1:** HDMI hot-plug A/B test on 2 identical ASUS GX10
+  units — controlled experiment isolating display-hotplug from headless
+  operation. HDMI connected = 36–37°C; HDMI unplugged (session active) =
+  monotonic rise to 45°C / 47.9°C ACPI in 5 min (P8, 3.5 W). Headless control
+  unit (no display, GDM greeter) stays cool at 34–36°C — headless alone is not
+  sufficient. Corroborates existing [reported] fan-DPMS finding (S-forum-fan-dpms).
+  Per-unit (1 of 2 identical) suggests EC/fan hardware variation. [conjecture].
+- **Headline finding 2:** USB-C DisplayPort (DFP-1 to DFP-4) not detected after
+  boot unless physical replug — new GB10 platform bug on MSI EdgeXpert. HPD/
+  sink-detection runs once in narrow early-boot window. 2 confirmers (MSI +
+  Lenovo PGX). /sys/class/typec/ empty, software re-probe fails. HDMI-0 works
+  at boot. Practical impact: blind during firmware updates. [conjecture].
+- **Headline finding 3:** ConnectX-7 promiscuous mode silently fails on GB10 —
+  API returns success but hardware does not enter promisc mode. FW 28.45.4028.
+  Relevant for DPI/sniffing/proxying on CX-7. [conjecture].
+- **Headline finding 4:** MediaLLMProxy — production-deployed OpenAI-compatible
+  vision bridge for text-only LLMs. Qwen 3.0 3B VL on llama.cpp on Spark as
+  backup vision model. DeepSeek-OCR-2 explored (~3 GB) but weak for non-OCR.
+  Extends Pilco-mmbridge pattern with proxy/bridge architecture. [conjecture].
+- Pages touched: platform-gb10 (HDMI hot-plug A/B + USB-C DP HPD [conjecture]),
+  multinode-tp-and-networking (CX-7 promisc mode [conjecture]), engines
+  (MediaLLMProxy vision bridge [conjecture]), sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+
 ## Forum ingest 2026-08-18 (Batch 76)
 - 3 new NVIDIA DGX Spark forum topics found, 0 technically relevant (3 skipped:
   vLLM exit-255 hard-reset — RMA (defective thermostat); GLM-5.3 countdown —

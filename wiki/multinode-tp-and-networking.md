@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3, S-forum-mikrotik-cr804-042, S-forum-nfs-modelshare, S-forum-cx7-pcie-power, S-forum-4node-qrs812, S-forum-crs812-4node, S-forum-sparkring, S-forum-kernel-1029-rdma, S-forum-crs804-8x
-> **updated:** 2026-08-10
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3, S-forum-mikrotik-cr804-042, S-forum-nfs-modelshare, S-forum-cx7-pcie-power, S-forum-4node-qrs812, S-forum-crs812-4node, S-forum-sparkring, S-forum-kernel-1029-rdma, S-forum-crs804-8x, S-forum-cx7-promisc
+> **updated:** 2026-08-18
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -969,3 +969,19 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
     (`apt-mark hold linux-image-6.17.0-1026-nvidia`) or verify `ib_write_bw` after any kernel
     update. The asymmetry means NCCL all-reduce (bidirectional) will be bottlenecked by the slow
     direction.
+
+### Batch 77 forum ingest (2026-08-18)
+
+- **[conjecture]** **ConnectX-7 promiscuous mode does not actually engage on
+  GB10** (S-forum-cx7-promisc, power_tang999): On a DGX Spark with CX-7
+  (PSID NVD0000000087, part cx7_P4242_HORIZON_PK_Ax, FW 28.45.4028), both
+  `rte_eth_promiscuous_enable()` (DPDK) and `ip link set promisc on` (kernel)
+  return success, but the hardware does not truly enter promiscuous mode —
+  the interface flags show no PROMISC, and non-local MAC packets cannot be
+  received. Use case: DPI (deep packet inspection) system that must receive
+  all messages on the wire. This suggests the CX-7 firmware on GB10 may not
+  support promiscuous mode at the hardware level despite the API returning
+  success — a silent failure mode relevant for anyone attempting network
+  sniffing, DPI, or transparent proxying on the Spark's CX-7 interface. FW
+  28.45.4028 is the same version documented as healthy for RoCE inference
+  (see fabric caveats above). Single post, no replies → [conjecture].

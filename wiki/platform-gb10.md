@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma, S-forum-fan-headless-boot, S-forum-suspend-fail
-> **updated:** 2026-08-17
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma, S-forum-fan-headless-boot, S-forum-suspend-fail, S-forum-hdmi-hotplug-ab, S-forum-usbc-dp-hpd
+> **updated:** 2026-08-18
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -1955,3 +1955,60 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   disabled by convention. Corroborates the platform-level guidance that **suspend
   is not a viable power-management mechanism on GB10** — use full shutdown + smart
   plug instead (S-forum-power-mgmt [reported]).
+
+### Batch 77 forum ingest (2026-08-18)
+
+- **[conjecture]** **HDMI hot-plug A/B test confirms display-state → fan/thermal
+  link — per-unit, not purely headless** (S-forum-hdmi-hotplug-ab, solodu1116 +
+  x1917x + ajvazan): A controlled experiment on **2 identical ASUS Ascent GX10
+  units** (both kernel 6.17.0-1029-nvidia, driver 580.173.02, DGX OTA 7.5.0,
+  same BIOS/EC/UEFI/PD firmware) isolates the display-hotplug variable from
+  headless operation. **Affected unit:** after cold start, GPU rose from 38°C
+  to 48°C in 10 min, then cycled at 55–58°C GPU / 58.5–61.7°C ACPI (P8, 0%
+  util, 3.8–4.0 W) with audibly slower fan. **Control unit** (fully headless
+  at GDM greeter, never logged in, no DRM display): stayed at 34–36°C GPU,
+  4.6–4.8 W — **headless alone does not reproduce the issue**. **Clean A/B on
+  affected unit:** HDMI connected + local X11 session + GNOME blank timeout
+  Never → cooled to 36–37°C GPU / 39.8°C ACPI. Physically unplugging HDMI
+  (session stays active, IdleHint=no) → monotonic rise to **45°C GPU / 47.9°C
+  ACPI in 5 min** (P8, 3.48–3.71 W, 4–6% util). The physical EDID disappeared,
+  leaving a zero-byte `Unknown-1` virtual connector. **This links physical
+  display hot-plug state to thermal/fan behavior independently of compute
+  load.** `nvidia-smi` reports fan speed N/A; no Linux fan input or PWM nodes
+  on either unit → actual RPM cannot be compared. x1917x provides 4
+  workarounds (USB ≥5 W load, monitor+keyboard+mouse, VNC with active app,
+  CX7 cable to another Spark). ajvazan suggests HDMI dummy plug. **Corroborates
+  existing [reported] fan-DPMS finding** (S-forum-fan-dpms): same mechanism
+  (fan controller tied to display/SoC-power-draw state, not thermal sensors).
+  New data: (1) headless alone is not sufficient — the affected unit had a
+  display *connected* then *disconnected*, while the control unit never had
+  one; (2) the per-unit nature (1 of 2 identical units) suggests an EC firmware
+  or fan hardware variation. Single thread → [conjecture] for this specific
+  A/B; corroborates [reported] fan-DPMS at the mechanism level.
+
+- **[conjecture]** **USB-C DisplayPort ports (DFP-1 to DFP-4) not detected
+  after boot unless monitor cable physically replugged** (S-forum-usbc-dp-hpd,
+  riccardo1981 + helge + Mkei88): On MSI EdgeXpert GB10 (DGX OS, kernel
+  6.17.0-1029-nvidia, driver 580.173.02), none of the 4 USB-C DisplayPort
+  outputs are detected after cold boot even when a monitor is connected via
+  USB-C→VGA adapter and powered on before/during boot. Only HDMI-0 works at
+  boot. Physical unplug+replug of USB-C immediately triggers detection (EDID
+  read confirmed via `journalctl`). **Software re-probe fails:** `xrandr
+  --output USB-C-0 --off` then `--auto`, and `nvidia-settings -q dpys` polling
+  over several minutes — all report disconnected. `/sys/class/typec/` is empty
+  (no typec-class controller exposed); `/sys/bus/thunderbolt/devices/` is empty
+  (not USB4/TBT tunneling). **Root cause hypothesis:** HPD/sink-detection issue
+  at the PD controller or mux level — the detection window closes early in
+  boot sequencing. If the monitor isn't already powered and negotiated by the
+  time the GB10 boot sequence passes, the query is never repeated. Second
+  confirmer (helge) on **Lenovo Thinkstation PGX** with native USB-C (no
+  adapter) — same behavior, including monitors that draw power from the USB-C
+  port. Third user (Mkei88) with ASUS + MSI using direct USB-C-to-USB-C to
+  portable monitor reports no issue — suggests adapter negotiation latency may
+  be a factor on some setups. Firmware fully up to date (`fwupdmgr get-updates`
+  shows latest EC + UEFI). **Practical impact:** during firmware updates
+  (multiple reboots, some taking minutes), users are "completely blind" without
+  HDMI attached — strongly recommend HDMI monitor during updates. Single
+  thread (3 users, 2 confirmers + 1 non-reproducer) → [conjecture]. New
+  durable GB10 platform bug: USB-C DP HPD only runs once in a narrow early-boot
+  window. No software workaround — requires physical replug.

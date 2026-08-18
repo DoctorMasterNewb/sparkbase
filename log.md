@@ -2,6 +2,75 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-18 — Forum ingest: Batch 77 — 5 new topics (4 processed, 1 skipped)
+
+- **Sources:** 5 new forum topics found by fetch_new_topics.py. 4 technically
+  relevant, 1 skipped. 4 new sources registered (Batch 77) in `sources/README.md`:
+  S-forum-cx7-promisc, S-forum-mediallmproxy, S-forum-hdmi-hotplug-ab,
+  S-forum-usbc-dp-hpd. 5 topic IDs added to `processed_topics.txt`
+  (total now 624).
+- **Topics found:**
+  - 380361 (DGX Spark ConnectX7 network card use promisc mode message sending
+    and receiving failure) — **processed**. 1-post thread, 22 views. Durable
+    GB10 networking finding: CX-7 promiscuous mode silently fails on GB10.
+    `rte_eth_promiscuous_enable()` (DPDK) and `ip link set promisc on` (kernel)
+    both return success, but the hardware does not enter promisc mode — no
+    PROMISC flag, non-local MAC packets not received. PSID NVD0000000087,
+    part cx7_P4242_HORIZON_PK_Ax, FW 28.45.4028 (same version documented as
+    healthy for RoCE inference). DPI use case. Relevant for anyone attempting
+    network sniffing, DPI, or transparent proxying on CX-7. S-forum-cx7-promisc.
+    → multinode-tp-and-networking.
+  - 380317 (Deepseek multimodality - closing the gap) — **processed**. 3-post
+    thread, 392 views. MediaLLMProxy — OpenAI-compatible vision bridge for
+    text-only LLMs, production-deployed by 0rand. Architecture: Qwen 3.6 35B
+    A3B VL on Mac as main vision model, Qwen 3.0 3B VL on llama.cpp on one
+    Spark as backup, cloud model (OpenRouter Gemini) also configured.
+    DeepSeek-OCR-2 explored (~3 GB OCR-only VLM, fits in Spark RAM corner)
+    but found weak for non-OCR tasks (grounding, icon location). Extends
+    Pilco-mmbridge pattern with proxy/bridge architecture. Durable GB10 data
+    point: tiny VLM (Qwen 3.0 3B VL) co-located on Spark via llama.cpp without
+    impacting inference. S-forum-mediallmproxy. → engines.
+  - 380282 (ASUS Ascent GX10 idle temperature rises after HDMI disconnect;
+    identical unit stays cool) — **processed**. 3-post thread, 145 views.
+    Controlled A/B test on 2 identical ASUS GX10 units isolates display-hotplug
+    from headless operation. Affected unit: GPU 55–58°C at idle (P8, 3.8 W)
+    with slow fan. Control unit (headless, GDM greeter, never logged in):
+    34–36°C. Clean A/B: HDMI connected + X11 = 36–37°C; HDMI physically
+    unplugged (session active) = monotonic rise to 45°C GPU / 47.9°C ACPI in
+    5 min (P8, 3.48–3.71 W). nvidia-smi fan N/A, no PWM nodes. Corroborates
+    existing [reported] fan-DPMS finding (S-forum-fan-dpms) at mechanism level.
+    New data: headless alone is insufficient — the display must have been
+    connected then disconnected; per-unit (1 of 2 identical) suggests EC/fan
+    hardware variation. x1917x provides 4 workaround categories. S-forum-
+    hdmi-hotplug-ab. → platform-gb10.
+  - 380326 (USB-C DisplayPort ports DFP-1 to DFP-4 not detected after boot
+    unless monitor cable physically replugged) — **processed**. 5-post thread,
+    75 views. New durable GB10 platform bug: USB-C DP outputs not detected
+    after boot on MSI EdgeXpert GB10. Only HDMI-0 works at boot. Software
+    re-probe (xrandr, nvidia-settings) fails. /sys/class/typec/ empty,
+    /sys/bus/thunderbolt/ empty. Root cause: HPD/sink-detection runs once in
+    narrow early-boot window. 2nd confirmer (helge) on Lenovo Thinkstation PGX
+    with native USB-C (no adapter). 3rd user (Mkei88) no issue with direct
+    USB-C-to-USB-C. Practical impact: "blind" during firmware updates without
+    HDMI. S-forum-usbc-dp-hpd. → platform-gb10.
+  - 379545 (Bringing multi-user Linux VDI to the DGX Spark — ThinLinc ARM64)
+    — **skipped**. Project announcement for ThinLinc Server ARM64 port. No
+    GB10 inference findings (no flags, env vars, error strings, tok/s, quant
+    formats, or model configs). VDI/desktop sharing project, not LLM serving.
+    1 post, 93 views.
+- **Pages touched:** platform-gb10 (HDMI hot-plug A/B [conjecture], USB-C DP
+  HPD boot detection [conjecture]), multinode-tp-and-networking (CX-7 promisc
+  mode failure [conjecture]), engines (MediaLLMProxy vision bridge
+  [conjecture]), sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+  The HDMI hot-plug A/B test provides the most rigorous corroboration yet of
+  the existing [reported] fan-DPMS finding (controlled experiment isolating
+  the display-hotplug variable), but remains [conjecture] for this specific
+  manifestation per the analysis-agent ceiling. The USB-C DP HPD bug is a new
+  durable GB10 platform finding with 2 independent confirmers (MSI + Lenovo)
+  — a hardware agent could verify whether this reproduces on their unit and
+  whether a firmware update or EC command can force HPD re-negotiation.
+
 ## 2026-08-18 — Forum ingest: Batch 76 — 3 new topics (0 processed)
 
 - **Sources:** 3 new forum topics found by fetch_new_topics.py. 0 technically
