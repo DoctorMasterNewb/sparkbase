@@ -2,6 +2,37 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-18 — Forum ingest: Batch 76 — 3 new topics (0 processed)
+
+- **Sources:** 3 new forum topics found by fetch_new_topics.py. 0 technically
+  relevant, 3 skipped. No new sources registered. 3 topic IDs added to
+  `processed_topics.txt` (total now 619).
+- **Topics found:**
+  - 380286 (DGX Spark GB10 hard-resets after vLLM silently exits 255 serving
+    Qwen3.8-27B-FP8 — no OOM, Xid, or traceback) — **skipped**. OP reports a
+    dramatic crash signature (vLLM exit 255, no traceback/Xid/OOM, delayed
+    hard-reset, 100% reproducible) while serving dense Qwen3.8-27B-FP8 on vLLM
+    cu130-nightly with driver 580.95.05. Initial details are GB10-relevant
+    (sm_121, 119.7 GiB UMA pool, dense vs MoE control test with Qwen3.6-35B-A3B
+    100% stable). However, post #3 reveals root cause is a **defective
+    thermostat** (failed diagnostics → RMA). Per ingest rules, skip RMA
+    complaints. The "silent exit 255 + delayed hard-reset" signature looked
+    like a possible driver/UMA wedge but was actually a hardware fault — a
+    reminder that not all silent crashes are software bugs. 3 posts, 220 views.
+  - 380322 (GLM-5.3 — Upcoming release countdown) — **skipped**. Model
+    announcement / speculation. OP notes GLM-5.3 architecture unchanged from
+    GLM-5.2, expects it to run on 4× Spark (or even 3×). No durable GB10 findings
+    (no flags, env vars, tok/s, configs, or error strings). Social/hype thread.
+    1 post, 726 views.
+  - 380272 (Asus Ascent GX10: Create a Useful Rescue Image Including Clonezilla)
+    — **skipped**. OS administration guide for creating a rescue USB stick
+    for the ASUS GX10 (Clonezilla, dc3dd, gddrescue, nvme-cli, zstd). Detailed
+    but not LLM inference on GB10 — no flags, env vars, model configs, or
+    quant findings. Per scope rules, skip OS admin logistics. 2 posts, 186
+    views.
+- **Pages touched:** none. No sources registered. No wiki changes.
+- All topics non-technical or RMA — no evidence to tag.
+
 ## 2026-08-17 — Forum ingest: Batch 75 — 4 new topics (2 processed, 2 skipped)
 
 - **Sources:** 4 new forum topics found by fetch_new_topics.py. 2 technically

@@ -40,6 +40,13 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-18 (Batch 76)
+- 3 new NVIDIA DGX Spark forum topics found, 0 technically relevant (3 skipped:
+  vLLM exit-255 hard-reset — RMA (defective thermostat); GLM-5.3 countdown —
+  social/hype; GX10 rescue image with Clonezilla — OS admin).
+- No new sources registered. 3 topic IDs added to processed_topics.txt
+  (total now 619). No pages touched.
+
 ## Forum ingest 2026-08-17 (Batch 75)
 - 4 new NVIDIA DGX Spark forum topics found, 2 technically relevant (2 skipped:
   Asus GX10 OS image — buying advice; VoiceChat 11B NIM arm64 roadmap — no
