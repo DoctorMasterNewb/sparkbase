@@ -2,6 +2,47 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-19 — Forum ingest: Batch 78 — 2 new topics (2 processed)
+
+- **Sources:** 2 new forum topics found by fetch_new_topics.py. Both technically
+  relevant. 2 new sources registered (Batch 78) in `sources/README.md`:
+  S-forum-qwen38-27b-mixedint4, S-forum-docker-vs-k8s. 2 topic IDs added to
+  `processed_topics.txt` (total now 626).
+- **Topics found:**
+  - 380248 (Qwen3.8-27B-MixedInt4-AutoRound — Optimized for a Single DGX Spark)
+    — **processed**. 41-post thread, 3971 views. Major durable findings:
+    (1) Qwen3.8-27B-MixedInt4-AutoRound by PILCOTHINK — mixed 4-bit quant (sensitive
+    layers FP8/FP16, vision unquantized), 20.8 GB, MMLU recovery 99.32% (83.49→82.92%,
+    -0.57pp). (2) Full vLLM recipe documented: TP=1, fp8 KV, MTP nst=3, 1.01M max
+    context, 2.56M-token KV pool (2.54× concurrency). (3) llama-benchy decode: 21.86
+    tok/s @ d0, 17.04 @ d4096, 17.82 @ d8192; prefill 828-877 tok/s. (4) tool-eval-bench
+    91/100 normal / 92/100 hardmode v2.5.1. (5) SlopOps SAR variant: 88/100 hardmode
+    v2.1.0, MTP nst=3 15.08 tok/s / nst=4 15.67 tok/s. (6) co-le 35-40 tps on 2× Spark.
+    (7) 0rand DSpark 28-35 t/s 8-bit single Spark. (8) dean.grande 27B planner + 35B
+    coder dual-role. (9) stu.miller: dense 27B slow vs MoE 35B (2×+ faster). Thread
+    confirms the proven bandwidth-bound dense 27B regime (~17-30 tok/s). The 2.56M-token
+    KV pool at 1.01M context is the standout — 20.8 GB weights leave most of 121 GB
+    UMA for KV cache. S-forum-qwen38-27b-mixedint4. → models/qwen, benchmarks.
+  - 372636 (Docker Compose vs Kubernetes setup for Spark) — **processed**. 13-post
+    thread, 615 views. Durable GB10 finding: community consensus is spark-vllm-docker
+    + sparkrun sufficient for 2-4 Sparks; k8s overkill unless integrating larger
+    ecosystem. bugsareyummy dropped Rancher k8s to recover RAM for vLLM on 121 GB UMA
+    — k8s overhead eats into memory available for model weights and KV cache. ArgoCD
+    GitOps for 4×2 sparks. sparkrun supports multiple cluster configs. S-forum-docker-
+    vs-k8s. → containers-and-tooling.
+- **Pages touched:** models/qwen (Qwen3.8-27B-MixedInt4 section: quant recipe, MMLU
+  recovery, benchmarks, SAR variant, 2× Spark, DSpark, dual-role, dense-vs-MoE
+  comparison [conjecture]), benchmarks (5 new [conjecture] rows: Qwen3.8-27B ×5
+  configs), containers-and-tooling (Docker Compose vs k8s [conjecture]),
+  sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions. The
+  Qwen3.8-27B thread confirms the proven bandwidth-bound dense 27B regime (~17-30
+  tok/s) while adding quality data (99.32% MMLU recovery) and a notable KV pool
+  result (2.56M tokens at 1.01M context). The Docker-vs-k8s finding has a GB10-
+  specific angle (k8s RAM overhead is a real cost on 121 GB UMA) but is operationally
+  marginal — flagged for [reported] promotion if additional independent confirmers
+  surface.
+
 ## 2026-08-18 — Forum ingest: Batch 77 — 5 new topics (4 processed, 1 skipped)
 
 - **Sources:** 5 new forum topics found by fetch_new_topics.py. 4 technically

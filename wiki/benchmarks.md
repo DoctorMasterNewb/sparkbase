@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy, S-forum-muse-glimmer, S-forum-muse-glimmer-nvfp4-w4a4
-> **updated:** 2026-08-16
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy, S-forum-muse-glimmer, S-forum-muse-glimmer-nvfp4-w4a4, S-forum-qwen38-27b-mixedint4
+> **updated:** 2026-08-19
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
 anchor the rules on
@@ -1090,3 +1090,25 @@ All rows below are **[conjecture]** — single-source community-reported numbers
 > truncation. DFlash provides 4.08× end-to-end speedup on controlled single-tool suites.
 > vLLM DFlash support is broken (`DFlashMuseGlimmerAssistantModel` missing); llama.cpp and SGLang
 > DFlash work. See `[[wiki/models/muse-glimmer.md]]`.
+
+## Forum-reported benchmarks (2026-08-19 ingest, Batch 78)
+
+All rows below are **[conjecture]** — single-source community-reported numbers from one forum
+thread (380248), not first-party.
+
+||| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+||---|---|---|---|---|---|---|---||
+|| Qwen3.8-27B (dense) | MixedInt4-AutoRound + MTP nst=3, fp8 KV | vLLM 0.24.0+ | 1 | 21.86 (d0) / 17.04 (d4096) / 17.82 (d8192) | 1.01M | 20.8 GB weights; 2.56M-token KV pool (2.54× concurrency); pp2048 828-877 tok/s; MMLU 99.32% recovery; tool-eval 91/100 normal / 92/100 hardmode v2.5.1 | S-forum-qwen38-27b-mixedint4 ||
+|| Qwen3.8-27B (dense) | int4-AutoRound-SAR + MTP nst=3 | vLLM | 1 | 15.08 (peak 23.67) | 262K | SlopOps SAR variant; pp2048 403-439 tok/s; tool-eval 88/100 hardmode v2.1.0 | S-forum-qwen38-27b-mixedint4 ||
+|| Qwen3.8-27B (dense) | int4-AutoRound-SAR + MTP nst=4 | vLLM | 1 | 15.67 (peak 28.0) | 262K | SlopOps SAR variant; pp2048 429-435 tok/s | S-forum-qwen38-27b-mixedint4 ||
+|| Qwen3.8-27B (dense) | MixedInt4-AutoRound | vLLM | 2 (TP=2) | 35-40 | — | co-le; ~2× single-node speedup consistent with TP=2 dense split | S-forum-qwen38-27b-mixedint4 ||
+|| Qwen3.8-27B (dense) | 8-bit + DSpark | vLLM (ml-dspark) | 1 | 28-35 (DSpark) / 17-18 (bare) / 26 (MTP3) | — | 0rand; platform-independent DSpark; hardmode TEB below Qwen3.6-27B 8-bit | S-forum-qwen38-27b-mixedint4 ||
+
+> **[conjecture]** **Qwen3.8-27B dense on single Spark** (S-forum-qwen38-27b-mixedint4):
+> The MixedInt4 variant decodes at 21.86 tok/s (d0) — consistent with the proven bandwidth-bound
+> dense 27B regime (~30 tok/s ceiling, see Qwen3.6-27B dense proven row above). The SAR uniform
+> int4 variant is slower (15.08 tok/s) — the mixed-precision approach preserves more speed despite
+> keeping some layers at FP8/FP16. On 2× Spark TP=2, co-le reports 35-40 tok/s (~2× single-node).
+> DSpark 8-bit gives 28-35 tok/s on single Spark. The 2.56M-token KV pool at 1.01M context is the
+> standout — the 20.8 GB weight footprint leaves most of 121 GB UMA for KV cache. MMLU recovery
+> 99.32% (83.49→82.92%). See `[[wiki/models/qwen.md]]` → Qwen3.8-27B section.

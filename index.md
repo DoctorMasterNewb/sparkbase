@@ -40,6 +40,29 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-19 (Batch 78)
+- 2 new NVIDIA DGX Spark forum topics found, both technically relevant.
+- 2 new sources registered (Batch 78). 2 topic IDs added to processed_topics.txt
+  (total now 626).
+- **Headline finding 1:** Qwen3.8-27B-MixedInt4-AutoRound for single DGX Spark —
+  PILCOTHINK mixed 4-bit quant (sensitive layers FP8/FP16, vision unquantized),
+  20.8 GB. MMLU recovery 99.32% (83.49→82.92%, -0.57pp). vLLM recipe: TP=1, fp8 KV,
+  MTP nst=3, 1.01M max context, 2.56M-token KV pool (2.54× concurrency). llama-benchy
+  decode 21.86 tok/s @ d0 / 17.04 @ d4096 / 17.82 @ d8192, prefill 828-877 tok/s.
+  tool-eval-bench 91/100 normal / 92/100 hardmode v2.5.1. SlopOps SAR variant 88/100
+  hardmode v2.1.0, MTP nst=3 15.08 tok/s. co-le 35-40 tps on 2× Spark. 0rand DSpark
+  28-35 t/s 8-bit single Spark. Confirms proven bandwidth-bound dense 27B regime
+  (~17-30 tok/s). 2.56M-token KV pool at 1.01M context is the standout — 20.8 GB
+  weights leave most of 121 GB UMA for KV cache. [conjecture].
+- **Headline finding 2:** Docker Compose vs Kubernetes for Spark — community consensus:
+  spark-vllm-docker + sparkrun sufficient for 2-4 Sparks, k8s overkill. bugsareyummy
+  dropped Rancher k8s to recover RAM for vLLM on 121 GB UMA. GB10-specific: k8s RAM
+  overhead is a real cost on UMA. [conjecture].
+- Pages touched: models/qwen (Qwen3.8-27B-MixedInt4 section [conjecture]), benchmarks
+  (5 new [conjecture] rows), containers-and-tooling (Docker vs k8s [conjecture]),
+  sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+
 ## Forum ingest 2026-08-18 (Batch 77)
 - 5 new NVIDIA DGX Spark forum topics found, 4 technically relevant (1 skipped:
   ThinLinc VDI — project announcement, no GB10 inference findings).

@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x, S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train, S-forum-moe-lora-vllm, S-forum-qlora-coding, S-forum-macaron-v1-tall, S-forum-qwen36-tp2-stall, S-forum-kat-coder-autoround
-> **updated:** 2026-08-11
+> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x, S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train, S-forum-moe-lora-vllm, S-forum-qlora-coding, S-forum-macaron-v1-tall, S-forum-qwen36-tp2-stall, S-forum-kat-coder-autoround, S-forum-qwen38-27b-mixedint4
+> **updated:** 2026-08-19
 
 The best-supported family on GB10 — both Atlas (AOT kernels for the MoE variants) and vLLM serve it.
 The recurring lesson: **MoE-A3B NVFP4 + MTP is the fastest regime on Spark; the dense variant of the
@@ -559,3 +559,95 @@ GB10 box at bf16 (~110 GB).
   to a non-Qwen base) is notable — it extends the MTP drafter approach to models not
   originally trained with MTP. See `[[wiki/quantization-on-gb10.md]]` for the Spark
   AutoRound tool context.
+
+## Forum ingest: Qwen3.8-27B-MixedInt4-AutoRound — single-Spark dense (2026-08-19)
+
+> **evidence:** conjecture (single forum thread, multiple users in same thread)
+> **sources:** S-forum-qwen38-27b-mixedint4
+
+A 41-post thread (380248, 3971 views) on Qwen3.8-27B quantized for single DGX Spark.
+Qwen3.8-27B is a **dense** model (not MoE) — the same architecture class as Qwen3.6-27B
+above, which is proven bandwidth-bound at ~30 tok/s on Spark. The thread confirms this
+regime while adding quality and recipe data.
+
+- **[conjecture]** **Qwen3.8-27B-MixedInt4-AutoRound by PILCOTHINK — mixed 4-bit quant,
+  20.8 GB, MMLU recovery 99.32%** (S-forum-qwen38-27b-mixedint4, PILCOTHINK): mixed
+  4-bit AutoRound quantization with sensitive layers kept FP8/FP16 and vision layers
+  unquantized. Model: `Pilcothink/Qwen3.8-27B-MixedInt4-AutoRound`. MMLU: 83.49% →
+  82.92% (-0.57 pp, 99.32% recovery rate). Category breakdown: Humanities -0.68 pp,
+  STEM -0.82 pp, Social Sciences -0.33 pp, Other -0.38 pp. Seven additional quality
+  metrics planned. Single source → [conjecture].
+
+- **[conjecture]** **vLLM recipe: TP=1, fp8 KV, MTP nst=3, 1.01M max context, 2.56M-token
+  KV pool (2.54× concurrency)** (S-forum-qwen38-27b-mixedint4, PILCOTHINK):
+  ```
+  vllm serve Qwen3.8-27B-MixedInt4-AutoRound \
+    --gpu-memory-utilization 0.9 --trust-remote-code --tensor-parallel-size 1 \
+    --reasoning-parser qwen3 --tool-call-parser qwen3_coder \
+    --enable-auto-tool-choice --enable-prefix-caching \
+    --max-model-len 1010000 --max-num-batched-tokens 8192 \
+    --hf-overrides '{"text_config": {"max_position_embeddings": 1010000}}' \
+    --kv-cache-dtype fp8 --max-num-seqs 10 \
+    --speculative-config '{"method":"mtp","num_speculative_tokens":3}'
+  ```
+  KV cache: 2,561,684 tokens → 2.54× concurrency at 1,010,000-token max context on a
+  single Spark. The 20.8 GB model weight footprint leaves ample room for the large KV
+  pool. Single source → [conjecture].
+
+- **[conjecture]** **llama-benchy decode: 21.86 tok/s @ d0, 17.04 @ d4096, 17.82 @ d8192;
+  prefill 828-877 tok/s** (S-forum-qwen38-27b-mixedint4, PILCOTHINK): llama-benchy
+  pp2048/tg1024, c=1, --exact-tg. Decode is consistent with the proven bandwidth-bound
+  dense regime (~30 tok/s ceiling for 27B dense on Spark at FP8+MTP; the MixedInt4
+  variant's mixed-precision overhead may explain the lower number). Prefill is stable
+  across depths (828→877 tok/s). Single source → [conjecture].
+
+- **[conjecture]** **tool-eval-bench: 91/100 normal, 92/100 hardmode (v2.5.1)** 
+  (S-forum-qwen38-27b-mixedint4, PILCOTHINK): hardmode run on vLLM 0.24.0+092c4842.dev,
+  tool-eval-bench v2.5.1.dev29. Score 92/100 (73 pass, 8 partial, 3 fail), deployability
+  82/100, responsiveness 59/100 (median turn 2.4s). Weakest category: M Autonomous
+  Planning (67%). Single source → [conjecture]. Note: tool-eval-bench v2.5.0+ scores
+  5-8 pts lower than v2.0.1 (S-forum-dragonscale) — cross-version scores are not
+  directly comparable.
+
+- **[conjecture]** **Spark AutoRound (SAR) variant: 88/100 hardmode v2.1.0, MTP nst=3
+  15.08 tok/s / nst=4 15.67 tok/s** (S-forum-qwen38-27b-mixedint4, SlopOps):
+  `slopops/Qwen3.8-27B-int4-AutoRound-SAR` quantized via Spark AutoRound method
+  (S-forum-spark-auto-round). Tool-eval 88/100 hardmode v2.1.0 (69 pass, 10 partial,
+  5 fail). MTP benchmarks: nst=3 → 15.08 tok/s (peak 23.67), nst=4 → 15.67 tok/s
+  (peak 28.0). Prefill 403-439 tok/s — notably lower than PILCOTHINK's 828-877
+  (different quant: SAR is uniform int4 vs MixedInt4). The SAR variant is slower in
+  decode (15 vs 21.86 tok/s) — the mixed-precision approach preserves more speed
+  despite keeping some layers at higher precision. Single source → [conjecture].
+
+- **[conjecture]** **co-le: 35-40 tok/s on 2× Spark** (S-forum-qwen38-27b-mixedint4,
+  co-le): "I tried it today, good drop-in replacement for the FP8, faster and still
+  very good. Speeds were around 35-40 tps" on 2× Spark. The ~2× speedup over
+  single-Spark (21.86 tok/s) is consistent with TP=2 splitting the dense model's
+  compute across 2 nodes. Single source → [conjecture].
+
+- **[conjecture]** **0rand: DSpark 28-35 tok/s 8-bit on single Spark; bare 17-18 tok/s,
+  MTP3 ~26 tok/s** (S-forum-qwen38-27b-mixedint4, 0rand): platform-independent DSpark
+  for 27B tested with ml-dspark: 38-50 tok/s on M5, should be ~28-35 tok/s on single
+  DGX Spark. Bare version (no drafter) 17-18 tok/s, regular MTP3 ~26 tok/s. Notes
+  hardmode tool-eval below Qwen3.6-27B 8-bit so far. Single source → [conjecture].
+
+- **[conjecture]** **dean.grande: 27B as planner + 35B as coder dual-role approach**
+  (S-forum-qwen38-27b-mixedint4, dean.grande): "3.8 27b is the king no doubt" for
+  planning/one-shotting difficult briefs that take 3× iterations on 3.6 35B MoE.
+  Recommends dual-role: 27B planner + 35B implementer. Zoo Code can auto-handoff
+  plan → review → implement → review. Single source → [conjecture].
+
+- **[conjecture]** **stu.miller: dense 27B is slow vs MoE 35B — 27B not a good first
+  impression for new Spark users** (S-forum-qwen38-27b-mixedint4, stu.miller): "much
+  faster MoE models exist that are almost as proficient and run at 50-80 t/s." 3.6
+  35B is 2×+ faster than 27B dense. Important context: the 21.86 tok/s decode is
+  bandwidth-bound dense (all 27B params per token), not a recipe failure. Consistent
+  with the proven Qwen3.6-27B dense ~30 tok/s ceiling. Single source → [conjecture].
+
+This thread reinforces the proven finding that **dense 27B on Spark is bandwidth-bound**
+(~17-30 tok/s depending on quant and MTP), while MoE 35B-A3B is 2-4× faster (~50-90+
+tok/s) because only 3B params are active per token. The MixedInt4 approach (sensitive
+layers at higher precision) achieves 99.32% MMLU recovery — a quality-first quant
+strategy for dense models where speed is already capped by bandwidth. The 2.56M-token
+KV pool at 1.01M context is notable — the 20.8 GB weight footprint leaves most of the
+121 GB UMA for KV cache, enabling very long context on single Spark.

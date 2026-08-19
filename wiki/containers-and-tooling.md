@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal, S-forum-vllm-2607-xgrammar, S-forum-depfree-dashboard, S-forum-comfyui-triplany, S-forum-acestep-v15-comfyui, S-forum-minimax-h3-comfyui, S-forum-vllm-fwdcompat, S-forum-unsloth-docker, S-forum-h3-solattn, S-forum-sparkup, S-forum-spark-comfyui
-> **updated:** 2026-08-16
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-forum-vllm-claude, S-forum-btop, S-forum-model-manager, S-forum-sparkdash, S-forum-tool-eval, S-forum-thunderkittens, S-forum-driver610, S-forum-flux2-nunchaku, S-forum-comfyui-container, S-forum-llamacpp-container, S-forum-sage-attn, S-forum-vllm-2606-broken, S-forum-gemma4-qat, S-forum-mistral-s4-119b, S-forum-qwen-tts-arm64, S-forum-llama-benchy, S-forum-cluster-dashboard, S-forum-sunshine-rdp, S-forum-flux2-nvfp4-compute, S-forum-nvidia-vfx, S-forum-easy-vllm, S-forum-spark-studio, S-forum-comfyui-optimized, S-forum-litellm-orchestrator, S-forum-nemo-rt, S-forum-vllm025-nccl, S-forum-sparkdash-mia, S-forum-spark-vllm-rebuild, S-forum-vllm-containers, S-forum-qwen3tts-ggml, S-forum-vllm-stock-hang, S-forum-locateanything, S-forum-sparkctl, S-forum-whisper-docker, S-forum-llamacpp-fastest, S-forum-comfyui-crash, S-forum-cuda-mps, S-forum-model-storage, S-forum-acer-thermal, S-forum-vllm-2607-xgrammar, S-forum-depfree-dashboard, S-forum-comfyui-triplany, S-forum-acestep-v15-comfyui, S-forum-minimax-h3-comfyui, S-forum-vllm-fwdcompat, S-forum-unsloth-docker, S-forum-h3-solattn, S-forum-sparkup, S-forum-spark-comfyui, S-forum-docker-vs-k8s
+> **updated:** 2026-08-19
 
 Which image loads which arch is the whole game on GB10 — vLLM moves fast and arch support is
 image-specific. Probe before you download; a model is only as serveable as the image that knows its
@@ -820,3 +820,22 @@ env `TORCH_CUDA_ARCH_LIST=12.1a`, `VLLM_SKIP_P2P_CHECK=1`, `FLASHINFER_JIT_LOG_L
     Ascent GX10 (jeffrey16). Single source (tool author) → [conjecture]. Reinforces
     multiple existing GB10 ComfyUI findings (S-forum-comfyui-optimized, S-forum-comfyui-crash,
     S-forum-sage-attn, S-forum-comfyui-container) and the power-controller wedge pattern.
+
+## Forum ingest: Docker Compose vs Kubernetes for Spark orchestration (2026-08-19)
+
+> **evidence:** conjecture (single forum thread, multiple users agreeing)
+> **sources:** S-forum-docker-vs-k8s
+
+- **[conjecture]** **Community consensus: Docker Compose / spark-vllm-docker / sparkrun
+  is sufficient for 2-4 Sparks; Kubernetes is overkill** (S-forum-docker-vs-k8s,
+  Zambonilli + bugsareyummy + mashie): the prevailing community guidance for DGX Spark
+  orchestration is that spark-vllm-docker and sparkrun handle 2-4 node clusters without
+  needing Kubernetes. bugsareyummy dropped Rancher k8s specifically to **recover RAM for
+  vLLM** on the 121 GB UMA pool — k8s overhead eats into the memory available for model
+  weights and KV cache. minikube/k3s are viable with minimal overhead if a k8s ecosystem
+  integration is needed. ArgoCD GitOps is useful for managing 4×2 spark clusters and
+  experimenting with different cluster configurations. sparkrun supports multiple cluster
+  setups configured in YAML. Single thread, multiple users → [conjecture] (could reach
+  [reported] with additional independent confirmers). The GB10-specific durable finding:
+  **k8s RAM overhead is a real cost on 121 GB UMA** — every GB spent on orchestration is
+  a GB not available for KV cache or model weights.
