@@ -33,12 +33,38 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [glm-5.2](wiki/models/glm-5.2.md) — Zhipu AI 744B/40B-active MoE (sparse-MLA); 4×–8× Spark recipes, hybrid FP8+NVFP4+MXFP4 quant, MTP quality, reasoning-parser bug, KV kernel constraints.
 - [kimi-k3](wiki/models/kimi-k3.md) — Moonshot AI Kimi K3 (~2.8T MoE); REAP-320 MXFP4 on 8× Spark 21-30 tok/s; full model needs 16× GB10; REAP variant loops.
 - [muse-glimmer](wiki/models/muse-glimmer.md) — Meta 30B dense with DFlash; llama.cpp 44.6 tok/s Q6_K_XL, vLLM NVFP4 18.65 tok/s; tool-calling BFCL 10-12% (multi-tool fails); vLLM DFlash broken.
+- [k-exaone-236b](wiki/models/k-exaone-236b.md) — LG AI Research 237B/23B-active MoE; largest unpruned model on single Spark; mixed-quant GGUF 85.56 GiB, LLLG sliding-window 48 KiB/token KV, full 262K context via ds4 engine.
 
 ## Reference
 - [benchmarks](wiki/benchmarks.md) — collated decode tok/s + concurrency table; append rows.
 - [roadmap](wiki/roadmap.md) — open problems & areas of further development.
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
+
+## Forum ingest 2026-08-19 (Batch 79)
+- 4 new NVIDIA DGX Spark forum topics found, 2 technically relevant (2 skipped: DeepSeek
+  Harness Preview — agent framework link, no GB10 findings; Thermal Performance — DIY
+  cooling accessories, no durable technical findings).
+- 2 new sources registered (Batch 79). 4 topic IDs added to processed_topics.txt
+  (total now 630).
+- **Headline finding 1:** GLM-5.2 QuantTrio Int4-Int8Mix on 4× Spark via streamlined
+  sparkrun recipe (davedgd/sparkrun-glm52-4x-spark) — uses ciprianveg v18 Docker image,
+  supports optional baseten/GLM-5.2-Vision-NVFP4 vision tower, Adaptive MTP. tool-eval-bench
+  v2.5.1.dev31: 86/100. llama-benchy: 22.17 tok/s decode (tg32, c1), 556 tok/s prefill.
+  AIME25: 90% (30/30, 57 tok/s avg). 1M max context. Corroborates existing [reported]
+  20-25 tok/s 4× Spark decode range. [conjecture].
+- **Headline finding 2:** K-EXAONE-236B-A23B (LG AI Research, 237B/23B-active MoE) on
+  single DGX Spark via ds4 engine — largest reported unpruned model on one GB10. Mixed-
+  quant GGUF (IQ2_XXS+Q3_K+Q4_K+Q8 per-tensor): 441.63 GiB BF16 → 85.56 GiB (5.16×).
+  Full 262,144-token context at 103.95 GiB resident. LLLG sliding-window schedule =
+  48 KiB/token KV (only 12/48 layers hold full context) — key enabler. Decode 10.51
+  tok/s @1.4K → 5.42 tok/s @16K. MTP (blk.48) executes but net loss on this HW. 16/16
+  OpenAI API validation checks pass. Multi-turn prefix-resume divergence workaround
+  (re-tokenization mismatch). NEW model page created. [conjecture].
+- Pages touched: models/glm-5.2 (sparkrun 4× recipe section + cross-thread table row
+  [conjecture]), models/k-exaone-236b (NEW — full model page [conjecture]), benchmarks
+  (2 new [conjecture] rows), sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
 
 ## Forum ingest 2026-08-19 (Batch 78)
 - 2 new NVIDIA DGX Spark forum topics found, both technically relevant.

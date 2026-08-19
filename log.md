@@ -2,6 +2,53 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-19 — Forum ingest: Batch 79 — 4 new topics (2 processed, 2 skipped)
+
+- **Sources:** 4 new forum topics found by fetch_new_topics.py. 2 technically relevant, 2 skipped.
+  2 new sources registered (Batch 79) in `sources/README.md`: S-forum-glm52-sparkrun-4x,
+  S-forum-kexaone-236b. 4 topic IDs added to `processed_topics.txt` (total now 630).
+- **Topics found:**
+  - 380448 (Recipe: GLM-5.2 on 4× DGX Spark at 1M Context with sparkrun (+ Vision))
+    — **processed**. 7-post thread, 253 views. Durable findings: streamlined sparkrun recipe
+    (davedgd/sparkrun-glm52-4x-spark) using ciprianveg v18 Docker image + QuantTrio/GLM-5.2-
+    Int4-Int8Mix. Supports baseten/GLM-5.2-Vision-NVFP4 vision tower. Adaptive MTP. tool-eval-
+    bench v2.5.1.dev31: 86/100 (53 pass, 12 partial, 4 fail, weakest M Autonomous Planning 50%).
+    llama-benchy pp2048/tg32 c1: prefill 556.19 tok/s, decode 22.17 tok/s (peak 24.67), TTFT
+    3699ms. AIME25: 90% (30/30, 57 tok/s avg, 290K tokens, 84 min). Engine: vLLM
+    0.11.2.dev280+gilded.gnosis.v18. 1M max context. S-forum-glm52-sparkrun-4x. → models/glm-5.2,
+    benchmarks.
+  - 380502 (Deepseek Harness Preview link) — **skipped**. 1-post thread, 161 views. Just a
+    GitHub link to DeepSeek Harness (deepseek-ai/deepseek-harness), an open-source agent harness
+    framework. No GB10-specific findings (no flags, env vars, error strings, tok/s, quant formats,
+    or hardware configs). Agent framework announcement, not LLM inference on GB10.
+  - 351345 (Status and Experience on Thermal Performance) — **skipped**. 23-post thread, 5314
+    views. DIY cooling accessories discussion (TEC thermoelectric coolers, laptop cooling pads,
+    acrylic stands, Arduino fan controllers). No durable GB10 technical findings (no flags, env
+    vars, error strings, tok/s, quant formats, or hardware configs). Accessory modding thread.
+  - 379577 (1x Spark(GB10), 236B unpruned: K-EXAONE-236B-A23B serving at its full 262,144-token
+    context on one GB10) — **processed**. 4-post thread, 373 views. Major durable finding:
+    K-EXAONE-236B-A23B (LG AI Research, 237B/23B-active MoE, 128 routed experts, 47 MoE layers)
+    fits unpruned on a single DGX Spark at full 262K context via the ds4 engine (antirez/ds4
+    fork, sm_121 build). Mixed-quant GGUF: 441.63 GiB BF16 → 85.56 GiB (5.16×), 103.95 GiB
+    resident. LLLG sliding-window schedule = 48 KiB/token KV (only 12/48 layers hold full
+    context) — the key architectural enabler. Decode 10.51 tok/s @1.4K → 5.42 tok/s @16K;
+    prefill 53→42 tok/s. MTP block (blk.48) executes but is a net loss on this HW. 16/16
+    OpenAI API validation checks pass. Multi-turn prefix-resume divergence workaround
+    (re-tokenization mismatch, 24× speedup on turn 2). Quant assignment: routers/norms/
+    attention/shared expert/dense layer 0 at 8-bit/F32; first/last sparse blocks' experts
+    at Q4_K; middle routed experts at IQ2_XXS (gate/up) + Q3_K (down). S-forum-kexaone-236b.
+    → models/k-exaone-236b (NEW), benchmarks.
+- **Pages touched:** models/glm-5.2 (sparkrun 4× recipe section + cross-thread table row
+  [conjecture]), models/k-exaone-236b (NEW — full model page [conjecture]), benchmarks
+  (2 new [conjecture] rows: GLM-5.2 sparkrun 4×, K-EXAONE-236B), sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions. The GLM-5.2 sparkrun
+  recipe corroborates the existing [reported] 4× Spark decode range (20-25 tok/s). The
+  K-EXAONE-236B finding is notable as the largest reported unpruned model on a single GB10 —
+  the LLLG sliding-window attention schedule (48 KiB/token KV) is a durable architectural insight
+  for single-Spark large-model serving. Flagged for hardware verification: a hardware agent
+  could verify whether the ds4 engine + mixed-quant GGUF approach reproduces on their unit and
+  whether the LLLG KV savings hold at scale.
+
 ## 2026-08-19 — Forum ingest: Batch 78 — 2 new topics (2 processed)
 
 - **Sources:** 2 new forum topics found by fetch_new_topics.py. Both technically

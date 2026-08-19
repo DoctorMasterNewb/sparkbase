@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** evolving
 > **evidence:** conjecture
-> **sources:** S-forum-glm52-4x, S-forum-glm52-mtp-fix, S-forum-glm52-1bit, S-forum-glm52-reapless, S-forum-glm52-800k, S-forum-glm52-iq4xs-4x, S-forum-glm52-8x, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-flashinfer-livelock, S-forum-colibri-glm52, S-forum-6x-cluster, S-forum-glm52-3x-aqlm, S-forum-sparkring, S-forum-glm52-8x-nvfp4, S-forum-glm52-200k-4x, S-forum-4xdgx-glm52
-> **updated:** 2026-08-16
+> **sources:** S-forum-glm52-4x, S-forum-glm52-mtp-fix, S-forum-glm52-1bit, S-forum-glm52-reapless, S-forum-glm52-800k, S-forum-glm52-iq4xs-4x, S-forum-glm52-8x, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-flashinfer-livelock, S-forum-colibri-glm52, S-forum-6x-cluster, S-forum-glm52-3x-aqlm, S-forum-sparkring, S-forum-glm52-8x-nvfp4, S-forum-glm52-200k-4x, S-forum-4xdgx-glm52, S-forum-glm52-sparkrun-4x
+> **updated:** 2026-08-19
 
 **GLM-5.2** is a 744B-parameter / ~40B-active MoE with sparse-MLA (DeepSeek-V4-class) attention and
 MTP speculative decoding support. It is one of the most-discussed large models on the DGX Spark forums
@@ -472,6 +472,7 @@ All numbers are **[conjecture]** or **[reported]** as noted. See `[[wiki/benchma
 || TP=8, official NVFP4 | NVFP4 (official nvidia) | 8 | 25 | 256K | S-forum-glm52-8x-nvfp4 |
 || TP=4, QuantTrio Int4-Int8Mix (unpruned) | Int4-Int8 mix | 4 | 27 (c1) / 52.5 (c4) | 200K | S-forum-glm52-200k-4x |
 || TP=4, ciprianveg gb10-glm-5.2:v18-vision | NVFP4 + DCP2 + NVFP4 KV | 4 | 25 | 300K | S-forum-4xdgx-glm52 |
+|| TP=4, QuantTrio Int4-Int8Mix, sparkrun | Int4-Int8 mix | 4 | 22.17 (c1) | 1M | S-forum-glm52-sparkrun-4x |
 
 **[reported]** GLM-5.2 decode on 4× Spark is consistently in the 20-25 tok/s range across multiple
 independent threads and quant formats (AWQ-INT4, NVFP4, Hybrid FP8+MXFP4) — the bottleneck is the
@@ -494,6 +495,28 @@ throughput, same bandwidth-bound regime.
   debate (GLM-5.2 vs DSv4-Flash for coding) with no additional durable technical
   findings. Single data point → [conjecture], but corroborates existing [reported]
   decode range.
+
+## sparkrun 4× recipe with vision + AIME25 (2026-08-19 ingest)
+
+- **[conjecture]** **Streamlined sparkrun recipe for GLM-5.2 Int4-Int8Mix on 4× Spark with 1M context +
+  vision** (S-forum-glm52-sparkrun-4x, davedgd): a stability-tested sparkrun recipe
+  (`davedgd/sparkrun-glm52-4x-spark`) using ciprianveg's Docker image and the
+  `QuantTrio/GLM-5.2-Int4-Int8Mix` text-only model. Supports adding the vision tower from
+  `baseten/GLM-5.2-Vision-NVFP4` (see S-forum-glm52-vision for the projector approach). Adaptive MTP
+  enabled out of the box. Engine: vLLM 0.11.2.dev280+gilded.gnosis.v18 (ciprianveg v18 lineage).
+  Builds on work by ciprianveg, CosmicRaisins, Zatz, tonyd615.
+  - **tool-eval-bench v2.5.1.dev31: 86/100** (53 pass, 12 partial, 4 fail; 118/138 pts;
+    responsiveness 33/100 median turn 4.7s; deployability 70/100 α=0.7; weakest category:
+    M Autonomous Planning 50%). Consistent with the existing hybrid-quant 86/100 v2 score
+    (S-forum-glm52-hybrid) — same model, different recipe lineage.
+  - **llama-benchy (pp2048/tg32, c1, 3 runs):** prefill 556.19 ± 27.75 tok/s, decode 22.17 ± 2.35
+    tok/s (peak 24.67), TTFT 3699 ± 191 ms. Decode consistent with the [reported] 20-25 tok/s
+    4× Spark range.
+  - **AIME25: 90%** (30/30, 57 tok/s avg, 290K tokens total, 84 min, thinking enabled, temp 1.0,
+    top-p 0.95). High-quality math reasoning result.
+  - **1M max context** — consistent with prior 4× Spark recipes using the Int4-Int8Mix quant.
+  - Single source → [conjecture]. Corroborates existing [reported] 4× Spark decode range and
+    existing tool-eval scores.
 
 ## See also
 

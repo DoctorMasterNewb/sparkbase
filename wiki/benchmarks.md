@@ -3,7 +3,7 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy, S-forum-muse-glimmer, S-forum-muse-glimmer-nvfp4-w4a4, S-forum-qwen38-27b-mixedint4
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy, S-forum-muse-glimmer, S-forum-muse-glimmer-nvfp4-w4a4, S-forum-qwen38-27b-mixedint4, S-forum-glm52-sparkrun-4x, S-forum-kexaone-236b
 > **updated:** 2026-08-19
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
@@ -1112,3 +1112,26 @@ thread (380248), not first-party.
 > DSpark 8-bit gives 28-35 tok/s on single Spark. The 2.56M-token KV pool at 1.01M context is the
 > standout — the 20.8 GB weight footprint leaves most of 121 GB UMA for KV cache. MMLU recovery
 > 99.32% (83.49→82.92%). See `[[wiki/models/qwen.md]]` → Qwen3.8-27B section.
+
+## Forum-reported benchmarks (2026-08-19 ingest, Batch 79)
+
+All rows below are **[conjecture]** — single-source community-reported numbers, not first-party.
+
+|| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+||---|---|---|---|---|---|---|---||
+|| GLM-5.2 (744B/40B MoE) | QuantTrio Int4-Int8Mix | vLLM 0.11.2.dev280 (ciprianveg v18, sparkrun) | 4 (TP=4) | 22.17 (c1, tg32) | 1M | pp2048 556 tok/s; TTFT 3699ms; tool-eval 86/100 v2.5.1.dev31; AIME25 90%; Adaptive MTP; vision tower optional (baseten/GLM-5.2-Vision-NVFP4) | S-forum-glm52-sparkrun-4x ||
+|| K-EXAONE-236B-A23B (237B/23B MoE) | Mixed-quant GGUF (IQ2_XXS+Q3_K+Q4_K+Q8) | ds4 (antirez fork, sm_121) | 1 | 10.51 (1.4K ctx) / 5.42 (16K ctx) | 262K | pp 53→42 tok/s; 85.56 GiB weights (5.16×); 103.95 GiB resident; LLLG sliding-window 48 KiB/token KV; MTP net loss; 16/16 OpenAI API validation checks pass | S-forum-kexaone-236b ||
+
+> **[conjecture]** **GLM-5.2 sparkrun recipe on 4× Spark** (S-forum-glm52-sparkrun-4x, davedgd):
+> 22.17 tok/s decode (tg32, c1) with the QuantTrio Int4-Int8Mix model via a streamlined sparkrun
+> recipe using ciprianveg's v18 Docker image. Consistent with the [reported] 20-25 tok/s 4× Spark
+> decode range. Tool-eval 86/100 and AIME25 90% are quality data points. 1M context confirmed.
+> See `[[wiki/models/glm-5.2.md]]` → sparkrun 4× recipe section.
+>
+> **[conjecture]** **K-EXAONE-236B-A23B on single Spark — largest unpruned model on one GB10**
+> (S-forum-kexaone-236b, Baekpica): 237B MoE (23B active) fits unpruned on a single DGX Spark at
+> full 262K context via the ds4 engine with mixed-quant GGUF (85.56 GiB, 5.16× compression). The
+> LLLG sliding-window attention schedule (48 KiB/token KV) is the key enabler — only 12/48 layers
+> hold full context. Decode 10.51 tok/s at short context, degrading to 5.42 tok/s at 16K —
+> consistent with bandwidth-bound decode for a 237B MoE at 2-4 bit on single GB10. MTP executes
+> but is a net loss. See `[[wiki/models/k-exaone-236b.md]]`.
