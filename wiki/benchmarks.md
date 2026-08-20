@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy, S-forum-muse-glimmer, S-forum-muse-glimmer-nvfp4-w4a4, S-forum-qwen38-27b-mixedint4, S-forum-glm52-sparkrun-4x, S-forum-kexaone-236b
-> **updated:** 2026-08-19
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy, S-forum-muse-glimmer, S-forum-muse-glimmer-nvfp4-w4a4, S-forum-qwen38-27b-mixedint4, S-forum-glm52-sparkrun-4x, S-forum-kexaone-236b, S-forum-qwen38-nvfp4-vs-fp8
+> **updated:** 2026-08-20
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
 anchor the rules on
@@ -1135,3 +1135,50 @@ All rows below are **[conjecture]** — single-source community-reported numbers
 > hold full context. Decode 10.51 tok/s at short context, degrading to 5.42 tok/s at 16K —
 > consistent with bandwidth-bound decode for a 237B MoE at 2-4 bit on single GB10. MTP executes
 > but is a net loss. See `[[wiki/models/k-exaone-236b.md]]`.
+
+## Forum-reported benchmarks (2026-08-20 ingest, Batch 81)
+
+All rows below are **[conjecture]** — single-source community-reported numbers, not first-party.
+
+||| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+||---|---|---|---|---|---|---|---|
+|| Qwen3.8-27B (dense) | Unsloth Dynamic NVFP4 (4-bit MLP + 8-bit attn + FP8 KV) | vLLM 0.27.1 | 1 | 87.91-134.41 (16 concurrent aggregate, peak 128-144) | — | 23.4 GB; 30-34% faster than Qwen FP8; KV ~5.6%; TPOT 120.60 ms (decode-heavy); TTFT 29,815 ms (prompt-heavy) | S-forum-qwen38-nvfp4-vs-fp8 ||
+|| Qwen3.8-27B (dense) | Qwen official FP8 (block 128, e4m3) | vLLM 0.27.1 | 1 | 65.58-104.44 (16 concurrent aggregate) | — | 30.9 GB; KV ~15%; TPOT 160.19 ms (decode-heavy); TTFT 36,904 ms (prompt-heavy) | S-forum-qwen38-nvfp4-vs-fp8 ||
+|| Qwen3.8-27B (dense) | FP8 + MTP nst=2, fp8 KV | vLLM (vllm/vllm-openai:latest) | 1 | ~10-12 (single-stream, real coding) | 212K | VLLM_USE_DEEP_GEMM=1, CUTE_DSL_ARCH=sm_121a; lazy safetensors; max-num-seqs 4; util 0.88 | S-forum-qwen38-nvfp4-vs-fp8 ||
+
+> **[conjecture]** **Qwen3.8-27B NVFP4 vs FP8 A/B on single Spark** (S-forum-qwen38-nvfp4-vs-fp8,
+> shahizat): a clean controlled A/B with vLLM 0.27.1, 16 concurrent prompts, identical flags.
+> Unsloth Dynamic NVFP4 (4-bit MLP + 8-bit attn + FP8 KV) is 30-34% faster than Qwen official
+> FP8 (block 128, e4m3) across all three workload types. NVFP4 model is 23.4 GB vs 30.9 GB FP8;
+> KV usage 5.6% vs 15%. This is a cross-quant comparison (NVFP4 vs FP8), not cross-vendor. The
+> result is consistent with the proven "fewer weight bytes = faster decode" rule for bandwidth-
+> bound dense models — NVFP4's 4-bit MLP weights are smaller than FP8's 8-bit. Single-stream
+> decode ~10-12 tok/s (racerdude, real coding tasks) confirms the bandwidth-bound dense 27B
+> ceiling. Also tested on Jetson Thor with similar results (TPOT -26-30%, throughput +36-46%).
+> See `[[wiki/models/qwen.md]]` → Qwen3.8-27B NVFP4 vs FP8 section.
+
+### DeepSeek-V4-Flash-0731 local vs cloud HumanEval (2026-08-20)
+
+**[conjecture]** — single-source quality benchmark, not a tok/s benchmark. S-forum-dsv4-humaneval.
+
+- **[conjecture]** **DSV4-Flash-0731 local vLLM on 2× Spark matches or exceeds cloud quality on
+  HumanEval** (S-forum-dsv4-humaneval, florianbrede): a controlled HumanEval benchmark
+  (inspect-ai 0.3.253, inspect-evals 0.16.0, 164 problems, pass@1 official verify scorer):
+
+  | Endpoint | Serving | Sampling | Pass@1 |
+  |---|---|---|---|
+  | Local vLLM (2× Spark TP2, eugr/spark-vllm-b12x) | vLLM 0.1.dev19023+g30038602b, 200 Gb/s CX-7 | temp 1.0, top_p 0.95, reasoning=max | **96.3%** (158/164) |
+  | OpenRouter (cloud) | hosted deepseek/deepseek-v4-flash-0731 | temp 1.0, top_p 0.95, reasoning=max | **95.1%** (156/164) |
+  | OpenRouter (sensitivity) | hosted | temp 0.8 | 90.9% (149/164) |
+
+  Local serving config: `max_model_len` auto (observed 1,048,576), `max_num_batched_tokens=4096`,
+  `max_num_seqs=6`, `long_prefill_token_threshold=1024`, prefix-cache retention 4096, partial-
+  prefill 1/1/0, DSpark k5. Model: `deepseek-ai/DeepSeek-V4-Flash-0731` @ rev 7872f01b. 0 errors /
+  0 timeouts on all legs. Local concurrency=1, OpenRouter concurrency=10.
+
+  **GB10 relevance:** this is the first reported controlled HumanEval A/B comparing a local
+  quantized DSV4-Flash-0731 deployment on 2× DGX Spark against the hosted cloud API. The local
+  deployment (96.3%) matches or slightly exceeds the cloud version (95.1%) at the same sampling
+  parameters. This corroborates the community claim (0rand) that "good local quant outperforms
+  cloud version every single time" when properly configured. The eugr/spark-vllm-b12x image
+  with DSpark k5 is the serving stack. Single source → [conjecture].

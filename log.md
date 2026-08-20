@@ -2,6 +2,61 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-20 — Forum ingest: Batch 81 — 6 new topics (4 processed, 2 skipped)
+
+- **Sources:** 6 new forum topics found by fetch_new_topics.py. 4 technically
+  relevant, 2 skipped (380579 Jupyter Notebook missing — UI issue; 380553 Recipe
+  Atlas — link announcement, no durable findings). 4 new sources registered
+  (Batch 81) in `sources/README.md`: S-forum-qwen38-nvfp4-vs-fp8,
+  S-forum-ds4f-qwen38-orchestration, S-forum-uefi-capsule-password,
+  S-forum-dsv4-humaneval. 6 topic IDs added to `processed_topics.txt`
+  (total now 640).
+- **Topics found:**
+  - 380258 (Qwen3.8-27B NVFP4 vs FP8 performance) — **processed**. 8-post
+    thread, 2514 views. Clean A/B benchmark on single DGX Spark, vLLM 0.27.1,
+    16 concurrent. Unsloth Dynamic NVFP4 (4-bit MLP + 8-bit attn + FP8 KV)
+    30-34% faster than Qwen official FP8 across all workloads (87.91-134.41
+    vs 65.58-104.44 tok/s aggregate). Model 23.4 vs 30.9 GB. Consistent with
+    proven "fewer weight bytes = faster decode" for bandwidth-bound dense 27B.
+    racerdude reports ~10-12 tok/s single-stream on real coding tasks (confirms
+    dense 27B bandwidth ceiling). Also tested on Jetson Thor with similar
+    NVFP4 advantage (TPOT -26-30%, throughput +36-46%). FP8 recipe with MTP
+    nst=2, fp8 KV, VLLM_USE_DEEP_GEMM=1, CUTE_DSL_ARCH=sm_121a documented.
+    S-forum-qwen38-nvfp4-vs-fp8. → models/qwen, benchmarks.
+  - 380426 (DeepSeek flash v4 with Qwen3.8-27B) — **processed**. 11-post
+    thread, 1586 views. Multi-model orchestration on 3+ DGX Sparks. "Virtual
+    MoE" pattern: DS4F on 2 Sparks as architect/coder + Qwen 27B on 3rd Spark
+    as code reviewer (finds deep logic errors 122B misses). Qwen3.8-27B too
+    talkative for Hermes agent harness; Qwen3.6-27B better auxiliary.
+    stu.miller uses 122B (not 35B) on 3rd Spark — 35B loops more in review
+    iterations. 3-Spark allocation: 2× main LLM TP=2, 1× aux models.
+    S-forum-ds4f-qwen38-orchestration. → models/qwen, engines.
+  - 380503 (DGX Spark Capsule Firmware Update Blocked by UEFI Administrator
+    Password Never Set) — **processed**. 2-post thread, 101 views. After
+    standard fwupdmgr upgrade (EC 0x03000302→0x03000508, UEFI SoC
+    0x0200980f→0x02009b0b), reboot stops at "Capsule Update / Enter Admin
+    Password" blue screen. User never set a UEFI admin password. 3-cycle
+    behavior (3×3 failed attempts → normal login). NVIDIA staff (aniculescu)
+    confirms no reset/clear method exists, recommends RMA. Distinct from
+    S-forum-opal-uefi (which involved unexpected shutdown corrupting existing
+    password). Extends UEFI/firmware update fragility pattern.
+    S-forum-uefi-capsule-password. → platform-gb10.
+  - 379560 (Full Bench Comparison of On Prem Deepseek 4 Flash 0731 vs
+    DeepSeek.com) — **processed**. 5-post thread, 606 views. Controlled
+    HumanEval benchmark: local vLLM on 2× Spark (eugr/spark-vllm-b12x,
+    TP=2, 200 Gb/s CX-7) achieves 96.3% pass@1 (158/164) vs OpenRouter cloud
+    95.1% (156/164) at identical sampling (temp 1.0, top_p 0.95,
+    reasoning=max). Serving config: max_num_batched_tokens=4096, max_num_seqs=6,
+    DSpark k5, prefix-cache retention 4096. 0 errors/timeouts. First
+    controlled HumanEval A/B of local DSV4-Flash-0731 on 2× Spark vs cloud.
+    S-forum-dsv4-humaneval. → engines, benchmarks.
+- **Pages touched:** models/qwen (Qwen3.8-27B NVFP4 vs FP8 A/B + multi-model
+  orchestration sections [conjecture]), platform-gb10 (UEFI capsule password
+  [conjecture]), engines (DSV4 HumanEval quality + multi-model orchestration
+  [conjecture]), benchmarks (3 new [conjecture] rows + HumanEval quality
+  table), sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+
 ## 2026-08-20 — Forum ingest: Batch 80 — 2 new topics (2 processed)
 
 - **Sources:** 2 new forum topics found by fetch_new_topics.py. Both technically

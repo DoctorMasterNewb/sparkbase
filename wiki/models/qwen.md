@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x, S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train, S-forum-moe-lora-vllm, S-forum-qlora-coding, S-forum-macaron-v1-tall, S-forum-qwen36-tp2-stall, S-forum-kat-coder-autoround, S-forum-qwen38-27b-mixedint4
-> **updated:** 2026-08-19
+> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x, S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train, S-forum-moe-lora-vllm, S-forum-qlora-coding, S-forum-macaron-v1-tall, S-forum-qwen36-tp2-stall, S-forum-kat-coder-autoround, S-forum-qwen38-27b-mixedint4, S-forum-qwen38-nvfp4-vs-fp8, S-forum-ds4f-qwen38-orchestration
+> **updated:** 2026-08-20
 
 The best-supported family on GB10 — both Atlas (AOT kernels for the MoE variants) and vLLM serve it.
 The recurring lesson: **MoE-A3B NVFP4 + MTP is the fastest regime on Spark; the dense variant of the
@@ -651,3 +651,117 @@ layers at higher precision) achieves 99.32% MMLU recovery — a quality-first qu
 strategy for dense models where speed is already capped by bandwidth. The 2.56M-token
 KV pool at 1.01M context is notable — the 20.8 GB weight footprint leaves most of the
 121 GB UMA for KV cache, enabling very long context on single Spark.
+
+## Forum ingest: Qwen3.8-27B NVFP4 vs FP8 A/B benchmark (2026-08-20)
+
+> **evidence:** conjecture (single forum source, well-controlled A/B)
+> **sources:** S-forum-qwen38-nvfp4-vs-fp8
+
+A clean A/B benchmark (380258, 2514 views, 8 posts) comparing two quantizations of
+Qwen3.8-27B (dense) on a single DGX Spark, vLLM 0.27.1, 16 concurrent prompts,
+identical flags:
+
+- **Qwen/Qwen3.8-27B-FP8** — fine-grained FP8 (block 128, e4m3), official Qwen FP8 build
+- **unsloth/Qwen3.8-27B-NVFP4** — Unsloth Dynamic NVFP4 (4-bit MLP + 8-bit attention + FP8 KV cache)
+
+- **[conjecture]** **Unsloth Dynamic NVFP4 is 30-34% faster than Qwen official FP8 on
+  dense 27B at 16 concurrent** (S-forum-qwen38-nvfp4-vs-fp8, shahizat): across all three
+  workload types (prompt-heavy, decode-heavy, balanced), the NVFP4 model consistently
+  outperforms the FP8 model on aggregate output throughput:
+
+  | Scenario (16 concurrent) | FP8 tok/s | NVFP4 tok/s | NVFP4 gain |
+  |---|---|---|---|
+  | Prompt-heavy (8k→1k) | 65.58 | 87.91 (peak 128) | +34% |
+  | Decode-heavy (1k→8k) | 99.47 | 132.07 (peak 144) | +33% |
+  | Balanced (1k→1k) | 104.44 | 134.41 (peak 144) | +29% |
+
+  NVFP4 also wins on latency: TTFT prompt-heavy 29,815 ms vs 36,904 ms; TPOT decode-heavy
+  120.60 ms vs 160.19 ms. Model size: 23.4 GB NVFP4 vs 30.9 GB FP8. KV-cache usage at
+  decode-heavy: ~5.6% NVFP4 vs ~15% FP8. Single source → [conjecture].
+
+  **GB10 relevance:** this is a dense model (all 27B params/token). The proven bandwidth-
+  bound decode ceiling for 27B dense at FP8 is ~10 tok/s single-stream (measured 7.8
+  baseline, S-forum-qwen36-27b-fp8). At 16 concurrent the aggregate numbers reflect batch-
+  amortized bandwidth: NVFP4's smaller weight footprint (23.4 vs 30.9 GB) means fewer bytes
+  per token, confirming the proven "fewer weight bytes = faster decode" rule. The NVFP4
+  model is 4-bit MLP + 8-bit attention — fewer bytes on the bandwidth-dominant MLP layers.
+  Single-stream decode from racerdude: ~10-12 tok/s on real coding tasks (medium thinking),
+  consistent with the bandwidth-bound ceiling.
+
+- **[conjecture]** **FP8 recipe with MTP nst=2 on single Spark** (S-forum-qwen38-nvfp4-vs-fp8,
+  racerdude): working Docker recipe for Qwen3.8-27B-FP8:
+  ```
+  docker run -it --gpus all --ipc=host -p 8000:8000 \
+    -e HF_TOKEN="${HF_TOKEN}" -e MAX_JOBS=4 \
+    -e VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS="0" \
+    -e VLLM_USE_DEEP_GEMM="1" -e CUTE_DSL_ARCH=sm_121a \
+    -v ~/.cache/huggingface:/root/.cache/huggingface \
+    vllm/vllm-openai:latest Qwen/Qwen3.8-27B-FP8 \
+    --host 0.0.0.0 --port 8000 --tensor-parallel-size 1 \
+    --kv-cache-dtype fp8 --safetensors-load-strategy lazy \
+    --enable-auto-tool-choice --tool-call-parser qwen3_coder \
+    --reasoning-parser qwen3 --served-model-name qwen \
+    --speculative-config '{"method":"mtp","num_speculative_tokens":2}' \
+    --max-num-seqs 4 --max-model-len 212992 --max-num-batched-tokens 8192 \
+    --gpu-memory-utilization 0.88 --enable-chunked-prefill --trust-remote-code
+  ```
+  Uses stock `vllm/vllm-openai:latest` with `VLLM_USE_DEEP_GEMM=1` and
+  `CUTE_DSL_ARCH=sm_121a`. MTP nst=2, fp8 KV, lazy safetensors loading. Single source.
+
+- **[conjecture]** **Jetson Thor shows similar NVFP4 advantage** (S-forum-qwen38-nvfp4-vs-fp8,
+  shahizat): the same A/B on NVIDIA Jetson Thor shows NVFP4 winning on every metric —
+  TPOT reductions of 26-30%, total throughput gains of 36-46%. This suggests the NVFP4
+  advantage is not GB10-specific but extends to other memory-bandwidth-bound ARM+NVIDIA
+  platforms. Single source → [conjecture], but the consistency across two platforms
+  strengthens the directional finding.
+
+  **Note on Unsloth NVFP4 context:** the existing [reported] finding (S-forum-unsloth-qwen36,
+  3 independent benchmarks) shows Unsloth NVFP4 is ~15% *slower* than nvidia NVFP4 for the
+  **MoE** Qwen3.6-35B-A3B. This new benchmark compares Unsloth NVFP4 against Qwen **FP8**
+  (not nvidia NVFP4) for the **dense** Qwen3.8-27B. The comparison is cross-quant (NVFP4 vs
+  FP8), not cross-vendor (Unsloth vs nvidia NVFP4). The result is consistent with the proven
+  "fewer bytes = faster" rule — NVFP4's 4-bit MLP weights are smaller than FP8's 8-bit, and
+  for a bandwidth-bound dense model that's the dominant factor. No contradiction with the
+  Unsloth-vs-nvidia NVFP4 finding.
+
+## Forum ingest: Multi-model orchestration on 3+ DGX Sparks (2026-08-20)
+
+> **evidence:** conjecture (single forum thread, multiple users sharing deployment patterns)
+> **sources:** S-forum-ds4f-qwen38-orchestration
+
+A forum thread (380426, 1586 views, 11 posts) on combining DeepSeek-V4-Flash with
+Qwen3.8-27B across multiple DGX Sparks under a Hermes agent harness. While primarily
+an orchestration discussion, it contains several durable deployment-pattern findings.
+
+- **[conjecture]** **"Virtual MoE" pattern: DS4F as architect + Qwen 27B as reviewer**
+  (S-forum-ds4f-qwen38-orchestration, ajvazan): on 3× Spark, the OP runs DS4F on 2 Sparks
+  as the main model, Qwen3.6-35B-A3B on the 3rd for subagents/small vision, and Qwen3.8-27B
+  in low-reasoning mode for code review and backup vision. The pattern: DS4F as
+  architect/planner/coder, Qwen 27B as reviewer for deep logic error detection after DS4F's
+  output. The OP reports Qwen 27B finds deep logic errors that 122B misses during code
+  review. Single source → [conjecture].
+
+- **[conjecture]** **Qwen3.8-27B too talkative for Hermes agent harness — Qwen3.6-27B better
+  auxiliary** (S-forum-ds4f-qwen38-orchestration, ajvazan): the new Qwen3.8 model is "very
+  talkative and goes beyond the standard limits of Hermes," making it less suitable as an
+  auxiliary model in agent frameworks with token limits. Qwen3.6-27B is recommended as
+  the additional model instead. This is a model-behavior finding relevant to Spark users
+  running multi-model agent setups (e.g. Hermes, Claude Code with custom endpoints).
+  Single source → [conjecture].
+
+- **[conjecture]** **122B on 3rd Spark beats 35B for coding aux role** (S-forum-ds4f-qwen38-
+  orchestration, stu.miller): stu.miller uses DS4F on 2 Sparks + Qwen3.5-122B on the 3rd
+  Spark for coding/vision (via a Hermes core hack for delegation). The 35B-A3B "ended up
+  taking longer than 122b on most tasks due to looping or failing the adversarial review
+  step." This contradicts the speed-first intuition (35B MoE is faster per-token) —
+  for agentic workloads with review loops, the larger 122B's higher quality reduces total
+  iterations. Single source → [conjecture]. See the existing 122B "king model" finding
+  (S-forum-qwen122-king, [reported]).
+
+- **[conjecture]** **3-Spark resource allocation pattern: 2× for main LLM, 1× for aux**
+  (S-forum-ds4f-qwen38-orchestration, ajvazan + Ama5u): common deployment topology for
+  3× Spark: 2 Sparks for the main large model (DS4F TP=2), 1 Spark for auxiliary models
+  (subagents, vision, cron tasks, code review). With 4 Sparks, the 4th can be dedicated
+  to media generation (e.g. MiniMax-H3). This is a practical GB10-specific allocation
+  pattern — each 121 GB node can serve one model at a time (single-tenant constraint),
+  so multi-model setups require multi-node. Single source → [conjecture].

@@ -41,6 +41,40 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-20 (Batch 81)
+- 6 new NVIDIA DGX Spark forum topics found, 4 technically relevant (2 skipped:
+  Jupyter Notebook missing — UI issue, no GB10 findings; Recipe Atlas — link/tool
+  announcement, no durable findings).
+- 4 new sources registered (Batch 81). 6 topic IDs added to processed_topics.txt
+  (total now 640).
+- **Headline finding 1:** Qwen3.8-27B NVFP4 vs FP8 A/B on single DGX Spark —
+  Unsloth Dynamic NVFP4 (4-bit MLP + 8-bit attn + FP8 KV) is 30-34% faster than
+  Qwen official FP8 at 16 concurrent across all workload types (87.91-134.41
+  vs 65.58-104.44 tok/s aggregate). Model 23.4 GB vs 30.9 GB. Consistent with
+  the proven "fewer weight bytes = faster decode" rule for bandwidth-bound
+  dense models. Also tested on Jetson Thor with similar results. Single-stream
+  ~10-12 tok/s confirms the dense 27B bandwidth ceiling. [conjecture].
+- **Headline finding 2:** DSV4-Flash-0731 local vLLM on 2× Spark matches cloud
+  quality on HumanEval — local 96.3% (158/164) vs OpenRouter 95.1% (156/164),
+  identical sampling (temp 1.0, top_p 0.95, reasoning=max). First controlled
+  HumanEval A/B of local DSV4-Flash-0731 vs cloud API. eugr/spark-vllm-b12x
+  with DSpark k5. [conjecture].
+- **Headline finding 3:** Multi-model orchestration on 3+ Sparks — "virtual MoE"
+  pattern: DS4F as architect + Qwen 27B as reviewer. Qwen3.8-27B too talkative
+  for Hermes agent harness; Qwen3.6-27B better auxiliary. 122B beats 35B for
+  coding aux role (fewer review-loop iterations). 3-Spark allocation: 2× main
+  LLM TP=2, 1× aux models. [conjecture].
+- **Headline finding 4:** UEFI Capsule Update blocked by admin password never
+  set — fwupdmgr upgrade completes but reboot stops at "Enter Admin Password"
+  blue screen. NVIDIA confirms no reset method, recommends RMA. Distinct from
+  S-forum-opal-uefi (no password was ever set here). Extends UEFI/firmware
+  update fragility pattern. [conjecture].
+- Pages touched: models/qwen (Qwen3.8-27B NVFP4 vs FP8 A/B + orchestration
+  [conjecture]), platform-gb10 (UEFI capsule password [conjecture]), engines
+  (DSV4 HumanEval quality + multi-model orchestration [conjecture]), benchmarks
+  (3 new [conjecture] rows + HumanEval quality table), sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+
 ## Forum ingest 2026-08-20 (Batch 80)
 - 2 new NVIDIA DGX Spark forum topics found, both technically relevant.
 - 2 new sources registered (Batch 80). 2 topic IDs added to processed_topics.txt

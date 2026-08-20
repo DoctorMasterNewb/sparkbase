@@ -3,7 +3,7 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet, S-forum-dragonscale, S-forum-openpangu, S-forum-glm52-200k-4x, S-forum-dsv4-qwen-vision, S-forum-pilco-mmbridge, S-forum-dsv4-0731-b12x-hang, S-forum-mediallmproxy, S-forum-dsv4-agent-serving
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet, S-forum-dragonscale, S-forum-openpangu, S-forum-glm52-200k-4x, S-forum-dsv4-qwen-vision, S-forum-pilco-mmbridge, S-forum-dsv4-0731-b12x-hang, S-forum-mediallmproxy, S-forum-dsv4-agent-serving, S-forum-dsv4-humaneval, S-forum-ds4f-qwen38-orchestration
 > **updated:** 2026-08-20
 
 Three engines run on the Spark pair; pick by arch support and quant.
@@ -1178,3 +1178,42 @@ Three engines run on the Spark pair; pick by arch support and quant.
   agent-serving: on a 2× Spark serving DSV4-Flash-0731 with DSpark, mnbt is
   the key knob for decode fairness during long prefills, and lower values
   (2048) favor concurrent agents over raw prefill throughput.
+
+## Forum ingest: DSV4-Flash-0731 local vs cloud quality — HumanEval (2026-08-20)
+
+> **evidence:** conjecture (single forum source)
+> **sources:** S-forum-dsv4-humaneval
+
+- **[conjecture]** **DSV4-Flash-0731 local vLLM on 2× Spark matches cloud quality on HumanEval**
+  (S-forum-dsv4-humaneval, florianbrede): a controlled HumanEval benchmark (inspect-ai 0.3.253,
+  inspect-evals 0.16.0, 164 problems, pass@1 official verify scorer) shows local 2× Spark
+  deployment (eugr/spark-vllm-b12x image, vLLM 0.1.dev19023+g30038602b, 200 Gb/s CX-7, TP=2)
+  achieves 96.3% (158/164) — matching or exceeding OpenRouter cloud at 95.1% (156/164) with
+  identical sampling (temp 1.0, top_p 0.95, reasoning=max). Serving config:
+  `max_num_batched_tokens=4096`, `max_num_seqs=6`, `long_prefill_token_threshold=1024`,
+  prefix-cache retention 4096, partial-prefill 1/1/0, DSpark k5. 0 errors / 0 timeouts.
+
+  **GB10 relevance:** first controlled HumanEval A/B of local DSV4-Flash-0731 on 2× Spark
+  vs cloud API. The local quantized deployment matches cloud quality — the eugr/spark-vllm-b12x
+  image with DSpark k5 preserves model quality. This corroborates the broader community pattern
+  (0rand) that properly configured local quants match or beat cloud quality, and adds a
+  controlled benchmark data point. See `[[wiki/benchmarks.md]]` → DSV4 HumanEval section
+  for the full table. Single source → [conjecture].
+
+## Forum ingest: Multi-model orchestration on 3+ Sparks (2026-08-20)
+
+> **evidence:** conjecture (single forum thread, multiple users)
+> **sources:** S-forum-ds4f-qwen38-orchestration
+
+- **[conjecture]** **"Virtual MoE" multi-model deployment pattern on 3× Spark**
+  (S-forum-ds4f-qwen38-orchestration, ajvazan + stu.miller): a common deployment pattern
+  for 3+ DGX Sparks: 2 Sparks for the main large model (e.g. DS4F TP=2) and 1 Spark for
+  auxiliary models (subagents, vision, code review, cron tasks). The "virtual MoE" pattern
+  uses DS4F as architect/planner and a smaller Qwen model as reviewer — the OP reports
+  Qwen 27B finds deep logic errors that 122B misses. However, Qwen3.8-27B is too talkative
+  for Hermes agent harness token limits; Qwen3.6-27B is the better auxiliary. stu.miller
+  uses 122B (not 35B) on the 3rd Spark for coding aux because the 35B "ended up taking
+  longer than 122b on most tasks due to looping or failing the adversarial review step."
+  This is a GB10-specific deployment finding: single-tenant per-node constraint means
+  multi-model setups require multi-node. See `[[wiki/models/qwen.md]]` → orchestration
+  section. Single source → [conjecture].

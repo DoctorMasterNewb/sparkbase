@@ -3,7 +3,7 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma, S-forum-fan-headless-boot, S-forum-suspend-fail, S-forum-hdmi-hotplug-ab, S-forum-usbc-dp-hpd, S-forum-gx10-fw-recovery
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma, S-forum-fan-headless-boot, S-forum-suspend-fail, S-forum-hdmi-hotplug-ab, S-forum-usbc-dp-hpd, S-forum-gx10-fw-recovery, S-forum-uefi-capsule-password
 > **updated:** 2026-08-20
 
 The hardware facts every model bring-up assumes. Read this first.
@@ -316,6 +316,23 @@ only after unexplained slow tok/s).
   locked out — cannot disable secure boot or authorize capsule updates post-reimage. Appears to
   be a UEFI corruption from the unexpected shutdown. Second identical Spark unaffected. **Status:**
   `open` — no known workaround for the firmware update lockout.
+- **[conjecture]** **Capsule Update blocked by UEFI Administrator Password never set — no reset
+  method, RMA required** (S-forum-uefi-capsule-password, burnsy56): after a standard
+  `fwupdmgr upgrade` (EC 0x03000302→0x03000508, UEFI SoC 0x0200980f→0x02009b0b — the same
+  firmware versions as S-forum-fw-july2026), the reboot stops at a blue "Capsule Update /
+  Enter Admin Password" screen. The user never configured a UEFI Administrator Password.
+  After 3 cycles of 3 failed password attempts each (including empty submissions), the
+  system proceeded to normal login — but the capsule update status is unknown. NVIDIA
+  Customer Care escalated via case #260816-000170; NVIDIA staff (aniculescu) confirms
+  there is currently **no method to reset or clear the admin password** and recommends
+  RMA. This is a distinct failure mode from S-forum-opal-uefi (which involved an unexpected
+  shutdown corrupting an existing password): here, no password was ever set, yet the
+  capsule update demands one. The firmware update packages involved (dgx-spark-ota-update-meta
+  26.03.1→26.04.1, dgx-dashboard 0.23.3→0.29.1, nvidia-spark-ota-check 1.0.16-1 new) are
+  standard DGX OS OTA updates. **Status:** `open` — users hitting this should contact NVIDIA
+  support; do not attempt to bypass the password prompt. Corroborates the broader pattern
+  of UEFI/firmware update fragility on DGX Spark (S-forum-opal-uefi, S-forum-gx10-fw-recovery,
+  S-forum-uefi-fw-fail).
 - **[conjecture]** **GB10 internal display controller has a 165 MHz max pixel clock** (S-forum-sunshine-rdp,
   LsDmTandAI): this limits headless remote desktop streaming via Sunshine — 4K@60 is impossible,
   1440p@120Hz is the best achievable. Relevant for users extending Spark beyond SSH/CLI to native
