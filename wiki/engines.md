@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet, S-forum-dragonscale, S-forum-openpangu, S-forum-glm52-200k-4x, S-forum-dsv4-qwen-vision, S-forum-pilco-mmbridge, S-forum-dsv4-0731-b12x-hang, S-forum-mediallmproxy
-> **updated:** 2026-08-18
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet, S-forum-dragonscale, S-forum-openpangu, S-forum-glm52-200k-4x, S-forum-dsv4-qwen-vision, S-forum-pilco-mmbridge, S-forum-dsv4-0731-b12x-hang, S-forum-mediallmproxy, S-forum-dsv4-agent-serving
+> **updated:** 2026-08-20
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -1154,3 +1154,27 @@ Three engines run on the Spark pair; pick by arch support and quant.
   VL on llama.cpp is a durable GB10 data point — tiny VLM co-located on Spark
   RAM without impacting inference workload. Single source, production-deployed
   → [conjecture].
+
+### Batch 80 forum ingest (2026-08-20)
+
+- **[conjecture]** **`--max-num-batched-tokens` is both a jitter lever AND a
+  fairness lever for agent-serving on 2× Spark** (S-forum-dsv4-agent-serving,
+  svangenstudios): A corrected A/B benchmark on DSV4-Flash-0731 (2× Spark, 262K
+  prompt, 3 reps per profile) shows that `--max-num-batched-tokens 2048`
+  delivers **2.9× the decode share** during a long prefill vs 8192 (median 5.0%
+  vs 1.7%). An ongoing decode stream receives ~1.9 tok/s at mnbt=2048 vs ~0.6
+  tok/s at mnbt=8192 while a 262K-token prefill runs — both are severe
+  starvation, but the 3.1× decode-token difference is operationally significant
+  for agent workloads. Prefill cost at 2048: -7.7% (1,462 vs 1,584 tok/s).
+  **The OP originally published 7.1%/7.3% decode-share numbers and retracted
+  them** — three instrument faults were found and corrected: (1) SSE event
+  count ≠ token count (spec-decode chunks contain multiple accepted tokens,
+  mean 2.50 tokens/chunk on this stack), (2) the "during prefill" window
+  selector was a no-op that mixed in undisturbed head/tail decode, (3) the
+  reference was cold and included TTFT (warm decode measured 21.3 tok/s vs
+  old 17.1 tok/s). 0rand (reply) suggests prefill batch size also influences
+  MTP acceptance — flagged for measurement. Single source (corrected
+  self-review) → [conjecture]. This is a durable GB10-specific finding for
+  agent-serving: on a 2× Spark serving DSV4-Flash-0731 with DSpark, mnbt is
+  the key knob for decode fairness during long prefills, and lower values
+  (2048) favor concurrent agents over raw prefill throughput.

@@ -41,6 +41,25 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-20 (Batch 80)
+- 2 new NVIDIA DGX Spark forum topics found, both technically relevant.
+- 2 new sources registered (Batch 80). 2 topic IDs added to processed_topics.txt
+  (total now 634).
+- **Headline finding 1:** `--max-num-batched-tokens` is both a jitter lever AND
+  a fairness lever for agent-serving on 2× Spark (DSV4-Flash-0731). Corrected
+  A/B benchmark (3 instrument faults found and fixed): mnbt=2048 delivers 2.9×
+  the decode share during long prefill vs 8192 (5.0% vs 1.7%); ongoing stream
+  gets ~1.9 tok/s vs ~0.6 tok/s. Prefill cost -7.7%. Durable GB10-specific
+  scheduling finding for agent workloads. [conjecture].
+- **Headline finding 2:** ASUS GX10 firmware recovery from bricked state after
+  interrupted apt update — firmware flash cycles through SoC→BIOS→EC resets,
+  looks hung, power-cycling mid-flash bricks it. Recovery: power-drain reset
+  (60s hold) or stock Ubuntu 24.04 arm64 live USB + manual capsule staging onto
+  EFI partition. Official rescue image black-screens. [conjecture].
+- Pages touched: engines (mnbt fairness lever [conjecture]), platform-gb10
+  (GX10 firmware recovery [conjecture]), sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+
 ## Forum ingest 2026-08-19 (Batch 79)
 - 4 new NVIDIA DGX Spark forum topics found, 2 technically relevant (2 skipped: DeepSeek
   Harness Preview — agent framework link, no GB10 findings; Thermal Performance — DIY

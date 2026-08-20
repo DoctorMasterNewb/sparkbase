@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma, S-forum-fan-headless-boot, S-forum-suspend-fail, S-forum-hdmi-hotplug-ab, S-forum-usbc-dp-hpd
-> **updated:** 2026-08-18
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma, S-forum-fan-headless-boot, S-forum-suspend-fail, S-forum-hdmi-hotplug-ab, S-forum-usbc-dp-hpd, S-forum-gx10-fw-recovery
+> **updated:** 2026-08-20
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -2012,3 +2012,45 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   thread (3 users, 2 confirmers + 1 non-reproducer) → [conjecture]. New
   durable GB10 platform bug: USB-C DP HPD only runs once in a narrow early-boot
   window. No software workaround — requires physical replug.
+
+### Batch 80 forum ingest (2026-08-20)
+
+- **[conjecture]** **ASUS GX10 firmware recovery from bricked state —
+  interrupted firmware flash bricks the unit; manual capsule recovery without
+  RMA** (S-forum-gx10-fw-recovery, aquaponicCowboy + Neill): Two ASUS Ascent
+  GX10 units froze on the ASUS splash screen after `apt update && apt upgrade`.
+  Root cause: the firmware flash takes several minutes and cycles through
+  multiple resets (SoC → BIOS → EC); it **looks hung partway through**, and
+  power-cycling during the flash is what bricks it. This is the lethal
+  combination — the firmware update itself isn't fatal, but an interrupted
+  reboot mid-flash is. NVIDIA staff (Neill) confirms the multi-reset flash
+  behavior is expected, especially via USB-C→HDMI (multiple blank-screen
+  periods). **Key takeaway: never power-cycle during a firmware update — wait
+  patiently through all blank screens.**
+
+  **Recovery procedure (no data loss, no RMA):**
+  1. **Power-drain reset** (try first): unplug, hold power button ~60s,
+     reconnect, power on. Revived 1 of 2 units.
+  2. If drain reset fails: the official GX10 recovery/rescue image
+     **black-screens** on both installer and rescue options (can reach GRUB but
+     selecting either → black screen). A **stock Ubuntu 24.04 arm64 live USB**
+     boots fine — use "Try Ubuntu" for a working terminal. (Must be aarch64 —
+     GX10 is Grace-Blackwell ARM.)
+  3. From the live session: confirm `efivars` accessible
+     (`ls /sys/firmware/efi/efivars`), mount the internal EFI System Partition
+     (FAT32 on NVMe, e.g. `nvme0n1p1`), stage the ASUS `.cap` firmware capsule
+     from a USB stick onto the ESP, arm `OsIndications` for capsule-on-disk,
+     reboot — the capsule flashes on next boot.
+  4. ASUS `.cap` capsules use **OS-driven capsule-on-disk**, not an in-BIOS
+     flash menu (ASUS support incorrectly directed to a non-existent BIOS
+     flash action).
+
+  Corroborates existing firmware-update findings: the power-controller wedge
+  pattern (S-forum-clock721, S-forum-power-crash, S-forum-gsp-reboot-jul2026)
+  where AC power disconnect is the fix; the fwupd capsule-on-disk flow
+  (S-forum-update-loop, S-forum-uefi-fw-fail); and the general guidance that
+  firmware updates require patience and full AC power cycles. New durable
+  data: (1) the official recovery image may black-screen — a stock arm64
+  Ubuntu live USB is a viable alternative; (2) manual capsule staging onto the
+  EFI partition from a live session is a working no-RMA recovery path for ASUS
+  GX10. Single thread (2 users: OP + NVIDIA staff) → [conjecture].

@@ -2,6 +2,52 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-20 — Forum ingest: Batch 80 — 2 new topics (2 processed)
+
+- **Sources:** 2 new forum topics found by fetch_new_topics.py. Both technically
+  relevant. 2 new sources registered (Batch 80) in `sources/README.md`:
+  S-forum-dsv4-agent-serving, S-forum-gx10-fw-recovery. 2 topic IDs added to
+  `processed_topics.txt` (total now 634).
+- **Topics found:**
+  - 378890 (Agent Serving on 2× DGX Spark with DeepSeek V4 Flash 0731: KV-cache,
+    scheduling, and UMA findings) — **processed**. 3-post thread, 1005 views.
+    Durable GB10-specific scheduling finding: a corrected A/B benchmark on
+    DSV4-Flash-0731 (2× Spark, 262K prompt, 3 reps per profile) shows
+    `--max-num-batched-tokens` is a fairness lever, not just a jitter lever.
+    mnbt=2048 delivers 2.9× the decode share during long prefill vs 8192 (median
+    5.0% vs 1.7%); an ongoing decode stream gets ~1.9 tok/s at 2048 vs ~0.6
+    tok/s at 8192. Prefill cost at 2048: -7.7% (1,462 vs 1,584 tok/s). The OP
+    originally published 7.1%/7.3% decode-share numbers and retracted them after
+    finding 3 instrument faults: (1) SSE event count ≠ token count (spec-decode
+    chunks contain multiple accepted tokens, mean 2.50 tokens/chunk), (2) the
+    "during prefill" window selector was a no-op, (3) the reference was cold and
+    included TTFT. 0rand (reply) suggests prefill batch size also influences MTP
+    acceptance — flagged for measurement. S-forum-dsv4-agent-serving.
+    → engines.
+  - 372063 (How i recovered from bricked ASUS GX10 apt updates using debian image
+    and reinstall bios (no data loss)) — **processed**. 2-post thread, 673 views.
+    Durable GB10 platform finding: two ASUS Ascent GX10 units bricked after
+    interrupted firmware update during apt upgrade. Root cause: firmware flash
+    cycles through SoC→BIOS→EC resets over minutes, looks hung, power-cycling
+    mid-flash bricks it. Recovery (no data loss, no RMA): (1) power-drain reset
+    (unplug + hold power 60s) revived 1 of 2 units; (2) official GX10 recovery
+    image black-screens but stock Ubuntu 24.04 arm64 live USB boots — from live
+    session, mount internal EFI partition, stage ASUS .cap capsule, arm
+    OsIndications, reboot to flash. ASUS .cap uses OS-driven capsule-on-disk, not
+    in-BIOS menu. NVIDIA staff (Neill) confirms multi-reset flash is expected.
+    Corroborates existing power-controller wedge and fwupd capsule patterns.
+    S-forum-gx10-fw-recovery. → platform-gb10.
+- **Pages touched:** engines (mnbt fairness lever for agent-serving
+  [conjecture]), platform-gb10 (GX10 firmware recovery + capsule-on-disk
+  recovery procedure [conjecture]), sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+  The mnbt fairness finding is a durable GB10-specific scheduling insight for
+  agent-serving workloads — a hardware agent could verify whether the 2.9×
+  decode-share ratio holds on their 2× Spark setup and whether it generalizes
+  beyond DSV4-Flash-0731. The firmware recovery procedure is a practical
+  platform finding extending the existing power-controller wedge pattern to
+  the interrupted-flash failure mode.
+
 ## 2026-08-19 — Forum ingest: Batch 79 — 4 new topics (2 processed, 2 skipped)
 
 - **Sources:** 4 new forum topics found by fetch_new_topics.py. 2 technically relevant, 2 skipped.
