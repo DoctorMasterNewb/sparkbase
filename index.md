@@ -41,6 +41,32 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-21 (Batch 82)
+- 7 new NVIDIA DGX Spark forum topics found, 3 technically relevant (4 skipped:
+  380676 GB10 Setup — domain allowlist question, no durable findings; 380600
+  Mid-sized Qwen — social/speculation; 379627 Proxmox VE — homelab/virtualization,
+  not LLM inference; 379550 DSpark benchmark — tested on 2× RTX PRO 6000
+  Blackwell, not on Spark).
+- 3 new sources registered (Batch 82). 7 topic IDs added to processed_topics.txt
+  (total now 646).
+- **Headline finding 1:** CX-7 QSFP port splitting (breakout) fails on DGX
+  Spark — `mlxconfig` exposes `NUM_OF_PF` and `MODULE_SPLIT_M<x>` params but only
+  the first QSFP lane establishes a link with a breakout cable. `devlink` reports
+  `splittable false`. mashie also observed phantom links on unused split lanes.
+  Only 200G QSFP112 DAC cables validated for Spark. [conjecture].
+- **Headline finding 2:** DGX Spark hardware crashes at ~75W and reboots —
+  `nvidia-smi -lgc 300,2100` clock cap fixes. Corroborates existing [reported]
+  clock-cap mitigation with a new independent user. [conjecture].
+- **Headline finding 3:** Field Diagnostics install fails with Signed-By apt
+  conflict — Field Diagnostics guide has a documentation error: incorrectly
+  instructs adding CUDA apt repo that DGX Spark OS already ships with under a
+  different keyring name. Fix: `sudo rm /etc/apt/sources.list.d/cuda-sbsa-
+  ubuntu2404.list`. NVIDIA staff (Neill) confirmed doc error. [conjecture].
+- Pages touched: multinode-tp-and-networking (CX-7 QSFP breakout [conjecture]),
+  platform-gb10 (75W crash clock-cap corroboration [conjecture] + fieldiag
+  signed-by doc error [conjecture]), sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+
 ## Forum ingest 2026-08-20 (Batch 81)
 - 6 new NVIDIA DGX Spark forum topics found, 4 technically relevant (2 skipped:
   Jupyter Notebook missing — UI issue, no GB10 findings; Recipe Atlas — link/tool

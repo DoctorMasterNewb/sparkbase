@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3, S-forum-mikrotik-cr804-042, S-forum-nfs-modelshare, S-forum-cx7-pcie-power, S-forum-4node-qrs812, S-forum-crs812-4node, S-forum-sparkring, S-forum-kernel-1029-rdma, S-forum-crs804-8x, S-forum-cx7-promisc
-> **updated:** 2026-08-18
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3, S-forum-mikrotik-cr804-042, S-forum-nfs-modelshare, S-forum-cx7-pcie-power, S-forum-4node-qrs812, S-forum-crs812-4node, S-forum-sparkring, S-forum-kernel-1029-rdma, S-forum-crs804-8x, S-forum-cx7-promisc, S-forum-cx7-qsfp-breakout
+> **updated:** 2026-08-21
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -559,6 +559,27 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
   finding that cross-node collectives are host-staged (the PCIe bus, not the link, is the
   ceiling). The CRS804 is the highest-density switch option for GB10 clusters (8× 200G on one
   1.6T switch). Single source (thread with ServeTheHome confirmation) → [conjecture].
+
+### Batch 82 forum ingest (2026-08-21)
+
+- **[conjecture]** **CX-7 QSFP port splitting (breakout) fails on DGX Spark — only the first
+  lane establishes a link** (S-forum-cx7-qsfp-breakout, steel-rat + mashie + isdias +
+  aniculescu): While `mlxconfig` exposes the `NUM_OF_PF` and `MODULE_SPLIT_M<x>` parameters
+  on the Spark's CX-7 (PSID NVD0000000087), and `devlink port show` reports `splittable
+  false` on all 4 interfaces, splitting a QSFP port into sub-lanes (e.g. 4×25G via an
+  FS Q-4S28A002 breakout cable) does **not work** — only the first QSFP lane establishes a
+  link. This limits applications (e.g. connecting multiple 25G RDMA cameras directly
+  without a switch) to 2 devices per Spark instead of the hoped-for 8. mashie observed a
+  related firmware quirk when splitting 2×100G: the unused lane pair (3-4) showed a
+  phantom link and was pingable from the active pair — suggesting CX-7 firmware has
+  incomplete lane isolation for split configurations. NVIDIA staff (aniculescu + isdias)
+  note this is **untested on Spark** — only 200G QSFP112 DAC cables are validated; split
+  cables have unvalidated power/thermal profiles. **Why it bites on Spark:** the GB10 CX-7
+  networking architecture maps one physical link to two OS-visible interfaces in a way
+  that makes standard ConnectX port-splitting tooling unreliable. The proven sub-port
+  splitting path (S-forum-kimi-k3-ceiling, mashie: 4×50G → 2×50G per QSFP port for 5-node
+  full mesh) appears to use MST/RouterOS-level splitting, not CX-7 `mlxconfig`
+  `MODULE_SPLIT`. Single source (6-post thread, 2 independent reporters) → [conjecture].
 
 ## See also
 `[[wiki/platform-gb10.md]]` · `[[wiki/cudagraphs-and-compile.md]]` · `[[wiki/llama-cpp-rpc.md]]` · `[[wiki/engines.md]]`

@@ -2,6 +2,72 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-21 — Forum ingest: Batch 82 — 7 new topics (3 processed, 4 skipped)
+
+- **Sources:** 7 new forum topics found by fetch_new_topics.py. 3 technically
+  relevant, 4 skipped. 3 new sources registered (Batch 82) in
+  `sources/README.md`: S-forum-cx7-qsfp-breakout, S-forum-75w-crash,
+  S-forum-fieldiag-signedby. 7 topic IDs added to `processed_topics.txt`
+  (total now 646).
+- **Topics found:**
+  - 349775 (Mellanox QSFP breakout) — **processed**. 6-post thread, 789 views.
+    CX-7 QSFP port splitting fails on DGX Spark. `mlxconfig` exposes
+    `NUM_OF_PF` and `MODULE_SPLIT_M<x>` on PSID NVD0000000087, but breakout
+    cables (FS Q-4S28A002) only establish a link on the first QSFP lane.
+    `devlink port show` reports `splittable false`. Only 200G QSFP112 DAC
+    cables validated for Spark. mashie observed phantom links on unused
+    split lanes when splitting 2×100G. NVIDIA staff (aniculescu, isdias)
+    note untested on Spark — split cables have unvalidated power/thermal
+    profiles. S-forum-cx7-qsfp-breakout. → multinode-tp-and-networking.
+  - 380676 (DGX Spark GB10 Setup) — **skipped**. 1-post thread, 52 views.
+    Domain allowlist question for cybersecurity proxy setup. No durable
+    GB10 technical findings (no flags, env vars, error strings, tok/s, quant
+    formats, or hardware configs). Network admin question.
+  - 380669 (DGX Spark system hardware crashes at around 75W) — **processed**.
+    1-post thread, 77 views. DGX Spark hard-crashes at ~75W and reboots
+    repeatedly. Fix: `sudo nvidia-smi -lgc 300,2100` (clock cap 2100 MHz).
+    Release: `sudo nvidia-smi -rgc`. Corroborates existing [reported]
+    clock-cap mitigation (S-forum-comfyui-crash 2100 MHz, S-forum-gpu-
+    throttle-cmd 2000 MHz, S-forum-power-90w 2200 MHz). ~75W crash threshold
+    consistent with power-controller overcurrent protection pattern.
+    S-forum-75w-crash. → platform-gb10.
+  - 380600 ("Mid-sized" Qwen is next?) — **skipped**. 5-post thread, 572
+    views. Model speculation/rumors about upcoming mid-size Qwen release.
+    No durable GB10 findings (no flags, env vars, tok/s, configs, or error
+    strings). Social/speculation thread.
+  - 380584 (DGX Spark Overheating While Idle, System Freezes and Field
+    Diagnostics Installation Error) — **processed**. 2-post thread, 95
+    views. Field Diagnostics install fails with apt Signed-By conflict:
+    documentation error in Field Diagnostics guide incorrectly instructs
+    adding CUDA apt repo, but DGX Spark OS already ships with it under
+    different keyring name (cuda_debian_prod.gpg vs cuda-archive-keyring.gpg).
+    Fix: `sudo rm /etc/apt/sources.list.d/cuda-sbsa-ubuntu2404.list && sudo
+    apt update`. NVIDIA staff (Neill) confirmed doc error. Thread also
+    reports idle overheating + inaudible fans + system freezes within 15
+    min of boot while downloading models in LM Studio — consistent with
+    existing [reported] fan-DPMS/overheating patterns but no new findings.
+    S-forum-fieldiag-signedby. → platform-gb10.
+  - 379627 (Running Proxmox VE on the NVIDIA DGX Spark) — **skipped**.
+    5-post thread, 338 views. Proxmox VE via Dockur container with
+    privileged:true and KVM. Homelab/virtualization use case, not LLM
+    inference on GB10. No flags, env vars, model configs, or quant
+    findings. Out of scope per SCHEMA.md (In: GB10/DGX-Spark inference).
+  - 379550 (Benchmarking Qwen3.6-35B-A3B with dspark speculative decoding)
+    — **skipped**. 4-post thread, 508 views. Benchmark was run on 2× NVIDIA
+    RTX PRO 6000 Blackwell Max-Q, not on DGX Spark. While the thread
+    mentions DGX Spark unified memory and `MAX_JOBS=2` for compilation,
+    the actual benchmark data is not from GB10 hardware. No durable
+    GB10-specific findings (the results are from a different GPU).
+- **Pages touched:** multinode-tp-and-networking (CX-7 QSFP breakout
+  [conjecture]), platform-gb10 (75W crash clock-cap corroboration
+  [conjecture] + fieldiag signed-by doc error [conjecture]), sources/README,
+  index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+  The 75W crash finding strengthens the existing [reported] clock-cap
+  mitigation with another independent corroboration. The CX-7 QSFP breakout
+  failure is a new durable GB10 networking constraint. The fieldiag signed-by
+  fix adds to the growing fieldiag install gotchas catalog.
+
 ## 2026-08-20 — Forum ingest: Batch 81 — 6 new topics (4 processed, 2 skipped)
 
 - **Sources:** 6 new forum topics found by fetch_new_topics.py. 4 technically

@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma, S-forum-fan-headless-boot, S-forum-suspend-fail, S-forum-hdmi-hotplug-ab, S-forum-usbc-dp-hpd, S-forum-gx10-fw-recovery, S-forum-uefi-capsule-password
-> **updated:** 2026-08-20
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma, S-forum-fan-headless-boot, S-forum-suspend-fail, S-forum-hdmi-hotplug-ab, S-forum-usbc-dp-hpd, S-forum-gx10-fw-recovery, S-forum-uefi-capsule-password, S-forum-75w-crash, S-forum-fieldiag-signedby
+> **updated:** 2026-08-21
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -2071,3 +2071,47 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   Ubuntu live USB is a viable alternative; (2) manual capsule staging onto the
   EFI partition from a live session is a working no-RMA recovery path for ASUS
   GX10. Single thread (2 users: OP + NVIDIA staff) → [conjecture].
+
+### Batch 82 forum ingest (2026-08-21)
+
+- **[conjecture]** **DGX Spark hardware crashes at ~75W, reboots repeatedly —
+  clock cap 2100 MHz fixes** (S-forum-75w-crash, cory.farr): The system
+  hard-crashes at around 75W power draw and reboots. Fix: `sudo nvidia-smi -lgc
+  300,2100` caps the GPU clock at 2100 MHz, keeping power below the crash
+  threshold. Release with `sudo nvidia-smi -rgc`. This corroborates the existing
+  **[reported]** clock-cap mitigation (S-forum-comfyui-crash 2100 MHz,
+  S-forum-gpu-throttle-cmd 2000 MHz, S-forum-power-90w 2200 MHz) with a new
+  independent user reporting the same symptom and same fix. The ~75W crash
+  threshold is consistent with the power-controller overcurrent protection
+  pattern (S-forum-comfyui-crash: 85W transient trips overcurrent). Single
+  source → [conjecture], but strengthens the existing [reported] finding with
+  another corroboration. Notable: OP requests a "better built-in setup" —
+  no persistent clock-cap mechanism is available in DGX OS by default (users
+  must use a systemd unit, see S-forum-clock-energy-sweep).
+
+- **[conjecture]** **Field Diagnostics install fails with Signed-By apt
+  conflict — documentation error in Field Diagnostics guide** (S-forum-
+  fieldiag-signedby, asdf.think365 + Neill): When installing the NVIDIA DGX
+  Spark Field Diagnostics tool, the guide incorrectly instructs adding the
+  CUDA apt repository — but DGX Spark OS already ships with that repo
+  pre-configured under a different keyring name (`cuda_debian_prod.gpg` vs
+  `cuda-archive-keyring.gpg`). This produces:
+  ```
+  E: Conflicting values set for option Signed-By regarding source
+  .../compute/cuda/repos/ubuntu2404/sbsa/:
+  /usr/share/keyrings/cuda_debian_prod.gpg != /usr/share/keyrings/cuda-archive-keyring.gpg
+  E: The list of sources could not be read.
+  ```
+  **Fix (confirmed by NVIDIA staff Neill):** remove the duplicate entry:
+  `sudo rm /etc/apt/sources.list.d/cuda-sbsa-ubuntu2404.list && sudo apt update`.
+  This is a documentation/tooling gap, not a hardware bug — but it blocks
+  running fieldiag on affected units, which impedes hardware triage. Adds to
+  the existing fieldiag install gotchas catalog (S-forum-ec-fan-asus
+  ofed-scripts dep gap, S-forum-fe-thermal-rma fieldiag 2.0.4 install issues,
+  S-forum-powerstress secure-boot requirement). The thread also reports idle
+  overheating with inaudible fans and system freezes within 15 min of boot
+  while downloading models in LM Studio (<10% CPU/RAM) — consistent with the
+  existing [reported] fan-DPMS / overheating patterns (S-forum-fan-dpms,
+  S-forum-fan-headless-boot) but no new diagnostic findings beyond what is
+  already documented. Single source (2-post thread, NVIDIA staff confirmed
+  the fix) → [conjecture].

@@ -396,10 +396,18 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 || S-forum-laguna-quality | forum | Laguna-S-2.1 on single Spark ~20-30 tps reasoning — quality as good as DSV4-Flash (2× Spark) for document reasoning+tools; fails single-shot HTML/simulation generation (alperen.duru17) | https://forums.developer.nvidia.com/t/377674 | 2026-07-22 |
 || S-forum-solar-open2 | forum | Solar-Open2-250B (250B-A15B MoE) INT4 on 2× Spark — ~15 tok/s decode (tg32), ~2227 tok/s prefill (pp2048), flat across depths to 32K; no MTP tested (FoRWiS) | https://forums.developer.nvidia.com/t/377765 | 2026-07-22 |
 
+## Batch 82 forum sources (2026-08-21 ingest)
+
+|| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-cx7-qsfp-breakout | forum | Mellanox QSFP breakout on DGX Spark CX-7 — NUM_OF_PF and MODULE_SPLIT_M<x> params available but port splitting fails; only first QSFP lane establishes link with breakout cable; devlink reports splittable=false; only 200G QSFP112 DAC cables validated for Spark; mashie observes phantom links on unused split lanes (greg.pring, elsaco, aniculescu, isdias, steel-rat, mashie) | https://forums.developer.nvidia.com/t/349775 | 2025-11-01 |
+| S-forum-75w-crash | forum | DGX Spark hardware crashes at ~75W, system reboots repeatedly — fix: nvidia-smi -lgc 300,2100 clock cap; release with nvidia-smi -rgc; corroborates existing [reported] clock-cap mitigation (cory.farr) | https://forums.developer.nvidia.com/t/380669 | 2026-08-20 |
+| S-forum-fieldiag-signedby | forum | Field Diagnostics install fails with Signed-By conflict — documentation error in Field Diagnostics guide incorrectly instructs adding CUDA apt repo, but DGX Spark OS already ships with it under different keyring name (cuda_debian_prod.gpg vs cuda-archive-keyring.gpg); fix: sudo rm /etc/apt/sources.list.d/cuda-sbsa-ubuntu2404.list; NVIDIA staff (Neill) confirmed doc error; thread also reports idle overheating + system freezes (asdf.think365, Neill) | https://forums.developer.nvidia.com/t/380584 | 2026-08-19 |
+
 ## Adding a source
 
-Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md) and
-[`../agents/ingest.md`](../agents/ingest.md). Forum/repo/report sources cite a URL; first-party
+Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md)
+and [`../agents/ingest.md`](../agents/ingest.md). Forum/repo/report sources cite a URL; first-party
 sources cite the experiment (what/config/when), never a private path.
 
 ## Batch 33 forum sources (2026-07-24 ingest)
