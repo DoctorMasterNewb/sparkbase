@@ -3,8 +3,8 @@
 > **area:** attention
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-m3-vision, S-mimo-results, S-mimo-doc, S-sess-jun5, S-sess-jun4, S-dflash-nvfp4, S-forum-mimo-2x-opt, S-forum-dsv4-kvcache, S-forum-inkling-nvfp4, S-forum-flashinfer-livelock, S-forum-solar-open2-nvfp4, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-glm52-3x-aqlm
-> **updated:** 2026-08-04
+> **sources:** S-m3-vision, S-mimo-results, S-mimo-doc, S-sess-jun5, S-sess-jun4, S-dflash-nvfp4, S-forum-mimo-2x-opt, S-forum-dsv4-kvcache, S-forum-inkling-nvfp4, S-forum-flashinfer-livelock, S-forum-solar-open2-nvfp4, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-glm52-3x-aqlm, S-forum-dsv4-nvfp4-416-kv
+> **updated:** 2026-08-21
 
 Which `--attention-backend` to pass is decided by the model's attention type, not preference. Get it
 wrong and KV-cache init fails or numerics are subtly off.
@@ -236,3 +236,19 @@ wrong and KV-cache init fails or numerics are subtly off.
   This is the same kernel maturity gap as the FlashInfer livelock finding above: the sparse-MLA
   attention path on sm_121 has limited backend options and KV format support. See
   `[[wiki/models/glm-5.2.md]]` → KV cache kernel constraint.
+
+## Forum ingest: Native 416-byte NVFP4 KV cache record (2026-08-21)
+
+- **[conjecture]** **Native 416-byte NVFP4 sparse-MLA KV cache for DeepSeek
+  V4 Flash — 14% more tokens than padded FP8** (S-forum-dsv4-nvfp4-416-kv,
+  emihuang): a new feature branch introduces a true 416-byte-per-record NVFP4
+  KV cache for `deepseek-ai/DeepSeek-V4-Flash-0731` on 2× DGX Spark. The record
+  contains: 256 bytes packed E2M1 values + 32 bytes E4M3 scales + 128 bytes
+  authoritative BF16 RoPE data = 416 bytes total. Previous solutions used a
+  padded 584-byte FP8 KV cache while only using a partial NVFP4 path — the
+  new native 416-byte record eliminates the padding, yielding ~14% more KV
+  capacity. The implementation includes fused cache writers and a native
+  FlashInfer sparse-attention reader that operates directly on the 416-byte
+  records. At 1M context, MTP k=5, util 0.835: 17.66 GiB KV, 2,779,464 tokens,
+  2.65× concurrency. This is a GB10-specific KV optimization for sparse-MLA
+  architectures. Single source → [conjecture].

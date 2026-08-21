@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x, S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train, S-forum-moe-lora-vllm, S-forum-qlora-coding, S-forum-macaron-v1-tall, S-forum-qwen36-tp2-stall, S-forum-kat-coder-autoround, S-forum-qwen38-27b-mixedint4, S-forum-qwen38-nvfp4-vs-fp8, S-forum-ds4f-qwen38-orchestration
-> **updated:** 2026-08-20
+> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x, S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train, S-forum-moe-lora-vllm, S-forum-qlora-coding, S-forum-macaron-v1-tall, S-forum-qwen36-tp2-stall, S-forum-kat-coder-autoround, S-forum-qwen38-27b-mixedint4, S-forum-qwen38-nvfp4-vs-fp8, S-forum-ds4f-qwen38-orchestration, S-forum-qwen38-27b-vllm-mtp
+> **updated:** 2026-08-21
 
 The best-supported family on GB10 — both Atlas (AOT kernels for the MoE variants) and vLLM serve it.
 The recurring lesson: **MoE-A3B NVFP4 + MTP is the fastest regime on Spark; the dense variant of the
@@ -765,3 +765,195 @@ an orchestration discussion, it contains several durable deployment-pattern find
   to media generation (e.g. MiniMax-H3). This is a practical GB10-specific allocation
   pattern — each 121 GB node can serve one model at a time (single-tenant constraint),
   so multi-model setups require multi-node. Single source → [conjecture].
+
+## Forum ingest: Qwen3.8-27B-NVFP4 single-Spark vLLM+MTP deep dive (2026-08-21)
+
+> **evidence:** conjecture (single forum thread, multiple users corroborating)
+> **sources:** S-forum-qwen38-27b-vllm-mtp
+
+A 26-post thread (9K views) with the most comprehensive Qwen3.8-27B-NVFP4
+bring-up on a single DGX Spark to date. The OP (helge) provides a full working
+recipe, tokenizer bug analysis, YaRN 1M context extension, memory profiling,
+and benchmarking — then the thread accumulates independent confirmations,
+alternative recipes, and cross-platform comparisons.
+
+### Working recipe (helge)
+
+- **[conjecture]** **Qwen3.8-27B-NVFP4 runs on single DGX Spark with no vLLM
+  modification** (S-forum-qwen38-27b-vllm-mtp, helge): the Unsloth NVFP4
+  checkpoint (`unsloth/Qwen3.8-27B-NVFP4`, 23.4 GB download) serves cleanly
+  on the existing `ghcr.io/spark-arena/dgx-vllm-eugr-nightly:latest` container
+  (vLLM 0.26.1rc1.dev244, FlashInfer d020372b, driver 580.173.02). Working
+  command:
+  ```
+  vllm serve unsloth/Qwen3.8-27B-NVFP4 \
+    --host 0.0.0.0 --port 8000 \
+    --tensor-parallel-size 1 \
+    --gpu-memory-utilization 0.45 \
+    --max-model-len 262144 \
+    --max-num-seqs 4 \
+    --max-num-batched-tokens 8192 \
+    --enable-chunked-prefill \
+    --enable-prefix-caching \
+    --reasoning-parser qwen3 \
+    --tool-call-parser qwen3_xml \
+    --enable-auto-tool-choice \
+    --distributed-executor-backend mp \
+    --speculative-config '{"method":"mtp","num_speculative_tokens":5}'
+  ```
+  Single source → [conjecture].
+
+### Architecture (identical to Qwen3.6-27B)
+
+- **[conjecture]** **Qwen3.8-27B is architecturally identical to Qwen3.6-27B**
+  (S-forum-qwen38-27b-vllm-mtp, helge): field-by-field diff of both
+  `config.json` files shows no difference in architecture, quantization groups,
+  ignore list (303 entries), or vision tower. Dense, 64 layers, hidden 5120,
+  24 heads / 4 KV heads / head_dim 256, hybrid attention with 48
+  `linear_attention` + 16 `full_attention` layers. MLP in NVFP4, attention in
+  FP8, vision tower in bf16. If you have a working Qwen3.6-27B config, swapping
+  the model name is enough. Single source → [conjecture].
+
+### MTP head — no separate model needed
+
+- **[conjecture]** **MTP head is self-contained in the checkpoint** (S-forum-
+  qwen38-27b-vllm-mtp, helge): `model_mtp.safetensors` sits next to the weights,
+  and its 15 tensors are registered in `model.safetensors.index.json` (1968
+  tensors total). vLLM finds them automatically — `--speculative-config` takes
+  no `"model"` field. Startup messages confirm:
+  ```
+  Resolved architecture: Qwen3_5MTP
+  Detected MTP model. Sharing target model embedding weights with the draft model.
+  Detected MTP model. Sharing target model lm_head weights with the draft model.
+  ```
+  Single source → [conjecture].
+
+### Tokenizer truncation bug (now fixed)
+
+- **[conjecture]** **Unsloth Qwen3.8-27B-NVFP4 shipped with tokenizer
+  truncation at 2048 tokens** (S-forum-qwen38-27b-vllm-mtp, helge):
+  `tokenizer.json` contained `"truncation": {"max_length": 2048}` while the
+  original `Qwen/Qwen3.8-27B` has `"truncation": null`. Text prompts were
+  silently truncated at 2048 tokens. Images above ~1.4 MP failed loudly with
+  `ValueError: Mismatch in image token count between text and input_ids`.
+  The Qwen3.6 NVFP4 repack had the same defect at 16384. **Unsloth has since
+  fixed both** — the fix is byte-identical to setting `truncation: null`.
+  Single source → [conjecture]. Historical note: the fix was applied
+  promptly after forum reporting.
+
+### YaRN 1M context extension
+
+- **[conjecture]** **1M context via YaRN requires hf-overrides on
+  text_config** (S-forum-qwen38-27b-vllm-mtp, helge): `max_position_embeddings`
+  is 262144 with no scaling. To extend to 1M:
+  ```
+  --max-model-len 1048576
+  --hf-overrides '{"text_config":{"rope_parameters":{
+    "rope_type":"yarn","factor":4.0,"original_max_position_embeddings":262144,
+    "mrope_interleaved":true,"mrope_section":[11,11,10],
+    "partial_rotary_factor":0.25,"rope_theta":10000000}}}'
+  ```
+  Three gotchas: (1) override must go into `text_config` — top-level
+  `rope_parameters` are silently ignored; (2) it replaces the dict, not
+  merges — `mrope_section`, `mrope_interleaved`, `partial_rotary_factor`,
+  and `rope_theta` must all be included or multimodal RoPE breaks; (3)
+  `factor` scales directly — 4.0→1M, 2.0→512K. YaRN is static (applies to
+  every request including short ones). Recommended: keep 262144 as default,
+  put 1M behind an env switch. At 1M, `--gpu-memory-utilization` needs at
+  least 0.53; 0.60 for headroom (~1.25× concurrency at 1M). Single source →
+  [conjecture].
+
+### Memory profiling
+
+- **[conjecture]** **KV cost is 37,169 bytes/token for this hybrid arch**
+  (S-forum-qwen38-27b-vllm-mtp, helge): at `--gpu-memory-utilization 0.45`:
+  weights + non-torch = 26.16 GiB, peak activation 1.80 GiB, CUDA graphs
+  0.15 GiB, fixed 28.11 GiB, KV cache 27.56 GiB → 777,645 KV tokens, 2.97×
+  concurrency at full 262K context. Pure attention math gives 32,768 bytes/token
+  (16 × 4 × 256 × 2 at fp8) — the 13% difference is the linear-attention
+  state placed in the same pool. Engine init took 220.5 s (72.3 s compilation).
+  vLLM reports an 82.01 GiB KV ceiling (~2.31M tokens) if you want two
+  concurrent full-context requests. Single source → [conjecture].
+
+### Performance — MTP roughly doubles decode
+
+- **[conjecture]** **MTP k=5 roughly doubles decode throughput on Qwen3.8-27B
+  NVFP4** (S-forum-qwen38-27b-vllm-mtp, helge):
+  | num_speculative_tokens | TTFT | Decode tok/s |
+  |---|---|---|
+  | 0 (off) | 0.201 s | 11.4 |
+  | 3 | 0.265 s | 23.6 |
+  | 5 | 0.300 s | 24.7 |
+  | 6 | 0.318 s | 22.6 |
+  | 8 | 0.351 s | 21.7 |
+  Between k=3 and k=8, differences are within ~14% — k=5 is a mild preference.
+  Speculative decoding forces `cudagraph_mode=PIECEWISE` (full graphs not
+  supported with spec-decode). Prefill rates: 4,566 tokens → 1,734 tok/s;
+  11,988 → 1,153; 24,015 → 1,014; 47,857 → 853 (unique-prefix per request
+  to avoid prefix-cache contamination). Single source → [conjecture].
+
+### Measurement pitfalls
+
+- **[conjecture]** **Three measurement traps for MTP benchmarking**
+  (S-forum-qwen38-27b-vllm-mtp, helge): (1) Speculative decoding cannot be
+  measured with a single prompt — acceptance rate is a property of the
+  generated text, and the draft perturbs numerics so the same prompt yields
+  different completions after restart. One-prompt sweeps show beautiful
+  consistency that vanishes on re-run. Average over several different prompts.
+  (2) Prefix caching wrecks prefill measurements — building prompts of
+  increasing length from repeated filler shares prefixes, producing an
+  apparent 22,539 tok/s at 80k tokens. Use unique prefixes. (3) The multimodal
+  cache does the same for images — sending the same image twice skips the
+  vision tower entirely (1.01 s cold vs 0.16 s repeat, 6× factor). Single
+  source → [conjecture].
+
+### 2-node cluster results
+
+- **[conjecture]** **2-node cluster reaches ~37 tok/s, up to ~45 tok/s
+  reported by another user** (S-forum-qwen38-27b-vllm-mtp, helge): with a
+  2-node (Ray) cluster, the OP reached up to 37 tok/s; another user reported
+  ~45 tok/s. Concurrency testing: `SPEC_TOKENS=5` crashes the vLLM server
+  with 8 concurrent sessions, but `SPEC_TOKENS=3` runs successfully with 8
+  concurrent sessions generating ~117 tok/s total. Stability needs more
+  long-time load testing. Single source → [conjecture].
+
+### Parameter count: 27B, not 20B
+
+- **[conjecture]** **The 20B rumor is a U8 packing miscount** (S-forum-qwen38-
+  27b-vllm-mtp, helge): counting parameters from safetensors headers gives
+  27.78B total (24.35B language model + 1.27B embeddings + 1.27B lm_head +
+  0.46B vision tower + 0.42B MTP head), plus 0.94B quantization scales (not
+  parameters). The 20B figure comes from walking U8 tensor shapes without
+  accounting for NVFP4's two 4-bit values packed per byte — silently dropping
+  half of every MLP weight. The 22.6 GB checkpoint is mixed-precision (MLP
+  4-bit, attention FP8, vision/norms bf16) — no single bits-per-weight
+  assumption reproduces the count. Single source → [conjecture].
+
+### styles01 production recipe
+
+- **[conjecture]** **styles01 production recipe: 39 tok/s decode, 98 tok/s
+  aggregate at 4 concurrent** (S-forum-qwen38-27b-vllm-mtp, styles01): a
+  community recipe using drowzeys GB10 build (`ghcr.io/drowzeys/keys-vllm-
+  027-gb10-qwen38:mtp3-20260813`, eugr spark-vllm-b12x) with MTP n=3,
+  FlashInfer autotune, `FLASHINFER_CUDA_ARCH_LIST=12.1a`,
+  `FLASHINFER_DISABLE_VERSION_CHECK=1`, `VLLM_ALLOW_LONG_MAX_MODEL_LEN=1`.
+  Stock `vllm/vllm-openai` has NO NVFP4 kernels for sm_121a — the drowzeys/eugr
+  build provides `FlashInferCutlassNvFp4LinearKernel`. Reports 39 tok/s decode,
+  98 tok/s aggregate across 4 concurrent lanes at 256K context, optimized for
+  agentic work (Hermes, OpenClaw). Other users report lower: 15-25 tok/s
+  (datltq), 26 tok/s (jomark), 18.3 tok/s with significant context-depth
+  degradation (jbourny: 6.3 tok/s at 16K filler, 3.7 at 32K). Single source →
+  [conjecture].
+
+### RTX 5090 cross-platform comparison (voktolom)
+
+- **[conjecture]** **Unsloth NVFP4 vs PrismaAQUA 5.5-bit on RTX 5090 —
+  tool-eval 90.7 vs 87.8** (S-forum-qwen38-27b-vllm-mtp, voktolom): A/B on
+  a single RTX 5090 32GB with vLLM 0.27.1, `--max-model-len 191000`,
+  `--max-num-seqs 2`, `--gpu-memory-utilization 0.975`, `--kv-cache-dtype fp8`.
+  Unsloth NVFP4: 66.6 tok/s decode, 8,201 tok/s prefill, 90.7 tool-eval.
+  PrismaAQUA 5.5-bit: 65.0 tok/s decode, 8,674 tok/s prefill (slightly faster
+  prefill), 87.8 tool-eval (extremely stable ±1). Conclusion: keep Unsloth
+  NVFP4 as daily driver for tool calling; Aqua is a viable drop-in with slightly
+  faster prefill. Not GB10-specific but relevant for quant comparison. Single
+  source → [conjecture].

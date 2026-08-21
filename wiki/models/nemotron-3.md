@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-nemotron-rpc, S-swapper, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-nemotron-super-abi, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-nemotron-2node, S-forum-nemotron35-lightning
-> **updated:** 2026-08-14
+> **sources:** S-nemotron-rpc, S-swapper, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-nemotron-super-abi, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-nemotron-2node, S-forum-nemotron35-lightning, S-forum-qwen38-nemotron-bench
+> **updated:** 2026-08-21
 
 NVIDIA Nemotron-3 — **hybrid Mamba-2 + attention MoE** (`nemotron_h_moe`). Most layers are SSM with a
 few attention layers (2 KV heads), so KV is cheap and native context is huge. Two paths on GB10.
@@ -133,3 +133,130 @@ few attention layers (2 KV heads), so KV is cheap and native context is huge. Tw
    single Spark. 1M native context (Mamba-2 hybrid = cheap KV) and DSpark support
    make it a throughput-oriented model. The low tool-eval score (77-80 vs Qwen 100)
    limits agentic use. See `[[wiki/benchmarks.md]]` → Batch 68.
+
+## Forum ingest: Nemotron 3 Nano 30B-A3B NVFP4 comprehensive benchmark (2026-08-21)
+
+> **evidence:** conjecture (single forum thread, comprehensive data)
+> **sources:** S-forum-qwen38-nemotron-bench
+
+A single-Spark comprehensive benchmark covering three model generations
+(Qwen3.6-35B-A3B, Qwen3.8-27B, Nemotron 3 Nano 30B-A3B), three precisions
+(BF16, FP8, NVFP4), two engines (vLLM, SGLang), and four decode strategies
+(none, MTP, DSPARK, DSpark+MTP). Data collected over one week with a unified
+benchmarking script. Platform: DGX Spark (GB10 / Jetson Thor), 121 GB unified
+LPDDR5X, ~273 GB/s theoretical (~202 GB/s measured effective, 74%), Ubuntu
+24.04 aarch64, CUDA 13.0.
+
+### Nemotron 3 Nano 30B-A3B NVFP4 — the "right answer" for single Spark
+
+- **[conjecture]** **Nemotron 3 Nano 30B-A3B NVFP4 delivers 55-56 tok/s with
+  no speculative decoding — 3× the best Qwen3.8-27B config** (S-forum-qwen38-
+  nemotron-bench, reborn.li.rl): 30B total / 3B active MoE + Mamba-2 hybrid.
+  Weights 19.4 GB (NVFP4 via quantization-aware distillation). vLLM native
+  zero-config load. Decode: Chinese prose 56.1, code 55.3, translation 55.0,
+  thinking mode 54.0 tok/s. No spec decode needed — the 3B active parameter
+  count means only ~3 GB/token to read, making decode compute-light. Single
+  source → [conjecture].
+
+  Working recipe:
+  ```
+  vllm serve /models/Nemotron-3-Nano-30B-A3B-NVFP4 \
+    --served-model-name nemotron3 \
+    --host 0.0.0.0 --port 8000 \
+    --trust-remote-code \
+    --max-model-len 262144 \
+    --max-num-seqs 4 \
+    --max-num-batched-tokens 16384 \
+    --gpu-memory-utilization 0.90 \
+    --enable-chunked-prefill --enable-prefix-caching \
+    --kv-cache-dtype fp8 \
+    --reasoning-parser nemotron_v3 \
+    --tool-call-parser qwen3_coder \
+    --enable-auto-tool-choice \
+    --chat-template /models/Nemotron-3-Nano-30B-A3B-NVFP4/chat_template.jinja
+  ```
+  Image: `vllm/vllm-openai:v0.27.1-aarch64` or NGC
+  `nvcr.io/nvidia/vllm:25.12.post1-py3`. Memory: weights 20.2 GB + KV 86 GB +
+  graph 1.3 GB ≈ 115 GB on 121 GB node. Cold start ~290s (weights + torch.compile
+  ~11s + Mamba2 SSD Triton warmup + CUDA graph 5s).
+
+### Bandwidth model — why BF16 dense is a dead end
+
+- **[conjecture]** **Effective memory bandwidth is ~202 GB/s (74% of 273 GB/s
+  theoretical)** (S-forum-qwen38-nemotron-bench, reborn.li.rl): bandwidth
+  model validation:
+  | Config | Per-token weight read | Theoretical peak | 80% efficiency | Measured |
+  |---|---|---|---|---|
+  | BF16 dense (54 GB) | 54 GB | 5.1 | 4.0 | 4.09–4.24 |
+  | FP8 dense (27 GB) | 27 GB | 10.1 | 8.1 | 6.92–6.96 |
+  | NVFP4 dense (21.7 GB) | 21.7 GB | 12.6 | 10.1 | ~12-18 (+MTP) |
+  | MoE 3B active (~19 GB) | ~3 GB | ~75 | ~60 | 54-56 |
+  BF16 dense 27B is at the physical limit — no engine can save it.
+  Must reduce weight precision AND active parameter count. Consistent with
+  the proven bandwidth-bound decode rule. Single source → [conjecture].
+
+### vLLM MTP TTFT penalty
+
+- **[conjecture]** **vLLM MTP speculative decoding causes 8.5-11s TTFT
+  penalty — cannot co-exist with low first-token latency** (S-forum-qwen38-
+  nemotron-bench, reborn.li.rl): controlled experiment shows vLLM's MTP
+  pushes TTFT from 0.19s (FP8 no-spec) to 8.5-11s (MTP, regardless of k
+  value — k=1 is even worse). SGLang's DSPARK spec decode adds almost no TTFT
+  cost (0.33s). For interactive/agent workloads, use no-spec or DSPARK; for
+  throughput, use MTP. This is a durable GB10-specific finding about vLLM's
+  MTP implementation overhead. Single source → [conjecture].
+
+  TTFT comparison:
+  | Config | TTFT | Notes |
+  |---|---|---|
+  | Qwen3.8 FP8 no-spec (vLLM) | 0.19s | best overall |
+  | Qwen3.8 FP8 no-spec (SGLang) | 0.30s | |
+  | Qwen3.8 FP8 + DSPARK (SGLang) | 0.33s | spec decode with no TTFT penalty |
+  | Qwen3.8 FP8 + MTP k=3 (vLLM) | 8.5s | MTP kills TTFT |
+  | Qwen3.8 NVFP4 + MTP k=5 (vLLM) | 0.31s (steady) | first request JIT 56.6s, second 7.5s |
+  | Qwen3.8 BF16 (vLLM) | 28.1s | BF16 prefill bandwidth bottleneck |
+  | Qwen3.8 BF16 (SGLang) | 5.0s | |
+
+### FP8 KV in hybrid models barely saves memory
+
+- **[conjecture]** **FP8 KV cache in GDN/Mamba-2 hybrid models provides
+  minimal memory savings** (S-forum-qwen38-nemotron-bench, reborn.li.rl):
+  Qwen3.8 (GDN hybrid) with FP8 KV barely reduces the KV pool — the GDN
+  state component is BF16-fixed and dominates. Nemotron 3 (Mamba-2 hybrid)
+  is similar. The real memory lever is `--max-model-len`, not `--kv-cache-dtype`.
+  This is GB10-specific for hybrid-attention models where the SSM/linear
+  attention state is the dominant KV cost, not the traditional attention KV.
+  Single source → [conjecture].
+
+### MTP k-value is not "bigger is better"
+
+- **[conjecture]** **MTP optimal k varies by scenario — k=5 best for
+  Qwen3.8 NVFP4, k=8 collapses** (S-forum-qwen38-nemotron-bench,
+  reborn.li.rl): Qwen3.8-27B NVFP4: k=3 → 15.6 tok/s, k=5 → 18.4 tok/s
+  (best), k=8 → 10.2 tok/s (collapse). DSPARK acceptance is scenario-
+  dependent: code 46.6 tok/s (draft trained on math/code), Chinese prose
+  only 8.5-9.8 tok/s. Speculative decode is not free — the draft model and
+  workload must match. Single source → [conjecture].
+
+### Deployment gotchas
+
+- **[conjecture]** **max_model_len must not exceed native max_position_embeddings**
+  (S-forum-qwen38-nemotron-bench, reborn.li.rl): Nemotron 3
+  `max_position_embeddings=262144` (256K). Setting 512K causes vLLM to reject
+  startup and infinitely restart. First check `config.json`. Single source →
+  [conjecture].
+
+- **[conjecture]** **Non-streaming tool calls truncated by max_tokens**
+  (S-forum-qwen38-nemotron-bench, reborn.li.rl): at `max_tokens=300`, tool
+  calls intermittently return `null` — the XML format preamble gets truncated
+  before the parser sees it. Non-streaming tool calls require `max_tokens≥1024`.
+  Streaming is unaffected. Single source → [conjecture].
+
+- **[conjecture]** **GB10 unified memory invisible to docker stats / ps RSS**
+  (S-forum-qwen38-nemotron-bench, reborn.li.rl): CUDA allocations are
+  invisible to `docker stats` / `ps` RSS (cgroup perspective). Use `free` +
+  vLLM startup logs to check actual usage. At 256K context, a dialog model +
+  embedding model cannot coexist (115 + 15 GB > 121 GB → EngineCore init
+  failure). Don't measure bandwidth with `copy_` (cudaMemcpy D2D slow path) —
+  use `add` for real bandwidth (a 181 GB/s reading was misread as 40 GB/s
+  when using `copy_`). Single source → [conjecture].

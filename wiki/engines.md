@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet, S-forum-dragonscale, S-forum-openpangu, S-forum-glm52-200k-4x, S-forum-dsv4-qwen-vision, S-forum-pilco-mmbridge, S-forum-dsv4-0731-b12x-hang, S-forum-mediallmproxy, S-forum-dsv4-agent-serving, S-forum-dsv4-humaneval, S-forum-ds4f-qwen38-orchestration
-> **updated:** 2026-08-20
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet, S-forum-dragonscale, S-forum-openpangu, S-forum-glm52-200k-4x, S-forum-dsv4-qwen-vision, S-forum-pilco-mmbridge, S-forum-dsv4-0731-b12x-hang, S-forum-mediallmproxy, S-forum-dsv4-agent-serving, S-forum-dsv4-humaneval, S-forum-ds4f-qwen38-orchestration, S-forum-vllm-longlived, S-forum-dsv4-nvfp4-416-kv
+> **updated:** 2026-08-21
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -1217,3 +1217,53 @@ Three engines run on the Spark pair; pick by arch support and quant.
   This is a GB10-specific deployment finding: single-tenant per-node constraint means
   multi-model setups require multi-node. See `[[wiki/models/qwen.md]]` → orchestration
   section. Single source → [conjecture].
+
+## Forum ingest: vLLM long-lived service playbook (2026-08-21)
+
+> **evidence:** conjecture (single forum thread)
+> **sources:** S-forum-vllm-longlived
+
+- **[conjecture]** **`--gpu-memory-utilization` is spending system RAM, not
+  just VRAM — on UMA there is no VRAM** (S-forum-vllm-longlived, fede5): on
+  GB10's unified memory, `--gpu-memory-utilization` is a decision about the
+  whole box, not just the model server. At 0.75 on 121.7 GB, vLLM reserves
+  ~91 GB at startup — 53.8 GB of it KV cache, sized for 31 concurrent requests
+  at full 131K context. On a single-user box the cache measured 0.0% idle and
+  0.5% under load. vLLM logs the split:
+  ```
+  gpu_worker.py:538]      Available KV cache memory: 53.84 GiB
+  kv_cache_utils.py:2146] GPU KV cache size: 4,073,445 tokens
+  kv_cache_utils.py:2147] Maximum concurrency for 131,072 tokens per request: 31.08x
+  ```
+  This is a GB10-specific finding: on a discrete-GPU system, the flag only
+  spends VRAM; on UMA it competes with the OS and any other process. Size
+  for your actual concurrency, not the maximum. Single source → [conjecture].
+
+## Forum ingest: Native 416-byte NVFP4 KV cache for DSV4-Flash-0731 on 2× Spark (2026-08-21)
+
+> **evidence:** conjecture (single forum thread, GitHub repo)
+> **sources:** S-forum-dsv4-nvfp4-416-kv
+
+- **[conjecture]** **Native 416-byte NVFP4 sparse-MLA KV cache record for
+  DeepSeek V4 Flash on 2× DGX Spark** (S-forum-dsv4-nvfp4-416-kv, emihuang):
+  an experimental two-node recipe introduces a true 416-byte NVFP4 KV cache
+  record for `deepseek-ai/DeepSeek-V4-Flash-0731`, replacing the padded
+  584-byte FP8 KV cache used by previous solutions. The 416-byte record
+  contains: 256 bytes packed E2M1 values + 32 bytes E4M3 scales + 128 bytes
+  authoritative BF16 RoPE data. This yields ~14% more KV capacity (more
+  tokens in the same memory). The feature branch includes fused cache writers
+  and a native FlashInfer sparse-attention reader operating directly on the
+  416-byte records. Single source → [conjecture].
+
+  **Config:** `MAX_MODEL_LEN=1048576`, `MAX_NUM_SEQS=4`, `MTP_NUM_TOKENS=5`,
+  `GPU_MEMORY_UTILIZATION=0.835`. Server reports: Available KV cache memory:
+  17.66 GiB, GPU KV cache size: 2,779,464 tokens, Maximum concurrency for
+  1,048,576 tokens per request: 2.65x.
+
+- **[conjecture]** **DSpark fixes for real concurrent agent traffic**
+  (S-forum-dsv4-nvfp4-416-kv, emihuang): the branch also fixes problems under
+  real concurrent agent traffic: (1) stable DSpark state across multiple
+  requests, (2) mixed prompt/decode batches with different effective context
+  lengths, (3) ragged rejection trimming. Repo:
+  `coolbho3k/DeepSeek-v4-Flash-DSpark-2x-DGX-Spark` branch
+  `feature/nvfp4-416-kv-cache`. Single source → [conjecture].

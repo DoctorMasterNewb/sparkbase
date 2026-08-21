@@ -2,6 +2,91 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-21 — Forum ingest: Batch 83 — 5 new topics (4 processed, 1 skipped)
+
+- **Sources:** 5 new forum topics found by fetch_new_topics.py. 4 technically
+  relevant, 1 skipped (359907 Energy Star/NRTL/EPEAT certification — regulatory
+  question, no GB10 inference findings). 4 new sources registered (Batch 83)
+  in `sources/README.md`: S-forum-qwen38-27b-vllm-mtp, S-forum-qwen38-nemotron-
+  bench, S-forum-vllm-longlived, S-forum-dsv4-nvfp4-416-kv. 5 topic IDs added
+  to `processed_topics.txt` (total now 650).
+- **Topics found:**
+  - 380244 (Qwen3.8-27B-NVFP4 on single DGX Spark — vLLM+MTP measurements) —
+    **processed**. 26-post thread, 9K views. Most comprehensive Qwen3.8-27B
+    NVFP4 bring-up to date. OP (helge) provides working recipe (vllm serve
+    unsloth/Qwen3.8-27B-NVFP4, util 0.45, 262K ctx, MTP k=5), tokenizer
+    truncation bug (max_length 2048, now fixed by Unsloth), YaRN 1M context
+    via hf-overrides (text_config, factor 4.0), architecture identical to
+    Qwen3.6-27B, KV cost 37,169 bytes/token, MTP performance sweep (11.4→24.7
+    tok/s with k=5), measurement pitfalls (prefix cache contamination, MTP
+    single-prompt trap, multimodal cache), 2-node cluster ~37 tok/s, param
+    count analysis (27.78B not 20B — U8 packing miscount). styles01 production
+    recipe (drowzeys GB10 image, MTP n=3, 39 tok/s decode, 98 tok/s aggregate).
+    voktolom RTX 5090 cross-platform comparison (NVFP4 vs PrismaAQUA 5.5-bit,
+    tool-eval 90.7 vs 87.8). S-forum-qwen38-27b-vllm-mtp. → models/qwen,
+    benchmarks.
+  - 380700 (DGX Spark model selection: Qwen3.8 4 tok/s to Nemotron 3 Nano
+    56 tok/s) — **processed**. Chinese-language thread, 206 views.
+    Comprehensive single-Spark benchmark across 3 model generations, 3
+    precisions, 2 engines, 4 decode strategies. Key findings: Qwen3.8-27B
+    BF16 4.09 tok/s (at bandwidth limit), FP8 6.96, NVFP4+MTP k=5 18.4;
+    Nemotron 3 Nano 30B-A3B NVFP4 55-56 tok/s with no spec decode (3× best
+    Qwen3.8). Effective bandwidth ~202 GB/s (74% of 273). vLLM MTP TTFT
+    penalty 8.5-11s (vs 0.19s no-spec, 0.33s DSPARK). FP8 KV in hybrid models
+    barely saves memory (GDN/Mamba state is BF16-fixed). MTP k=8 collapses
+    (10.2 vs 18.4 at k=5). Nemotron 3 recipe: vllm/vllm-openai:v0.27.1-
+    aarch64, fp8 KV, nemotron_v3 parser, qwen3_coder tools, util 0.90, 256K
+    ctx. Cold start 290s. S-forum-qwen38-nemotron-bench. → models/nemotron-3,
+    models/qwen, benchmarks.
+  - 380721 (Playbook: keeping vLLM up as long-lived service) — **processed**.
+    1-post thread, 74 views. --gpu-memory-utilization on UMA is spending
+    system RAM, not just VRAM: at 0.75 on 121.7 GB, vLLM reserves ~91 GB
+    (53.8 GB KV cache for 31 concurrent at 131K context), idle cache 0.0%
+    on single-user box. S-forum-vllm-longlived. → engines.
+  - 359907 (Energy Star, NRTL, EPEAT certification) — **skipped**. 3-post
+    thread, 219 views. Regulatory/certification question. No GB10
+    inference findings.
+  - 379788 (Native 416-byte NVFP4 KV cache + DSpark for DeepSeek V4 Flash
+    0731 on 2× DGX Spark) — **processed**. 1-post thread, 544 views.
+    Experimental 2-node recipe with true 416-byte NVFP4 sparse-MLA KV cache
+    record (256B E2M1 + 32B E4M3 scales + 128B BF16 RoPE) replacing padded
+    584-byte FP8 KV. 14% more KV capacity. Fused cache writers + native
+    FlashInfer sparse-attention reader. Config: MAX_MODEL_LEN=1048576,
+    MTP_NUM_TOKENS=5, util 0.835. KV 17.66 GiB / 2.78M tokens / 2.65×
+    concurrency at 1M. DSpark fixes: stable state across requests, mixed
+    prompt/decode batches, ragged rejection trimming. Repo:
+    coolbho3k/DeepSeek-v4-Flash-DSpark-2x-DGX-Spark. S-forum-dsv4-nvfp4-416-kv.
+    → engines, attention-and-kv-cache, benchmarks.
+- **Headline finding 1:** Nemotron 3 Nano 30B-A3B NVFP4 on single Spark —
+  55-56 tok/s with no speculative decoding, 3× the best Qwen3.8-27B config.
+  MoE 3B active + Mamba-2 hybrid = only ~3 GB/token weight read, making
+  decode compute-light. Strongest single-Spark 30B-class decode to date.
+  [conjecture].
+- **Headline finding 2:** Qwen3.8-27B NVFP4 MTP doubles decode (11.4→24.7
+  tok/s) but the dense 27B bandwidth ceiling is inescapable. Comprehensive
+  recipe, YaRN 1M context, KV cost analysis, tokenizer bug (now fixed), and
+  measurement pitfalls documented. [conjecture].
+- **Headline finding 3:** vLLM MTP TTFT penalty — MTP pushes TTFT from 0.19s
+  to 8.5-11s, making it incompatible with interactive/agent workloads. SGLang
+  DSPARK has no TTFT penalty (0.33s). Durable GB10-specific finding.
+  [conjecture].
+- **Headline finding 4:** Native 416-byte NVFP4 KV cache for DSV4-Flash-0731
+  on 2× Spark — 14% more KV capacity vs padded 584-byte FP8. 2.78M tokens at
+  1M context. DSpark stability fixes for concurrent agent traffic.
+  [conjecture].
+- **Headline finding 5:** --gpu-memory-utilization on UMA is spending system
+  RAM — at 0.75 on 121.7 GB, vLLM reserves ~91 GB (53.8 GB KV cache for 31
+  concurrent at 131K context), but idle cache measured 0.0% on single-user
+  box. Size for actual concurrency, not maximum. [conjecture].
+- Pages touched: models/qwen (Qwen3.8-27B NVFP4 deep dive [conjecture]),
+  models/nemotron-3 (Nemotron 3 Nano 30B-A3B benchmark + bandwidth model +
+  MTP TTFT + FP8 KV hybrid + deployment gotchas [conjecture]), engines
+  (vLLM long-lived service UMA finding + DSV4 416-byte NVFP4 KV cache
+  [conjecture]), attention-and-kv-cache (416-byte NVFP4 KV record
+  [conjecture]), benchmarks (14 new [conjecture] rows + DSV4 416B KV row),
+  sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+
 ## 2026-08-21 — Forum ingest: Batch 82 — 7 new topics (3 processed, 4 skipped)
 
 - **Sources:** 7 new forum topics found by fetch_new_topics.py. 3 technically

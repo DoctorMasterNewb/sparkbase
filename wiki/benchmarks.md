@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy, S-forum-muse-glimmer, S-forum-muse-glimmer-nvfp4-w4a4, S-forum-qwen38-27b-mixedint4, S-forum-glm52-sparkrun-4x, S-forum-kexaone-236b, S-forum-qwen38-nvfp4-vs-fp8
-> **updated:** 2026-08-20
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy, S-forum-muse-glimmer, S-forum-muse-glimmer-nvfp4-w4a4, S-forum-qwen38-27b-mixedint4, S-forum-glm52-sparkrun-4x, S-forum-kexaone-236b, S-forum-qwen38-nvfp4-vs-fp8, S-forum-qwen38-27b-vllm-mtp, S-forum-qwen38-nemotron-bench, S-forum-dsv4-nvfp4-416-kv
+> **updated:** 2026-08-21
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
 anchor the rules on
@@ -1182,3 +1182,60 @@ All rows below are **[conjecture]** — single-source community-reported numbers
   parameters. This corroborates the community claim (0rand) that "good local quant outperforms
   cloud version every single time" when properly configured. The eugr/spark-vllm-b12x image
   with DSpark k5 is the serving stack. Single source → [conjecture].
+
+### Qwen3.8-27B-NVFP4 single-Spark vLLM+MTP + Nemotron 3 Nano (2026-08-21)
+
+**[conjecture]** — single-source forum threads. S-forum-qwen38-27b-vllm-mtp (helge),
+S-forum-qwen38-nemotron-bench (reborn.li.rl).
+
+| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Mem/node | Notes | Source |
+|---|---|---|---|---|---|---|---|---|
+| Qwen3.8-27B (dense) | NVFP4 + MTP k=5 | vLLM (eugr nightly) | 1 | 24.0 (thinking) / 26.0 (no thinking) | 262K | ~56 GB (util 0.45) | unsloth/Qwen3.8-27B-NVFP4; MTP doubles decode (11.4→24.7); prefill 853 tok/s @48K | S-forum-qwen38-27b-vllm-mtp |
+| Qwen3.8-27B (dense) | NVFP4 + MTP k=3 | vLLM (eugr nightly) | 1 | 23.6 | 262K | ~56 GB | k=3-8 within 14% | S-forum-qwen38-27b-vllm-mtp |
+| Qwen3.8-27B (dense) | NVFP4 (no MTP) | vLLM (eugr nightly) | 1 | 11.4 | 262K | ~56 GB | bandwidth-bound dense 27B ceiling | S-forum-qwen38-27b-vllm-mtp |
+| Qwen3.8-27B (dense) | NVFP4 + MTP n=3 | vLLM (drowzeys b12x) | 1 | 39.0 (c1) / 98 agg (c4) | 256K | — | styles01 recipe; stock vLLM crashes (no NVFP4 kernels for sm_121a) | S-forum-qwen38-27b-vllm-mtp |
+| Qwen3.8-27B (dense) | BF16 | vLLM | 1 | 4.09 | 262K | ~85 GB | at physical bandwidth limit | S-forum-qwen38-nemotron-bench |
+| Qwen3.8-27B (dense) | BF16 | SGLang | 1 | 4.24 | 262K | ~85 GB | SGLang slightly faster on BF16 | S-forum-qwen38-nemotron-bench |
+| Qwen3.8-27B (dense) | FP8 | vLLM | 1 | 6.96 | 262K | ~103 GB | no spec decode | S-forum-qwen38-nemotron-bench |
+| Qwen3.8-27B (dense) | FP8 | SGLang | 1 | 6.92 | 262K | ~103 GB | | S-forum-qwen38-nemotron-bench |
+| Qwen3.8-27B (dense) | FP8 + DSPARK | SGLang | 1 | 9.77 | 262K | ~103 GB | spec decode; draft trained on math/code | S-forum-qwen38-nemotron-bench |
+| Qwen3.8-27B (dense) | FP8 + MTP k=3 | vLLM | 1 | 12.24 | 262K | ~103 GB | MTP TTFT 8.5s penalty | S-forum-qwen38-nemotron-bench |
+| Qwen3.8-27B (dense) | NVFP4 + MTP k=3 | vLLM | 1 | 17.1 | 262K | ~113 GB | | S-forum-qwen38-nemotron-bench |
+| Qwen3.8-27B (dense) | NVFP4 + MTP k=5 | vLLM | 1 | 18.4 (prose) / 25.5 (code) / 24.4 (translate) / 15.4 (thinking) | 262K | ~113 GB | best Qwen3.8 config | S-forum-qwen38-nemotron-bench |
+| Qwen3.8-27B (dense) | NVFP4 + MTP k=8 | vLLM | 1 | 10.2 | 262K | ~113 GB | k=8 collapses | S-forum-qwen38-nemotron-bench |
+| Nemotron 3 Nano 30B-A3B | NVFP4 (no spec) | vLLM 0.27.1-aarch64 | 1 | 56.1 (prose) / 55.3 (code) / 55.0 (translate) / 54.0 (thinking) | 256K | ~115 GB | 3B active MoE + Mamba-2 hybrid; no spec decode needed; 3× best Qwen3.8 | S-forum-qwen38-nemotron-bench |
+| Qwen3.8-27B (dense) | NVFP4 + MTP k=5 | vLLM (eugr nightly) | 2 | ~37 (another user ~45) | 262K | — | Ray cluster; SPEC_TOKENS=5 crashes at c8, SPEC_TOKENS=3 works (~117 tok/s agg) | S-forum-qwen38-27b-vllm-mtp |
+
+> **[conjecture]** **Qwen3.8-27B NVFP4 decode on single Spark: MTP doubles
+> throughput but tops out at ~24-26 tok/s** (S-forum-qwen38-27b-vllm-mtp,
+> helge): the dense 27B bandwidth ceiling is inescapable — even with NVFP4
+> + MTP k=5, decode is ~24-26 tok/s (vs 11.4 tok/s without MTP). This
+> corroborates the proven bandwidth-bound dense decode rule. The styles01
+> recipe (drowzeys GB10 build) reports 39 tok/s — variance may be from image
+> build, FlashInfer autotune state, or measurement methodology. Other users
+> in the same thread report 15-26 tok/s.
+>
+> **[conjecture]** **Nemotron 3 Nano 30B-A3B NVFP4 is 3× faster than the best
+> Qwen3.8-27B config on single Spark** (S-forum-qwen38-nemotron-bench,
+> reborn.li.rl): 55-56 tok/s with no speculative decoding vs 18.4 tok/s
+> (Qwen3.8 NVFP4+MTP k=5). The MoE 3B active parameter count means only ~3 GB
+> weight read per token — decode is compute-light, not bandwidth-bound. This
+> is the strongest single-Spark decode number for a 30B-class model to date.
+> Single source → [conjecture]. See `[[wiki/models/nemotron-3.md]]` → Nemotron
+> 3 Nano benchmark section.
+
+### DeepSeek-V4-Flash-0731 native 416-byte NVFP4 KV cache on 2× Spark (2026-08-21)
+
+**[conjecture]** — single-source forum thread + GitHub repo. S-forum-dsv4-nvfp4-416-kv.
+
+| Model | Quant | Engine | Nodes | KV cache | KV tokens | Max ctx | Concurrency | Notes | Source |
+|---|---|---|---|---|---|---|---|---|---|
+| DeepSeek-V4-Flash-0731 | NVFP4 + 416B NVFP4 KV | vLLM + DSpark | 2 | 17.66 GiB | 2,779,464 | 1,048,576 | 2.65× | native 416-byte record (vs padded 584B FP8); 14% more KV capacity; MTP k=5 | S-forum-dsv4-nvfp4-416-kv |
+
+> **[conjecture]** **Native 416-byte NVFP4 KV cache yields 14% more tokens
+> vs padded 584-byte FP8** (S-forum-dsv4-nvfp4-416-kv, emihuang): the 416-byte
+> record (256B E2M1 + 32B E4M3 scales + 128B BF16 RoPE) replaces the previous
+> 584-byte padded FP8 record for DeepSeek V4 Flash sparse-MLA. At 1M context
+> with MTP k=5 on 2× Spark (util 0.835), the server reports 17.66 GiB KV / 2.78M
+> tokens / 2.65× concurrency. Includes DSpark stability fixes for concurrent
+> agent traffic. Single source → [conjecture].

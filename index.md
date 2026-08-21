@@ -41,6 +41,38 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-21 (Batch 83)
+- 5 new NVIDIA DGX Spark forum topics found, 4 technically relevant (1 skipped:
+  359907 Energy Star/NRTL/EPEAT certification — regulatory question, no GB10
+  inference findings).
+- 4 new sources registered (Batch 83). 5 topic IDs added to processed_topics.txt
+  (total now 650).
+- **Headline finding 1:** Nemotron 3 Nano 30B-A3B NVFP4 on single Spark —
+  55-56 tok/s with no speculative decoding, 3× the best Qwen3.8-27B config.
+  MoE 3B active + Mamba-2 hybrid = only ~3 GB/token weight read. Strongest
+  single-Spark 30B-class decode to date. [conjecture].
+- **Headline finding 2:** Qwen3.8-27B NVFP4 MTP doubles decode (11.4→24.7
+  tok/s) but dense 27B bandwidth ceiling is inescapable. Working recipe, YaRN
+  1M context, KV cost 37K bytes/token, tokenizer bug (fixed), measurement
+  pitfalls. styles01 recipe 39 tok/s (drowzeys GB10 build). [conjecture].
+- **Headline finding 3:** vLLM MTP TTFT penalty — MTP pushes TTFT from 0.19s
+  to 8.5-11s; SGLang DSPARK has no TTFT penalty (0.33s). Durable GB10 finding.
+  [conjecture].
+- **Headline finding 4:** Native 416-byte NVFP4 KV cache for DSV4-Flash-0731
+  on 2× Spark — 14% more KV capacity vs padded 584-byte FP8. 2.78M tokens at
+  1M context. DSpark stability fixes for concurrent agent traffic.
+  [conjecture].
+- **Headline finding 5:** --gpu-memory-utilization on UMA is spending system
+  RAM — at 0.75, vLLM reserves ~91 GB (53.8 GB KV for 31 concurrent at 131K),
+  idle cache 0.0% on single-user box. Size for actual concurrency. [conjecture].
+- Pages touched: models/qwen (Qwen3.8-27B NVFP4 deep dive [conjecture]),
+  models/nemotron-3 (Nemotron 3 Nano benchmark + bandwidth model + MTP TTFT
+  + FP8 KV hybrid + deployment gotchas [conjecture]), engines (vLLM long-lived
+  service UMA finding + DSV4 416-byte NVFP4 KV cache [conjecture]),
+  attention-and-kv-cache (416-byte NVFP4 KV record [conjecture]), benchmarks
+  (14 new [conjecture] rows + DSV4 416B KV row), sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+
 ## Forum ingest 2026-08-21 (Batch 82)
 - 7 new NVIDIA DGX Spark forum topics found, 3 technically relevant (4 skipped:
   380676 GB10 Setup — domain allowlist question, no durable findings; 380600
