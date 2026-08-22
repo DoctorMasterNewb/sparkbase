@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-nemotron-rpc, S-swapper, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-nemotron-super-abi, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-nemotron-2node, S-forum-nemotron35-lightning, S-forum-qwen38-nemotron-bench
-> **updated:** 2026-08-21
+> **sources:** S-nemotron-rpc, S-swapper, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-nemotron-super-abi, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-nemotron-2node, S-forum-nemotron35-lightning, S-forum-qwen38-nemotron-bench, S-forum-nemotron35-lightning-arena
+> **updated:** 2026-08-22
 
 NVIDIA Nemotron-3 — **hybrid Mamba-2 + attention MoE** (`nemotron_h_moe`). Most layers are SSM with a
 few attention layers (2 KV heads), so KV is cheap and native context is huge. Two paths on GB10.
@@ -133,6 +133,12 @@ few attention layers (2 KV heads), so KV is cheap and native context is huge. Tw
    single Spark. 1M native context (Mamba-2 hybrid = cheap KV) and DSpark support
    make it a throughput-oriented model. The low tool-eval score (77-80 vs Qwen 100)
    limits agentic use. See `[[wiki/benchmarks.md]]` → Batch 68.
+ - **[conjecture]** **Spark Arena Benchmark: 116.84 tok/s** (S-forum-nemotron35-lightning-arena,
+   kuscsik): automated benchmark post linking to NVIDIA's Spark Arena Benchmark page,
+   claiming 116.84 tok/s text generation for `nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4`
+   on DGX Spark with vLLM. Single-post bot-generated link with no recipe details, community
+   discussion, or measurement methodology. Falls within the 78-120+ tok/s range already
+   reported by community members. Single source → [conjecture].
 
 ## Forum ingest: Nemotron 3 Nano 30B-A3B NVFP4 comprehensive benchmark (2026-08-21)
 

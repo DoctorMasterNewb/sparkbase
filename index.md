@@ -41,6 +41,32 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-22 (Batch 84)
+- 2 new NVIDIA DGX Spark forum topics found, both technically relevant.
+- 2 new sources registered (Batch 84). 2 topic IDs added to processed_topics.txt
+  (total now 652).
+- **Headline finding 1:** PrismaQuant AQUA (activation-quantization-awareness)
+  extends sensitivity analysis to activation quantization — AURA was weight-only;
+  AQUA tracks how activation magnitude propagates to downstream KL, letting
+  high-activation linears get less aggressive formats under the same bit budget.
+  First release: Qwen3.8-27B PrismaAQUA 5.5-bit (22 GiB), tool-eval 93. m0l0
+  benchmarks on 2 GHz-downclocked single Spark: 20.0 tok/s c1, 66.4 tok/s c4
+  (with MTP). [conjecture].
+- **Headline finding 2:** DS4F-0731 PrismaAQUA gridbook 87 GB for single Spark —
+  single-file checkpoint OOMs on 128 GB UMA (load peaks ~2× file size: CPU
+  staging + UMA allocation share pool). Fix: re-shard to 11×8 GB files. Working
+  recipe: 100+ tok/s for 116 concurrent jobs (thinking=false), 19-20 tok/s
+  single-stream (thinking-on). No-EOS degenerate repetition bug reported (open).
+  MTP pending. [conjecture].
+- **Headline finding 3:** Nemotron-3.5-Lightning-30B-A3B NVFP4 Spark Arena
+  Benchmark: 116.84 tok/s — automated benchmark link post, no recipe details or
+  methodology. Falls within the 78-120+ tok/s range already reported. [conjecture].
+- Pages touched: quantization-on-gb10 (AQUA section, 6 new [conjecture]
+  findings), models/nemotron-3 (Spark Arena data point [conjecture]),
+  models/qwen (PrismaAQUA 5.5-bit on Spark [conjecture]), benchmarks (4 new
+  [conjecture] rows), sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+
 ## Forum ingest 2026-08-21 (Batch 83)
 - 5 new NVIDIA DGX Spark forum topics found, 4 technically relevant (1 skipped:
   359907 Energy Star/NRTL/EPEAT certification — regulatory question, no GB10

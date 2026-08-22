@@ -3,8 +3,8 @@
 > **area:** quantization
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-dsv4-reap25, S-forum-sm121-4bugs, S-forum-kat-coder-autoround
-> **updated:** 2026-08-11
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-dsv4-reap25, S-forum-sm121-4bugs, S-forum-kat-coder-autoround, S-forum-prismaaqua
+> **updated:** 2026-08-22
 
 GB10 has **no native FP4 compute and no native FP8 block-scale**. That one fact decides which quant
 to pick. Decode is **bandwidth-bound** (`[[wiki/platform-gb10.md]]`), so the winning quant is usually
@@ -411,6 +411,61 @@ decompress, because at low batch you're memory-bound, not compute-bound.
   find redundant weights to prune." Abandoned. Relevant to the documented 15% expert-prune finding
   for GLM-5.2 (S-forum-glm52-4x) — that worked on a specific model; the general claim that pruning
   is a reliable lever is weakened.
+
+## Forum ingest: PrismaQuant AQUA — activation-quantization-awareness (2026-08-22)
+
+- **[conjecture]** **PrismaQuant AQUA — activation-quantization-awareness extends sensitivity
+  analysis to activations** (S-forum-prismaaqua, tenari/RobTand): AQUA is the successor to AURA
+  (which was weight-only sensitivity analysis). AURA tracked how a linear's weight-quantization
+  sensitivity propagates through the model to downstream KL. AQUA adds the same propagation
+  analysis for **activation quantization** — even if a 16-bit weight can be perfectly quantized
+  to 4 bits, activations also get quantized, and activation magnitude can matter more than weight
+  sensitivity. AQUA lets linears with large activations receive better (less aggressive) formats
+  under the same bit-budget constraint. This is a toolchain finding (not a GB10 hardware finding),
+  but it directly affects which quants are optimal for bandwidth-bound Spark decode: a quant that
+  is weight-optimal but activation-naive may be slower or lower-quality than AQUA assigns.
+  Single source → [conjecture].
+- **[conjecture]** **Qwen3.8-27B PrismaAQUA 5.5-bit on single Spark — 22 GiB, tool-eval 93**
+  (S-forum-prismaaqua, m0l0): `rdtand/Qwen3.8-27B-PrismaAQUA-5.5bit-vllm` for Sparks and 5090s.
+  m0l0 benchmarked on a **2 GHz downclocked** single Spark: **2311 pp/s, 20.0 tg/s single-stream,
+  37.6 tok/s @c2, 66.4 tok/s @c4** (with MTP). Recipe in linked post. Notes: not yet optimized
+  for performance, more speed expected with quality DFlash/DSpark drafters. Tool-eval 93. This
+  is a downclocked measurement — full-clock decode would be higher. Single source → [conjecture].
+- **[conjecture]** **DS4F-0731 PrismaAQUA gridbook 87 GB on single Spark — single-file checkpoint
+  OOMs on 128 GB UMA** (S-forum-prismaaqua, wga472): the 87 GB single-file checkpoint cannot
+  complete loading on a 128 GB GB10 because load peaks at **~2× the file size** — CPU staging
+  and UMA "VRAM" allocation share the same pool, so the engine gets OOM-killed a few minutes
+  in. **Fix: re-shard locally into 11×8 GB files** — loading then completes cleanly. This is a
+  durable UMA-specific finding: single-file large checkpoints are problematic on GB10 because
+  CPU-side safetensors staging + GPU-side allocation are the same physical memory. tenari
+  acknowledged the issue and plans to publish sharded checkpoints for Spark users. Single
+  source → [conjecture]. Extends the UMA memory-overhead pattern (see
+  `[[wiki/platform-gb10.md]]` → OOM/UMA findings).
+- **[conjecture]** **DS4F-0731 PrismaAQUA gridbook — no-EOS degenerate repetition bug**
+  (S-forum-prismaaqua, wga472): once loading is solved, chat generation never emits EOS — correct
+  answers followed by degenerate repetition to max_tokens at every temperature. Reproduced on
+  pinned eugr/spark-vllm digest with shipcard environment mirrored. tenari hypothesizes
+  reasoning_effort set too high may be the cause; explicit KV cache sizing for the first issue.
+  Single source → [conjecture]. Status: open — not yet root-caused.
+- **[conjecture]** **DS4F-0731 PrismaAQUA gridbook working recipe on single Spark**
+  (S-forum-prismaaqua, vedrin.jeliazkov): `vllm serve
+  rdtand/DeepSeek-V4-Flash-0731-PrismaQuant-AQUA-gridbook-87GB-spark-vllm` with eugr
+  spark-vllm-docker, `--gpu-memory-utilization 0.92`, `--max-model-len 98304`,
+  `--max-num-seqs 128`, `--max-num-batched-tokens 16384`, `--performance-mode throughput`,
+  `--optimization-level 3`, `--language-model-only`, `--load-format instanttensor`,
+  `--quantization gridbook`, `--kv-cache-dtype fp8`, `--tokenizer-mode deepseek_v4`,
+  `--tool-call-parser deepseek_v4`, `--reasoning-parser deepseek_v4`, `--block-size 256`,
+  `--compilation-config '{"cudagraph_mode":"FULL_AND_PIECEWISE","custom_ops":["all"],
+  "cudagraph_capture_sizes":[1,2,4,8]}'`. Env: `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`,
+  `MALLOC_ARENA_MAX=2`. Result: **100+ tok/s avg generation for 116 concurrent jobs** with
+  thinking=false. Startup ~5 min. Single source → [conjecture].
+- **[conjecture]** **DS4F-0731 PrismaAQUA gridbook — 19-20 tok/s single-stream thinking-on**
+  (S-forum-prismaaqua, erlendboe): with thinking enabled, single-stream decode is 19-20 tok/s
+  (Q&A 19.2, Code 19.6, JSON 19.8, Math 16.1, LongCode 20.0). With 2-3 concurrent opencode
+  clients, server reports up to **36.9 tok/s** generation throughput. Initial low numbers
+  (7 tok/s) were due to wrong vLLM version — corrected with standard eugr docker image
+  (2026-08-21). tenari expects **19-20 tps decode, 750 tps prefill** as the baseline.
+  MTP not yet available for this quant. Single source → [conjecture].
 
 ## Forum ingest: NVFP4 KV cache & sub-4-bit tensor-core wall (2026-07-29)
 

@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x, S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train, S-forum-moe-lora-vllm, S-forum-qlora-coding, S-forum-macaron-v1-tall, S-forum-qwen36-tp2-stall, S-forum-kat-coder-autoround, S-forum-qwen38-27b-mixedint4, S-forum-qwen38-nvfp4-vs-fp8, S-forum-ds4f-qwen38-orchestration, S-forum-qwen38-27b-vllm-mtp
-> **updated:** 2026-08-21
+> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x, S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train, S-forum-moe-lora-vllm, S-forum-qlora-coding, S-forum-macaron-v1-tall, S-forum-qwen36-tp2-stall, S-forum-kat-coder-autoround, S-forum-qwen38-27b-mixedint4, S-forum-qwen38-nvfp4-vs-fp8, S-forum-ds4f-qwen38-orchestration, S-forum-qwen38-27b-vllm-mtp, S-forum-prismaaqua
+> **updated:** 2026-08-22
 
 The best-supported family on GB10 — both Atlas (AOT kernels for the MoE variants) and vLLM serve it.
 The recurring lesson: **MoE-A3B NVFP4 + MTP is the fastest regime on Spark; the dense variant of the
@@ -957,3 +957,15 @@ alternative recipes, and cross-platform comparisons.
   NVFP4 as daily driver for tool calling; Aqua is a viable drop-in with slightly
   faster prefill. Not GB10-specific but relevant for quant comparison. Single
   source → [conjecture].
+
+### PrismaAQUA 5.5-bit on single Spark (2026-08-22)
+
+- **[conjecture]** **Qwen3.8-27B PrismaAQUA 5.5-bit on downclocked single Spark**
+  (S-forum-prismaaqua, m0l0): `rdtand/Qwen3.8-27B-PrismaAQUA-5.5bit-vllm` (22 GiB)
+  with MTP on a 2 GHz-downclocked Spark: **20.0 tok/s single-stream, 37.6 tok/s @c2,
+  66.4 tok/s @c4**, pp 2311 tok/s. Tool-eval 93. Not yet performance-optimized — more
+  speed expected with quality DFlash/DSpark drafters. At full clock, decode would be
+  higher. This is the first PrismaAQUA (activation-quantization-awareness) release —
+  AQUA extends PrismaQuant's sensitivity analysis to activation quantization, not just
+  weights (see `[[wiki/quantization-on-gb10.md]]` → AQUA section). Single source →
+  [conjecture].

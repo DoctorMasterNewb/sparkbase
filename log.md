@@ -2,6 +2,36 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-22 — Forum ingest: Batch 84 — 2 new topics (2 processed)
+
+- **Sources:** 2 new forum topics found by fetch_new_topics.py. Both technically
+  relevant. 2 new sources registered (Batch 84) in `sources/README.md`:
+  S-forum-prismaaqua, S-forum-nemotron35-lightning-arena. 2 topic IDs added
+  to `processed_topics.txt` (total now 652).
+- **Topics found:**
+  - 380364 (Lot of PrismaQuant news) — **processed**. 18-post thread, 1085
+    views. PrismaQuant AQUA (activation-quantization-awareness) launch — extends
+    sensitivity analysis to activation quantization. Qwen3.8-27B PrismaAQUA
+    5.5-bit (22 GiB) for Spark: tool-eval 93, m0l0 benchmarks 20.0 tok/s c1 /
+    66.4 tok/s c4 (2 GHz downclocked, MTP). DS4F-0731 PrismaAQUA gridbook 87 GB
+    for single Spark: single-file checkpoint OOMs on 128 GB UMA (load peaks
+    ~2× file size, CPU staging + UMA allocation share pool), re-sharding to
+    11×8 GB fixes; no-EOS degenerate repetition bug reported (open); vedrin
+    recipe: 100+ tok/s for 116 concurrent jobs (thinking=false), startup ~5 min;
+    erlendboe 19-20 tok/s single-stream (thinking-on), 36.9 tok/s @ 3 concurrent;
+    tenari expects 19-20 tps decode / 750 tps prefill baseline; MTP pending.
+  - 379875 ([Benchmark] Nemotron-3.5-Lightning-30B-A3B-NVFP4) — **processed**.
+    1-post automated benchmark link to Spark Arena Benchmark, claims 116.84
+    tok/s. No recipe details, no community discussion. Falls within the 78-120+
+    tok/s range already recorded. Low-density but registered for completeness.
+- **Pages touched:** quantization-on-gb10 (AQUA section: 6 new [conjecture]
+  findings — AQUA concept, Qwen3.8-27B AQUA benchmark, DS4F-0731 gridbook 87 GB
+  UMA OOM + no-EOS bug + working recipe + thinking-on throughput),
+  models/nemotron-3 (Spark Arena 116.84 tok/s data point [conjecture]),
+  models/qwen (PrismaAQUA 5.5-bit on Spark [conjecture]),
+  benchmarks (4 new [conjecture] rows), sources/README, index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+
 ## 2026-08-21 — Forum ingest: Batch 83 — 5 new topics (4 processed, 1 skipped)
 
 - **Sources:** 5 new forum topics found by fetch_new_topics.py. 4 technically
