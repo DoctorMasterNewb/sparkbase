@@ -3,8 +3,8 @@
 > **area:** multinode
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3, S-forum-mikrotik-cr804-042, S-forum-nfs-modelshare, S-forum-cx7-pcie-power, S-forum-4node-qrs812, S-forum-crs812-4node, S-forum-sparkring, S-forum-kernel-1029-rdma, S-forum-crs804-8x, S-forum-cx7-promisc, S-forum-cx7-qsfp-breakout
-> **updated:** 2026-08-21
+> **sources:** S-networking, S-mimo-results, S-m3-vision, S-xnode-cudagraph, S-sess-jun11, S-nemotron-rpc, S-pr46372, S-dgxspark-report, S-forum-cx7-13gbps, S-forum-mikrotik, S-forum-ddp-timeout, S-forum-2d-parallel, S-forum-sglang-traps, S-forum-glm47-rdma, S-forum-4node-mesh, S-forum-roce-397b-mtp, S-forum-ds4f-4x-vllm, S-forum-m25-sglang-4x, S-forum-3node-nccl, S-forum-mimo-2x-opt, S-forum-cx7-dual-setup, S-forum-4node-crs504, S-forum-qwen397-arch, S-forum-ibwrite-false, S-forum-glm52-8x, S-forum-asus-fw0103, S-forum-host-freeze-tp2, S-forum-nm-phantom, S-forum-sync-locale, S-forum-6x-cluster, S-forum-kimi-k3-ceiling, S-forum-inkling-nvfp4, S-forum-3node-mesh, S-forum-6x-ring-rdma, S-forum-m3-tp3, S-forum-mikrotik-cr804-042, S-forum-nfs-modelshare, S-forum-cx7-pcie-power, S-forum-4node-qrs812, S-forum-crs812-4node, S-forum-sparkring, S-forum-kernel-1029-rdma, S-forum-crs804-8x, S-forum-cx7-promisc, S-forum-cx7-qsfp-breakout, S-sm121-nvfp4
+> **updated:** 2026-08-22
 
 Two Sparks (242 GB combined) run models a single 121 GB node can't. The fabric works, but **no
 GPUDirect** makes cross-node collectives host-staged — fine for latency-bound decode, costly for
@@ -192,9 +192,11 @@ on one node, **serve it single-node** — cross-node is for models that don't fi
   dominates. Relevant for planning >4-node clusters.
 - **[conjecture]** **FP8 training does not exist on sm_121** (S-forum-qwen397-arch,
   raphael.amorim): TransformerEngine has no FP8 backend for sm_121, and NVIDIA has
-  confirmed no roadmap for it. This is consistent with the existing `[proven]` finding
-  that GB10 has no native FP4/block-scale-FP8 compute. Training on GB10 is limited to
-  BF16/FP16. See also `[[wiki/quantization-on-gb10.md]]`.
+  confirmed no roadmap for it. ⚠ **2026-08-22: the corroborating clause is withdrawn** — the
+  "GB10 has no native FP4/block-scale-FP8 compute" finding is `[superseded]` (S-sm121-nvfp4).
+  TransformerEngine's missing sm_121 FP8 backend may still be real, but it is evidence about a
+  *library*, not about the tensor cores. Training on GB10 is limited to BF16/FP16 on that basis
+  alone. See also `[[wiki/quantization-on-gb10.md]]`.
 - **[conjecture]** **Megatron-LM works on GB10 with caveats** (S-forum-qwen397-arch,
   raphael.amorim): Megatron/NeMo does work on GB10 for MoE at scale (expert parallelism),
   but: (1) Megatron Bridge consumes excessive VRAM on GB10 (use `vlm_step`, reduce

@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun5
-> **updated:** 2026-07-08
+> **sources:** S-sess-jun5, S-sm121-nvfp4
+> **updated:** 2026-08-22
 
 `Hcompany/Holo-3.1-35B-A3B` — computer-use vision-language model (Qwen3.5 VL MoE, 3B active/token,
 hybrid linear+full attention, full-attention every 4th layer). Deployed behind a live computer-use
@@ -20,7 +20,9 @@ endpoint. A clean worked example of "NVFP4 MoE is the GB10 sweet spot."
   **`--dtype bfloat16` mandatory** (config declares float32). Attention FLASHINFER; Marlin FP4 MoE.
 - **[proven]** **~77 tok/s** decode single-stream; aggregate saturates ~**899 tok/s @ 128
   concurrency** (compute-bound Marlin FP4 decompress; knee ~64). Cold start ~4 min (NVFP4 weight load
-  ~108 s).
+  ~108 s). ⚠ **2026-08-22:** the saturation is the *Marlin dispatch*, not the silicon — sm_121 has
+  native block-scaled FP4 MMA, so this ceiling is retestable here rather than inherent.
+  (S-sm121-nvfp4, `[[wiki/quantization-on-gb10.md]]`)
 
 **[proven]** The **FP8** variant (`-A3B-FP8`, compressed-tensors block-scale, 35.6 GiB) only does ~38
 tok/s (Marlin FP8 fallback — `[[wiki/quantization-on-gb10.md]]`); use only if the gemma4-unified image

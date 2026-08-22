@@ -7,8 +7,8 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 
 ## Foundations
 - **[Hardware-parity tenet](wiki/platform-gb10.md#foundational-tenet-hardware-parity-read-before-replicating-any-community-finding)** — DGX Spark is standardized; non-reproduction of a community finding is a software delta on your side, never an immutable hardware difference. Read before replicating any forum result.
-- [platform-gb10](wiki/platform-gb10.md) — the hardware: sm_121/12.1a, 121 GB unified, ~270 GB/s (decode is bandwidth-bound), no native FP4/FP8-blockscale, no GPUDirect, OOM=reboot. **Read first.**
-- [quantization-on-gb10](wiki/quantization-on-gb10.md) — what runs native (online-dynamic FP8) vs Marlin (FP4, block-scale FP8); ModelOpt-NVFP4; MXFP8/AWQ/AutoRound/GGUF; loader bugs.
+- [platform-gb10](wiki/platform-gb10.md) — the hardware: sm_121/12.1a, 121 GB unified, ~270 GB/s (decode is bandwidth-bound), **native block-scaled FP4/FP8 MMA (`compute_120f` family) — corrected 2026-08-22, this said the opposite and was tagged `[proven]`**, no GPUDirect, OOM=reboot. **Read first.**
+- [quantization-on-gb10](wiki/quantization-on-gb10.md) — what dispatches native (dense NVFP4 cutlass, online-dynamic FP8) vs Marlin (**MoE** FP4, block-scale FP8) and why that is kernel coverage not silicon; the 128-alignment gate; ModelOpt-NVFP4; MXFP8/AWQ/AutoRound/GGUF; loader bugs; **the "no native FP4" reconciliation**.
 - [cudagraphs-and-compile](wiki/cudagraphs-and-compile.md) — the two cudagraph walls (MoE on sm_121, cross-node host-staged NCCL / vllm#46253) and the "20 tok/s" math.
 - [multinode-tp-and-networking](wiki/multinode-tp-and-networking.md) — CX7 twins + NCCL_IB_HCA + MTU 9000; no-ray TP; `--disable-custom-all-reduce`; mDNS/sshd ops; why cross-node is slow.
 - [attention-and-kv-cache](wiki/attention-and-kv-cache.md) — TRITON_ATTN / DIFFKV / FLASHINFER selection; block-size 128 for MSA; fp8 KV; ViT JIT; gemma-norm ICE.

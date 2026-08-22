@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-m3-vision, S-m3-20tps, S-sess-jun11, S-minimax-sweeps, S-forum-m3-nvfp4-4x, S-forum-m3-awq-4x, S-forum-m3-llamacpp-2x, S-forum-m3-quad, S-forum-m3-w4a16-gptq, S-forum-m25-sglang-4x, S-forum-m27-recipe, S-forum-4node-crs504, S-forum-m3-tp3, S-forum-m3-nvfp4-4x-1m
-> **updated:** 2026-08-12
+> **sources:** S-m3-vision, S-m3-20tps, S-sess-jun11, S-minimax-sweeps, S-forum-m3-nvfp4-4x, S-forum-m3-awq-4x, S-forum-m3-llamacpp-2x, S-forum-m3-quad, S-forum-m3-w4a16-gptq, S-forum-m25-sglang-4x, S-forum-m27-recipe, S-forum-4node-crs504, S-forum-m3-tp3, S-forum-m3-nvfp4-4x-1m, S-sm121-nvfp4
+> **updated:** 2026-08-22
 
 Two very different MiniMax stories on GB10: **M2.7 AWQ** = the fast, durable daily-driver default;
 **M3** = a 428B research/long-context/vision endpoint that's structurally slow here.
@@ -23,6 +23,11 @@ Two very different MiniMax stories on GB10: **M2.7 AWQ** = the fast, durable dai
   kernel efficiency (AWQ/Marlin vs NVFP4 FIC for this MoE), not bytes. Don't assume NVFP4 > AWQ; measure.
   See `[[wiki/benchmarks.md]]`. (cyankiwi AWQ ≈ abliterated AWQ; an NVFP4 FlashInfer-CUTLASS recipe exists
   for the NVFP4 path.)
+  ⚠ **[superseded] premise, 2026-08-22:** the NVFP4 arm here was FlashInfer-CUTLASS; the **native
+  SM12x fused NVFP4 MoE** (`--moe-backend flashinfer_b12x`) was never benched, because the KB held
+  that sm_121 had no native FP4. The measured numbers stand; the *matrix* is incomplete. The rule
+  ("measure, don't assume NVFP4 wins") survives; the winner may not.
+  (S-sm121-nvfp4, `[[wiki/quantization-on-gb10.md]]`)
 
 ## MiniMax-M3 — 428B MoE + MSA + vision, cross-node
 

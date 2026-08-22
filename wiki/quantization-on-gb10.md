@@ -2,23 +2,30 @@
 
 > **area:** quantization
 > **status:** stable
-> **evidence:** proven
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-dsv4-reap25, S-forum-sm121-4bugs, S-forum-kat-coder-autoround, S-forum-prismaaqua
+> **evidence:** mixed
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-dsv4-reap25, S-forum-sm121-4bugs, S-forum-kat-coder-autoround, S-forum-prismaaqua, S-sm121-nvfp4
 > **updated:** 2026-08-22
 
-GB10 has **no native FP4 compute and no native FP8 block-scale**. That one fact decides which quant
-to pick. Decode is **bandwidth-bound** (`[[wiki/platform-gb10.md]]`), so the winning quant is usually
-the one that moves the **fewest weight bytes/token** — even if its kernel is a slow weight-only
-decompress, because at low batch you're memory-bound, not compute-bound.
+⚠ **This page opened with "GB10 has no native FP4 compute and no native FP8 block-scale" until
+2026-08-22, tagged `[proven]`. It is `[superseded]`** — sm_121 *does* have native block-scaled FP4/FP8
+MMA (`[[wiki/platform-gb10.md]]`, S-sm121-nvfp4). What GB10 lacks is **kernel coverage**, per format
+and per layer type. See the reconciliation section at the bottom of this page for what the false claim
+contaminated — including two forum findings already on this page that contradicted it.
+
+The quant-picking rule itself is unchanged, because it never rested on the false premise: decode is
+**bandwidth-bound** (`[[wiki/platform-gb10.md]]`), so the winning quant is usually the one that moves
+the **fewest weight bytes/token** — even if its kernel is a slow weight-only decompress, because at low
+batch you're memory-bound, not compute-bound. What changes is everything that followed from *"and it
+can never be better than that."*
 
 ## What runs natively vs. falls back to Marlin
 
 | Format | GB10 path | Speed | Notes |
 |---|---|---|---|
 | **FP8 online dynamic** (`--quantization fp8` on bf16 weights) | native **CUTLASS** (`CutlassFP8ScaledMMLinearKernel`) | **fast** | quantizes at load, no pre-quant checkpoint. The genuine FP8 fast path. ~2.08× bf16 decode. |
-| **FP8 block-scale checkpoint** (compressed-tensors `float-quantized`, DeepSeek-style) | **Marlin** weight-only ("no native support for FP8") | slow-ish | NOT the fast path. This is why "FP8 = fast on GB10" fails for block-scaled checkpoints (e.g. Holo FP8). |
-| **NVFP4 — ModelOpt** (`quant_method: modelopt`, `hf_quant_config.json`) | **Marlin FP4 MoE** + FlashInfer FP8 linear (or FLASHINFER_CUTLASS) | fastest for MoE | the only NVFP4 that works. Fewest bytes ⇒ wins despite Marlin decompress. |
-| **NVFP4 — compressed-tensors** (`nvfp4-pack`, `.weight_packed`) | **broken** | — | garbage / won't load correctly on GB10. Avoid. Confirmed multiple times. |
+| **FP8 block-scale checkpoint** (compressed-tensors `float-quantized`, DeepSeek-style) | **Marlin** weight-only (vLLM logs "no native support for FP8" — a *dispatch* message) | slow-ish | NOT the fast path *in these builds*. The hardware has `mma…kind::mxf8f6f4.block_scale` (S-sm121-nvfp4); nothing dispatches to it. Open retest. |
+| **NVFP4 — ModelOpt** (`quant_method: modelopt`, `hf_quant_config.json`) | **Marlin FP4 MoE** + FlashInfer FP8 linear (or FLASHINFER_CUTLASS); on current builds *dense* NVFP4 auto-selects **native CUTLASS** | fastest for MoE | Fewest bytes ⇒ wins even where the MoE is a Marlin decompress. The MoE half of that is a missing SM120 grouped-FP4 kernel, not a hardware limit (S-sm121-nvfp4). |
+| **NVFP4 — compressed-tensors** (`nvfp4-pack-quantized`, `.weight_packed`) | ⚠ **works on current builds — this row said "broken"** | fast | Corrected 2026-08-22 (S-sm121-nvfp4): `lyf/Qwen3.6-35B-A3B-…-NVFP4` is `format: nvfp4-pack-quantized` and is a **validated first-party recipe** (67 tok/s c1, TP=2, 2026-07-14). The earlier garbage was checkpoint-/build-specific (see the SM121 4-bug section below, all on vLLM 0.17.1), not format-wide. Judge the checkpoint and the build, not the `format` string. |
 | **MXFP8** (mixed-precision, UE8M0 scales) | FlashInfer-CUTLASS MXFP8 | works | needs explicit dispatch in some vLLM builds (see MiMo mods). Don't reciprocal-invert `weight_scale_inv`. |
 | **AWQ 4-bit** | Marlin | works, **fast decode** | MiniMax-M2.x default. For MiniMax-M2.7, AWQ **decodes ~1.4× faster than NVFP4** single-stream (~24 vs ~16.5 tok/s) — same ~4-bit, so it's kernel efficiency not bytes. Measure; don't assume NVFP4 wins. |
 | **AutoRound (mixed 2/3/4/8-bit)** | plugin-dependent | works w/ plugin | needs OneCompression `autoround_mixed` for 16-bit-base mixed checkpoints (see MiniMax-M3). |
@@ -130,7 +137,8 @@ decompress, because at low batch you're memory-bound, not compute-bound.
   with W4A8 MoE quantization raised GLM-5.2 Int4-Int8Mix decode from ~28–49 (MTP k=4, older image)
   to 33–54 t/s on 8× GB10. The W4A8 path weights are INT4 but activations are INT8 — distinct from
   NVFP4 W4A4 (FP4 weights AND activations via Marlin decompress) and from weight-only AWQ/Marlin
-  W4A16. On GB10 (no native FP4/FP8-blockscale), W4A8 activations run via the native FP8 online-
+  W4A16. On GB10 (whose FP4/block-scale-FP8 MMA exists but is largely undispatched — S-sm121-nvfp4),
+  W4A8 activations run via the native FP8 online-
   dynamic CUTLASS path (weights INT4 Marlin-decompress, activations FP8 CUTLASS) — this is the
   "fewest bytes" principle extended to activations. Stack: vLLM v16-unified fork + b12x.
 - **[conjecture]** **Stale topk_indices_buffer in flashinfer SM120 sparse MLA (PR #46994)** — a class
@@ -240,8 +248,14 @@ decompress, because at low batch you're memory-bound, not compute-bound.
   4. **PTX + Marlin race** — already fixed in namake-taro's fork and eugr's patches.
   Required env vars (all four): `VLLM_NVFP4_GEMM_BACKEND=marlin`,
   `VLLM_MXFP4_USE_MARLIN=1`, `VLLM_USE_FLASHINFER_MOE_FP4=0`, `VLLM_MARLIN_USE_ATOMIC_ADD=1`.
-  Single source → [conjecture], but the root cause analysis is detailed and consistent with the
-  proven no-native-FP4-compute finding. See also the existing NVFP4 CUTLASS failure section above.
+  Single source → [conjecture]. ⚠ **2026-08-22: strike "consistent with the proven
+  no-native-FP4-compute finding"** — that finding is `[superseded]` and was being used here to
+  corroborate a report it cannot support. The *bugs* may well be real on vLLM 0.17.1, but bug 1's
+  framing (CUTLASS FP4 "correctly returns False on GB10") is the same dispatch-vs-silicon confusion:
+  sm_121 has the FP4 MMA, and on our current 0.26 build the dense CUTLASS NVFP4 path is auto-selected
+  and produces **correct** output (Qwen3.8-27B, temp-0 spot-checks clean). Read this section as
+  "stock 0.17.1 dispatched a broken kernel", not "SM121 cannot do FP4". (S-sm121-nvfp4)
+  See also the existing NVFP4 CUTLASS failure section above.
 - **[conjecture]** **`VLLM_NVFP4_GEMM_BACKEND` does NOT exist in vLLM 0.17.1 — it's silently ignored**
   (S-forum-sm121-4bugs, coolthor): the correct env var for MXFP4 backend selection in 0.17.1 is
   `VLLM_MXFP4_BACKEND=marlin`. Without this, vLLM auto-selects CUTLASS_FP4, causing repetition
@@ -518,3 +532,75 @@ decompress, because at low batch you're memory-bound, not compute-bound.
   for efficient thinking / fewer tool calls) with MTP headers from Qwen3.6 — the quantization
   tooling generalizes beyond Qwen/Ornith. See `[[wiki/models/qwen.md]]` for the Qwen3.6 model
   family context.
+
+
+## Reconciliation: the `[proven]` "no native FP4" claim was false (2026-08-22, S-sm121-nvfp4)
+
+**What was claimed.** `[[wiki/platform-gb10.md]]` and this page both opened with *"GB10 has no native
+FP4 compute and no native FP8 block-scale"*, tagged **`[proven]`**. Its actual evidence was a **vLLM
+startup log line** — *"Your GPU does not have native support for FP4/FP8 computation"* — which reports
+**kernel dispatch in one build**. That is a `[conjecture]`-grade inference about hardware wearing a
+`[proven]` tag, and once it was a page tenet it stopped being questioned.
+
+**What overturns it.** Vendor documentation plus first-party inspection on a GB10: PTX ISA 8.8 Table 64
+promotes `mma .e2m1 .block_scale .scale_vec::4X` (NVFP4) to the **`sm_120f` family**, CUDA PG Table 28
+puts **CC 12.1 in that family**, and CUTLASS documents the throughput (**2× Ada FP8 TC, 4× with FP32
+accumulator**) and ships SM120 blockscaled dense **and grouped** GEMMs. Our own shipped extensions
+agree: dense NVFP4 already runs native CUTLASS on sm_121; only the **MoE grouped** FP4 GEMM is absent
+(`_moe_C` carries `sm100 mxf4nvf4` only). Details on `[[wiki/platform-gb10.md]]`.
+
+### The evidence ladder worked; nobody read across it
+
+**Two claims already on this page contradicted the `[proven]` one and were never reconciled.** This is
+the failure the ladder is supposed to prevent, so it is worth naming:
+
+- **[conjecture] FLUX.2 NVFP4 W4A4 ~3× on Spark** (S-forum-flux2-nvfp4-compute, vr8vr8) says in as many
+  words that torchao W4A4 "runs the matmul in **actual FP4 on Blackwell tensor cores**" on this
+  hardware, and even draws the weight-only-vs-real-FP4-compute distinction explicitly. A `[conjecture]`
+  cannot overturn a `[proven]` — but it should have triggered a re-audit of the `[proven]`, and didn't.
+- **[conjecture] SM121 4-bug analysis** (S-forum-sm121-4bugs, coolthor) reports that
+  `CutlassExpertsFp4` *matches* SM121 and that CUTLASS FP4 gets selected there. We filed it as
+  corroboration of the false claim instead of as tension with it.
+
+**Rule to carry forward:** a claim reaches `[proven]` on *what was measured*, not on what a log line
+asserted. A dispatch message, a "not supported" string, or a capability check returning False are
+`[reported]` evidence about **software**, never `[proven]` evidence about **silicon**. And when a
+lower-tier claim contradicts a higher-tier one, the contradiction gets recorded — the higher tier wins
+the page, but the disagreement must be visible or nobody re-opens it.
+
+### Contamination map — what to re-open, in payoff order
+
+| Claim / decision | Where | Status |
+|---|---|---|
+| "Native FP4/FP8-block-scale compute absent — **inherent to Spark**" | `[[wiki/roadmap.md]]` | **Withdrawn.** Becomes: MoE grouped-FP4 kernel coverage. |
+| **DiffusionGemma NVFP4 retired, weights deleted** because bf16 "avoids the weight-only-marlin FP4 path — GB10 has no native FP4" | `[[wiki/models/diffusiongemma.md]]`, `[[wiki/benchmarks.md]]` | **`[proven]` decision invalidated at its stated reason.** NVFP4 was 1.8× prefill at ⅓ memory. Its Marlin fallback was `Intermediate size padding for w1 and w3` — the **128-alignment gate** on the native tiles, an offline padding problem. |
+| **Holo NVFP4 ~900 tok/s plateau** = "compute-bound Marlin FP4, would scale on datacenter Blackwell" | `[[wiki/benchmarks.md]]` | **Measurement stands, attribution falsified.** A backend ceiling on this box, retestable here. Highest-value re-run. |
+| **M2.7: AWQ decodes ~1.4× faster than NVFP4 → AWQ is the default** | this page, `[[wiki/models/minimax.md]]` | **Matrix incomplete.** NVFP4 arm was FlashInfer-CUTLASS; the native SM12x fused MoE was never an arm. The rule ("measure, don't assume") survives; the winner may not. |
+| **Standing force-Marlin env** (`VLLM_TEST_FORCE_FP8_MARLIN=1`, `VLLM_NVFP4_GEMM_BACKEND=marlin`, `VLLM_MXFP4_BACKEND=marlin`) | this page, `[[wiki/containers-and-tooling.md]]` | **Live pessimization risk.** Load-failure workarounds that became pinned defaults. Audit each against a current build. |
+| "FP8 training doesn't exist on sm_121 … **consistent with** no native FP4/block-scale-FP8 compute" | `[[wiki/multinode-tp-and-networking.md]]` | **Corroboration withdrawn.** The TransformerEngine gap may be real; it is not evidence about the tensor cores. |
+| Kimi-K3 MXFP4 "dispatches via Marlin (no native FP4 compute)" | `[[wiki/models/kimi-k3.md]]` | **Phrasing.** `kind::mxf4.block_scale` is family-supported on sm_121 — unimplemented, not impossible. |
+| Dense NVFP4 auto-selecting `FlashInferCutlassNvFp4LinearKernel` on sm_121 with no marlin env | `[[wiki/models/qwen.md]]` | **Counter-evidence already on the page.** This *is* the native dense FP4 path working. Promoted here as confirmation. |
+
+### Two constraints so the retest isn't misread
+
+- **[proven]** Legal SM120 NVFP4 tile shapes are `128x128x128`, `256x128x128`, `128x128x256`, **TN
+  only**. N and K must be **128-aligned** or the native kernel cannot be selected at all — this *is* the
+  DiffusionGemma padding error. (S-sm121-nvfp4)
+- **[proven]** At c1 decode M=1, so 127/128 of a 128-row MMA tile is wasted, and decode is
+  bandwidth-bound regardless. **Native FP4 is a prefill/concurrency lever, never a c1 one.** A flat c1
+  result is the expected shape of a win. (S-sm121-nvfp4)
+
+### Open first-party retest
+
+A 3-arm A/B is staged on the reference cluster (`~/services/b12x-moe-bench/`): `--moe-backend auto` vs
+**`flashinfer_b12x`** — the native SM12x fused NVFP4 MoE (FlashInfer PR #3080), which ships in
+`vllm-node-v0260` and is **deliberately excluded from auto-selection**: *"until the upstream CUTLASS
+SM121 MMA op guard is resolved"* — plus an arm adding `--linear-backend flashinfer_b12x`. TP=1, one
+node, pinned KV, eager, on a 128-aligned NVFP4 MoE; grid targets pp8192 and c16/c64. **[conjecture]**
+that it beats Marlin at concurrency; unrun, so no number is claimed here.
+
+**Build-guard lead if it fails to dispatch:** in CUTLASS `cute/arch/config.hpp`, the MXF4NVF4 MMA
+macros are defined under `SM120_ENABLED|SM120A_ENABLED` and again under `SM121_ENABLED|SM121A_ENABLED`,
+but the `SM120F_ENABLED||SM121F_ENABLED` branch defines only LDSM/STSM — **family targets lose the FP4
+MMA**. Builds using `TORCH_CUDA_ARCH_LIST=12.1a` keep it; anything guarded on `SM120A` specifically is
+compiled out. (S-sm121-nvfp4)

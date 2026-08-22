@@ -2,6 +2,49 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-22 — `[superseded]`: the `[proven]` "no native FP4" claim was false (S-sm121-nvfp4)
+
+- **Source:** 1 new first-party source registered (`S-sm121-nvfp4`): NVIDIA PTX ISA 8.8 / CUDA
+  Programming Guide / CUTLASS docs via the `nvidia-cuda-docs` MCP, cross-checked by inspecting a
+  running GB10's shipped vLLM extensions.
+- **The correction.** `platform-gb10` and `quantization-on-gb10` both opened with "GB10 has no native
+  FP4 compute and no native FP8 block-scale", tagged **`[proven]`**. Its only evidence was a vLLM
+  **kernel-dispatch log line** ("Your GPU does not have native support for FP4/FP8 computation").
+  PTX ISA 8.8 Table 64 + CUDA PG Table 28 put CC 12.1 in the `compute_120f` family and promote
+  `mma .e2m1 .block_scale .scale_vec::4X` (NVFP4) into it; CUTLASS documents 2x Ada-FP8-TC throughput
+  (4x with FP32 acc) and ships SM120 blockscaled dense *and grouped* GEMMs. Claim demoted to
+  `[superseded]`; two new `[proven]` claims replace it on `platform-gb10`.
+- **The real gap, first-party**: the shipped `_C` extension carries 1542 `SM120_*` symbols incl.
+  `Sm120TmaWarpSpecializedBlockScaled…` (dense NVFP4 native here), but `_moe_C` carries only
+  `sm100 mxf4nvf4` — **the MoE grouped FP4 GEMM is not compiled for SM120/121**, which is why FP4 MoE
+  falls to Marlin. Upstream CUTLASS has the kernel (`79d_blackwell_geforce_nvfp4_grouped_gemm`).
+- **Ladder finding worth recording**: two `[conjecture]` claims already on `quantization-on-gb10`
+  contradicted the `[proven]` one and were never reconciled — S-forum-flux2-nvfp4-compute ("actual FP4
+  on Blackwell tensor cores" via torchao W4A4) and S-forum-sm121-4bugs (`CutlassExpertsFp4` matches
+  SM121). The second had even been filed as *corroborating* the false claim. Rule added: a dispatch
+  message or a capability check returning False is `[reported]` evidence about **software**, never
+  `[proven]` evidence about **silicon**; and a lower-tier contradiction must be recorded so someone
+  re-opens the higher-tier claim.
+- **Contamination map** added to `quantization-on-gb10`: DiffusionGemma's NVFP4 retirement (a
+  `[proven]` decision invalidated at its stated reason — its Marlin fallback was the 128-alignment
+  gate, an offline padding problem), the Holo ~900 tok/s plateau (measurement stands, attribution
+  falsified), the M2.7 AWQ-vs-NVFP4 matrix (native MoE arm never run), the standing force-Marlin env
+  vars, the FP8-training corroboration on `multinode-tp-and-networking`, Kimi-K3's MXFP4 phrasing,
+  and Qwen3.8-27B + Hunyuan-v3 as first-party counter-evidence already held and read past.
+- **Also corrected**: the `nvfp4-pack` "broken — avoid" table row (a validated first-party recipe uses
+  that exact format); and two tile-shape constraints recorded so the retest isn't misread — native
+  SM120 NVFP4 tiles are 128x128x128 / 256x128x128 / 128x128x256 TN-only, so N/K must be 128-aligned,
+  and at c1 decode M=1 wastes 127/128 of the tile (native FP4 is a prefill/concurrency lever, not a c1
+  one).
+- **Open first-party retest** staged on the reference cluster: 3-arm A/B of `--moe-backend auto` vs
+  `flashinfer_b12x` (native SM12x fused NVFP4 MoE, present in the current image but deliberately
+  excluded from auto-selection pending "the upstream CUTLASS SM121 MMA op guard") vs + b12x linear.
+  Unrun — no number claimed.
+- **Pages touched:** `platform-gb10`, `quantization-on-gb10` (+ new reconciliation section),
+  `benchmarks`, `multinode-tp-and-networking`, `models/{diffusiongemma,kimi-k3,holo-3.1,minimax}`, `index.md`,
+  `sources/README.md`. Page evidence tier on `platform-gb10` and `quantization-on-gb10`:
+  `proven` → `mixed`.
+
 ## 2026-08-22 — Forum ingest: Batch 84 — 2 new topics (2 processed)
 
 - **Sources:** 2 new forum topics found by fetch_new_topics.py. Both technically

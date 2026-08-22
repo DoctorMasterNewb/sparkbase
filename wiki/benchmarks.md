@@ -3,7 +3,7 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy, S-forum-muse-glimmer, S-forum-muse-glimmer-nvfp4-w4a4, S-forum-qwen38-27b-mixedint4, S-forum-glm52-sparkrun-4x, S-forum-kexaone-236b, S-forum-qwen38-nvfp4-vs-fp8, S-forum-qwen38-27b-vllm-mtp, S-forum-qwen38-nemotron-bench, S-forum-dsv4-nvfp4-416-kv, S-forum-prismaaqua, S-forum-nemotron35-lightning-arena
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy, S-forum-muse-glimmer, S-forum-muse-glimmer-nvfp4-w4a4, S-forum-qwen38-27b-mixedint4, S-forum-glm52-sparkrun-4x, S-forum-kexaone-236b, S-forum-qwen38-nvfp4-vs-fp8, S-forum-qwen38-27b-vllm-mtp, S-forum-qwen38-nemotron-bench, S-forum-dsv4-nvfp4-416-kv, S-forum-prismaaqua, S-forum-nemotron35-lightning-arena, S-sm121-nvfp4
 > **updated:** 2026-08-22
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
@@ -93,12 +93,19 @@ See `[[wiki/multinode-tp-and-networking.md]]`.
 > faster)** and **memory (NVFP4 ~1/3)** — by those NVFP4 was the stronger serving option. We deploy
 > **bf16** as the full-precision choice regardless (GB10 has no native FP4 → NVFP4 = weight-only
 > marlin decompress). NVFP4 retired + weights deleted. See `[[wiki/models/diffusiongemma.md]]`.
+> ⚠ **2026-08-22: the parenthetical is `[superseded]`** — sm_121 has native FP4; NVFP4 fell to Marlin
+> here because of the 128-alignment gate, not the silicon. Numbers stand, the *reason for choosing
+> bf16* does not. (S-sm121-nvfp4, `[[wiki/quantization-on-gb10.md]]`)
 > Bench needs `--skip-coherence` (short-probe empty-output quirk).
 
 ## Concurrency (where measured)
 
 - **[proven]** **Holo NVFP4 text** (256 tok/req, util 0.60): 1→76, 8→295, 32→575, 64→758, **128→899
   tok/s (ceiling, 11.8×)**. Saturates ~96–128 (compute-bound Marlin FP4). Interactive op point 32–64.
+  ⚠ **2026-08-22: the ceiling is a backend artifact, not a hardware one** — it is the Marlin FP4 MoE
+  dispatch, and sm_121 has native FP4 MMA. The numbers stay `[proven]`; "would scale further only on
+  datacenter Blackwell" does not follow. Retestable on this hardware; highest-value re-run.
+  (S-sm121-nvfp4, `[[wiki/quantization-on-gb10.md]]`)
 - **[proven]** **Holo NVFP4 vision** (1280×800 screenshot/req, grounding): peaks ~1.69 steps/s @ 32;
   prefill-bound; interactive sweet spot **4–8 concurrent agents**.
 - **[proven]** **Holo thinking ON vs OFF** (conc 8): 1.13 → 4.74 steps/s (**4.2×**), 190 → 14 output

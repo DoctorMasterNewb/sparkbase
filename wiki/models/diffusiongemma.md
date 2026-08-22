@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-diffusiongemma, S-swapper
-> **updated:** 2026-07-08
+> **sources:** S-diffusiongemma, S-swapper, S-sm121-nvfp4
+> **updated:** 2026-08-22
 
 DiffusionGemma is a **discrete / block-diffusion** language model (NOT autoregressive): 26B MoE
 (~4B active), Gemma4 backbone, bidirectional attention. It generates by iteratively **denoising a
@@ -65,6 +65,12 @@ fixed-length token canvas** (256-token blocks) rather than emitting one token at
   full-precision choice (avoids the weight-only-marlin FP4 decompress path — GB10 has no native FP4).
   Deployed via serving-supervisor recipe (bf16 stack). **The NVFP4 recipe/unit/weights were retired
   and deleted on 2026-07-01.**
+- **[superseded]** ⚠ **The rationale above is invalidated (2026-08-22, S-sm121-nvfp4).** "GB10 has no
+  native FP4" is false. Worse: the specific reason this model fell to Marlin was
+  `Intermediate size padding for w1 and w3`, which is the **SM120 128-alignment gate** on the native
+  FP4 tile shapes — an offline checkpoint-padding problem, not a missing kernel. NVFP4 was already
+  ~1.8× prefill at ⅓ the memory and was retired on a false premise. Re-open NVFP4 first if this model
+  is ever wanted again. `[[wiki/quantization-on-gb10.md]]`
 
 ## Finetunes
 - **[proven]** **`FredyRivera-dev/diffusiongemma-26B-A4B-it-HERETIC-Uncensored`** (abliterated/"heretic"

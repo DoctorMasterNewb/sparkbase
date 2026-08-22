@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** evolving
 > **evidence:** conjecture
-> **sources:** S-forum-kimi-k3-coder-reap
-> **updated:** 2026-08-08
+> **sources:** S-forum-kimi-k3-coder-reap, S-sm121-nvfp4
+> **updated:** 2026-08-22
 
 **Kimi K3** is Moonshot AI's large MoE model. The REAP-320 variant is a pruned/expert-reduced
 version that fits on 8× GB10 (968 GB combined). The full K3 model (~2.8T parameters, see
@@ -18,7 +18,9 @@ version that fits on 8× GB10 (968 GB combined). The full K3 model (~2.8T parame
   parameters but keeps the same number of active experts, so decode bandwidth is comparable
   to the full model.
 - **MXFP4 quant** — the REAP variant ships in MXFP4 format, which dispatches via Marlin
-  decompression on GB10 (no native FP4 compute, see [[wiki/quantization-on-gb10.md]]).
+  decompression on GB10 (~~no native FP4 compute~~ — corrected 2026-08-22: sm_121 *has*
+  `mma…kind::mxf4.block_scale`; MXFP4 is **undispatched** here, not impossible.
+  See [[wiki/quantization-on-gb10.md]]). (S-sm121-nvfp4)
 
 ## Kimi K3 Coder REAP-320 MXFP4 on 8× GB10 (2026-08-08 ingest)
 
@@ -60,6 +62,6 @@ version that fits on 8× GB10 (968 GB combined). The full K3 model (~2.8T parame
 
 - [[wiki/models/glm-5.2.md]] — GLM-5.2 (744B) on 4-8× Spark, the closest comparable large-MoE
   benchmark data
-- [[wiki/quantization-on-gb10.md]] — MXFP4 dispatch via Marlin on GB10 (no native FP4 compute)
+- [[wiki/quantization-on-gb10.md]] — MXFP4 dispatch via Marlin on GB10 (a kernel-coverage gap; the FP4 MMA exists)
 - [[wiki/benchmarks.md]] — collated decode tok/s table
 - [[wiki/roadmap.md]] — open problems including cluster-scaling limits

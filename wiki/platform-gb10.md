@@ -2,9 +2,9 @@
 
 > **area:** platform
 > **status:** stable
-> **evidence:** proven
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma, S-forum-fan-headless-boot, S-forum-suspend-fail, S-forum-hdmi-hotplug-ab, S-forum-usbc-dp-hpd, S-forum-gx10-fw-recovery, S-forum-uefi-capsule-password, S-forum-75w-crash, S-forum-fieldiag-signedby
-> **updated:** 2026-08-21
+> **evidence:** mixed
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma, S-forum-fan-headless-boot, S-forum-suspend-fail, S-forum-hdmi-hotplug-ab, S-forum-usbc-dp-hpd, S-forum-gx10-fw-recovery, S-forum-uefi-capsule-password, S-forum-75w-crash, S-forum-fieldiag-signedby, S-sm121-nvfp4
+> **updated:** 2026-08-22
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -53,11 +53,29 @@ delta to be found — because on identical hardware, it always is.
   (~theoretical 12 at 270 GB/s); halving weight bytes (bf16→FP8) gave a near-exact **2.08×** speedup.
   Rule of thumb: **fewer weight bytes/token ⇒ faster decode** — this is why low-bit quant wins even when
   the kernel is a slow weight-only decompress (see `[[wiki/quantization-on-gb10.md]]`).
-- **[proven]** **No native low-precision compute.** GB10 has **no native FP4 compute and no native FP8
-  *block-scale*** ("Your GPU does not have native support for FP4/FP8 computation"). Only *per-tensor /
-  dynamic* FP8 hits a native CUTLASS path. Everything else (FP4, block-scaled FP8) runs as **Marlin
-  weight-only decompress** — correct, memory-cheap, but compute-bound at high batch. Details on the
-  quant page.
+- **[superseded]** ~~**No native low-precision compute.** GB10 has no native FP4 compute and no native
+  FP8 *block-scale* ("Your GPU does not have native support for FP4/FP8 computation").~~ **Overturned
+  2026-08-22 — and it should never have been `[proven]`.** The quoted string is a **vLLM kernel-dispatch
+  log line**, not a hardware statement; it was promoted to a hardware fact and then to a page tenet.
+  (superseded-by: the two claims below.) (S-sm121-nvfp4)
+- **[proven]** **GB10 HAS native block-scaled FP4 and FP8 tensor-core compute.** sm_121 is in the
+  **`compute_120f` family** (CUDA C Programming Guide Table 28: `compute_120f` ⇒ CC 12.0 *and* 12.1),
+  and PTX ISA 8.8 Table 64 promotes `mma` with `.e2m1` + `.block_scale` + `.scale_vec::4X` — **NVFP4** —
+  into that family's feature set. So the silicon has
+  `mma.sync.aligned.kind::mxf4nvf4.block_scale.scale_vec::[2X|4X]` (**2× the Ada FP8 tensor-core rate,
+  4× with an FP32 accumulator**, per CUTLASS), `kind::mxf4.block_scale`, and
+  `kind::mxf8f6f4.block_scale` (**block-scaled FP8**). First-party confirmation on real hardware: the
+  shipped `vllm-node-v0260` `_C` extension carries 1542 `SM120_*` symbols including
+  `Sm120TmaWarpSpecializedBlockScaled…`, `_qutlass_C.abi3.so` carries the SM120 blockscaled NVFP4 set,
+  and dense NVFP4 already auto-selects CUTLASS on this box with **no marlin env at all** (see the
+  Qwen3.8-27B entry in `[[wiki/quantization-on-gb10.md]]`). (S-sm121-nvfp4)
+- **[proven]** **The Marlin fallbacks are kernel coverage, not silicon.** In the same build,
+  `_moe_C_stable_libtorch.abi3.so` contains only `sm100` `mxf4nvf4` — the **MoE grouped FP4 GEMM is
+  not compiled for SM120/121**, which is exactly why *dense* FP4 runs native here while *MoE* FP4 falls
+  to Marlin. Upstream CUTLASS ships the missing kernel
+  (`examples/79d_blackwell_geforce_nvfp4_grouped_gemm`). What native FP4 does and does not buy — it
+  moves prefill and the concurrency plateau, **not** single-stream decode, which stays bandwidth-bound —
+  is on `[[wiki/quantization-on-gb10.md]]`. (S-sm121-nvfp4)
 - **[proven]** **No GPUDirect RDMA.** Cross-node NCCL collectives are **host-staged** (bounce through
   host buffers + CPU-side progress) over the ConnectX-7 fabric. `ib_write_bw` is healthy (~111 Gb/s /
   ~13 GB/s) but collectives are not zero-copy. This single fact drives the cudagraph wall and the
