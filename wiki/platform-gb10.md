@@ -3,7 +3,7 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** mixed
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma, S-forum-fan-headless-boot, S-forum-suspend-fail, S-forum-hdmi-hotplug-ab, S-forum-usbc-dp-hpd, S-forum-gx10-fw-recovery, S-forum-uefi-capsule-password, S-forum-75w-crash, S-forum-fieldiag-signedby, S-sm121-nvfp4
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma, S-forum-fan-headless-boot, S-forum-suspend-fail, S-forum-hdmi-hotplug-ab, S-forum-usbc-dp-hpd, S-forum-gx10-fw-recovery, S-forum-uefi-capsule-password, S-forum-75w-crash, S-forum-fieldiag-signedby, S-forum-triton-sm121a, S-sm121-nvfp4
 > **updated:** 2026-08-22
 
 The hardware facts every model bring-up assumes. Read this first.
@@ -2133,3 +2133,24 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   S-forum-fan-headless-boot) but no new diagnostic findings beyond what is
   already documented. Single source (2-post thread, NVIDIA staff confirmed
   the fix) → [conjecture].
+
+### Batch 85 forum ingest (2026-08-22)
+
+- **[conjecture]** **Triton compilation crashes on sm_121a when building
+  vLLM/PyTorch from source — ptxas "not implemented" errors** (S-forum-
+  triton-sm121a, saskia.hold): Building vLLM + Triton + PyTorch from source
+  on DGX Spark (non-Docker) produces Triton `CompilationError` in
+  `qwen_gdn_linear_attn.py` at `make_ir`/`ast_to_ttir` — `ptxas` reports
+  `sm_121a not implemented`. The from-source path yields 150–600 tok/s
+  prefill on Qwen3.6-35B-A3B-NVFP4, vs 5000–6000 prefill + 90–110+ decode
+  from sparkrun validated recipes (jomark). The performance gap is
+  attributable to missing sm_121a kernel dispatch in the from-source build
+  (falling back to unoptimized paths), not hardware. Community advice: use
+  sparkrun or eugr's spark-vllm-docker for a validated sm_121a baseline
+  (davedgd); Podman suggested as Docker alternative for organizations with
+  Docker licensing constraints (wga472). The OP also requests CUDA 13.2 +
+  native sm_121a toolchain support from NVIDIA. This corroborates the
+  existing [reported] finding that sm_121 software support is severely
+  lacking (S-forum-sm121-support: 43-post thread on SM121 support gaps).
+  Single source → [conjecture]. See also
+  `[[wiki/quantization-on-gb10.md]]` → kernel coverage gaps.

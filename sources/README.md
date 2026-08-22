@@ -404,6 +404,13 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-75w-crash | forum | DGX Spark hardware crashes at ~75W, system reboots repeatedly — fix: nvidia-smi -lgc 300,2100 clock cap; release with nvidia-smi -rgc; corroborates existing [reported] clock-cap mitigation (cory.farr) | https://forums.developer.nvidia.com/t/380669 | 2026-08-20 |
 | S-forum-fieldiag-signedby | forum | Field Diagnostics install fails with Signed-By conflict — documentation error in Field Diagnostics guide incorrectly instructs adding CUDA apt repo, but DGX Spark OS already ships with it under different keyring name (cuda_debian_prod.gpg vs cuda-archive-keyring.gpg); fix: sudo rm /etc/apt/sources.list.d/cuda-sbsa-ubuntu2404.list; NVIDIA staff (Neill) confirmed doc error; thread also reports idle overheating + system freezes (asdf.think365, Neill) | https://forums.developer.nvidia.com/t/380584 | 2026-08-19 |
 
+## Batch 85 forum sources (2026-08-22 ingest)
+
+| ID | type | What it is | Reference | Date |
+|---|---|---|---|---|
+| S-forum-triton-sm121a | forum | Triton compilation crash on sm_121a building vLLM from source — ptxas "sm_121a not implemented", Triton CompilationError in qwen_gdn_linear_attn.py (make_ir/ast_to_ttir); from-source build gets 150-600 tok/s prefill vs 5000-6000 from sparkrun validated recipes; user has organizational Docker prohibition; Podman suggested as alternative; requests CUDA 13.2 + native sm_121a toolchain support; model Qwen3.6-35B-A3B-NVFP4 (saskia.hold, jomark, davedgd, wga472) | https://forums.developer.nvidia.com/t/380704 | 2026-08-20 |
+| S-forum-nemotron35-vs-rtx6000 | forum | NVIDIA Nemotron-3.5-Lightning-30B-A3B-NVFP4: DGX Spark vs RTX PRO 6000 Blackwell — vllm bench serve, 16 concurrent prompts; DGX Spark 193 tok/s (prompt-heavy) / 420 tok/s (decode-heavy) / 236 tok/s (balanced) aggregate output; RTX PRO 6000 935 / 1730 / 1176; speculative decoding acceptance 29-64%; TTFT 1.6-12.1s on Spark; ~4-5× performance gap (shahizat) | https://forums.developer.nvidia.com/t/379921 | 2026-08-12 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md)

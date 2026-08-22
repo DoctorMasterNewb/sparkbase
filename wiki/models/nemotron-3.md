@@ -3,7 +3,7 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-nemotron-rpc, S-swapper, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-nemotron-super-abi, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-nemotron-2node, S-forum-nemotron35-lightning, S-forum-qwen38-nemotron-bench, S-forum-nemotron35-lightning-arena
+> **sources:** S-nemotron-rpc, S-swapper, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-nemotron-super-abi, S-forum-nemotron-ollama, S-forum-nvfp4-broken, S-forum-nemotron-2node, S-forum-nemotron35-lightning, S-forum-qwen38-nemotron-bench, S-forum-nemotron35-lightning-arena, S-forum-nemotron35-vs-rtx6000
 > **updated:** 2026-08-22
 
 NVIDIA Nemotron-3 — **hybrid Mamba-2 + attention MoE** (`nemotron_h_moe`). Most layers are SSM with a
@@ -262,7 +262,33 @@ LPDDR5X, ~273 GB/s theoretical (~202 GB/s measured effective, 74%), Ubuntu
   (S-forum-qwen38-nemotron-bench, reborn.li.rl): CUDA allocations are
   invisible to `docker stats` / `ps` RSS (cgroup perspective). Use `free` +
   vLLM startup logs to check actual usage. At 256K context, a dialog model +
-  embedding model cannot coexist (115 + 15 GB > 121 GB → EngineCore init
-  failure). Don't measure bandwidth with `copy_` (cudaMemcpy D2D slow path) —
-  use `add` for real bandwidth (a 181 GB/s reading was misread as 40 GB/s
-  when using `copy_`). Single source → [conjecture].
+ embedding model cannot coexist (115 + 15 GB > 121 GB → EngineCore init
+ failure). Don't measure bandwidth with `copy_` (cudaMemcpy D2D slow path) —
+ use `add` for real bandwidth (a 181 GB/s reading was misread as 40 GB/s
+ when using `copy_`). Single source → [conjecture].
+
+ ## Forum ingest: Nemotron-3.5-Lightning-30B-A3B DGX Spark vs RTX PRO 6000 (2026-08-22)
+
+ > **evidence:** conjecture (single forum thread)
+ > **sources:** S-forum-nemotron35-vs-rtx6000
+
+ - **[conjecture]** **Nemotron-3.5-Lightning-30B-A3B-NVFP4: DGX Spark vs RTX
+ PRO 6000 Blackwell head-to-head** (S-forum-nemotron35-vs-rtx6000, shahizat):
+ `vllm bench serve` with 16 concurrent prompts, three workload shapes.
+ Aggregate output token throughput (tok/s):
+
+ | Workload | DGX Spark | RTX PRO 6000 Blackwell | Ratio |
+ |---|---|---|---|
+ | Prompt-heavy (8K in / 1K out) | 193 | 935 | 4.8× |
+ | Decode-heavy (1K in / 8K out) | 420 | 1,730 | 4.1× |
+ | Balanced (1K in / 1K out) | 236 | 1,176 | 5.0× |
+
+ Spark TTFT: 12.1s (prompt-heavy), 1.67s (decode-heavy), 1.60s (balanced).
+ RTX PRO 6000 TTFT: 2.6s / 0.42s / 0.42s. The ~4–5× gap is consistent with
+ the proven bandwidth-bound decode ceiling (~270 GB/s Spark vs ~716.8 GB/s
+ RTX PRO 6000) and the 16-concurrent batch amplifying the prefill gap
+ (compute-bound at batch). Speculative decoding acceptance rate on Spark:
+ 29% (prompt-heavy) / 64% (decode-heavy) / 21% (balanced); acceptance
+ length 1.87 / 2.92 / 1.62. Single source → [conjecture]. No recipe flags
+ or engine version provided for the Spark run; the RTX PRO 6000 is a
+ discrete Blackwell GPU with native FP4 and ~2.7× the memory bandwidth.

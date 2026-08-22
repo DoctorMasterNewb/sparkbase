@@ -41,6 +41,29 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-22 (Batch 85)
+- 3 new NVIDIA DGX Spark forum topics found, 2 technically relevant (1 skipped:
+  380607 Voicecan Echo — product announcement, no GB10 inference findings).
+- 2 new sources registered (Batch 85). 3 topic IDs added to processed_topics.txt
+  (total now 655).
+- **Headline finding 1:** Triton compilation crashes on sm_121a when building
+  vLLM/PyTorch from source — ptxas "sm_121a not implemented", Triton
+  CompilationError in qwen_gdn_linear_attn.py. From-source build gets 150-600
+  tok/s prefill vs 5000-6000 from sparkrun validated recipes. Gap is missing
+  sm_121a kernel dispatch, not hardware. Corroborates existing [reported]
+  SM121 support gap. Podman suggested as Docker alternative. [conjecture].
+- **Headline finding 2:** Nemotron-3.5-Lightning-30B-A3B-NVFP4 DGX Spark vs
+  RTX PRO 6000 Blackwell head-to-head — vllm bench serve, 16 concurrent.
+  DGX Spark 193/420/236 tok/s (prompt/decode/balanced) vs RTX PRO 6000
+  935/1730/1176. ~4-5× gap consistent with proven bandwidth-bound decode
+  ceiling + prefill compute gap at batch. Spec decode acceptance comparable
+  on both platforms. [conjecture].
+- Pages touched: platform-gb10 (Triton sm_121a build crash [conjecture]),
+  models/nemotron-3 (DGX Spark vs RTX PRO 6000 benchmark [conjecture]),
+  benchmarks (6 new [conjecture] rows + comparison table), sources/README,
+  index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+
 ## Forum ingest 2026-08-22 (Batch 84)
 - 2 new NVIDIA DGX Spark forum topics found, both technically relevant.
 - 2 new sources registered (Batch 84). 2 topic IDs added to processed_topics.txt

@@ -45,6 +45,33 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   `sources/README.md`. Page evidence tier on `platform-gb10` and `quantization-on-gb10`:
   `proven` → `mixed`.
 
+## 2026-08-22 — Forum ingest: Batch 85 — 3 new topics (2 processed, 1 skipped)
+
+- **Sources:** 3 new forum topics found by fetch_new_topics.py. 2 technically
+  relevant, 1 skipped (380607 Voicecan Echo — product announcement for voice
+  capture device, no GB10 inference findings).
+- 2 new sources registered (Batch 85). 3 topic IDs added to processed_topics.txt
+  (total now 655).
+- **Headline finding 1:** Triton compilation crashes on sm_121a when building
+  vLLM/PyTorch from source — `ptxas` reports "sm_121a not implemented",
+  Triton `CompilationError` in `qwen_gdn_linear_attn.py` (make_ir/ast_to_ttir).
+  From-source build gets 150-600 tok/s prefill vs 5000-6000 from sparkrun
+  validated recipes. Performance gap is missing sm_121a kernel dispatch, not
+  hardware. Corroborates existing [reported] SM121 support gap (S-forum-sm121-
+  support). Podman suggested as Docker alternative. [conjecture].
+- **Headline finding 2:** Nemotron-3.5-Lightning-30B-A3B-NVFP4 DGX Spark vs
+  RTX PRO 6000 Blackwell head-to-head — `vllm bench serve`, 16 concurrent.
+  DGX Spark: 193 tok/s (prompt-heavy) / 420 (decode-heavy) / 236 (balanced)
+  aggregate output. RTX PRO 6000: 935 / 1730 / 1176. ~4-5× gap consistent
+  with proven bandwidth-bound decode ceiling (~270 vs ~717 GB/s) + prefill
+  compute gap at batch. Spec decode acceptance comparable (28-64% Spark vs
+  16-50% RTX PRO 6000). No recipe flags provided for Spark run. [conjecture].
+- Pages touched: platform-gb10 (Triton sm_121a build crash [conjecture]),
+  models/nemotron-3 (DGX Spark vs RTX PRO 6000 benchmark [conjecture]),
+  benchmarks (6 new [conjecture] rows + comparison table), sources/README,
+  index, log.
+- All [conjecture] — single-source forum threads. No evidence promotions.
+
 ## 2026-08-22 — Forum ingest: Batch 84 — 2 new topics (2 processed)
 
 - **Sources:** 2 new forum topics found by fetch_new_topics.py. Both technically

@@ -3,7 +3,7 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy, S-forum-muse-glimmer, S-forum-muse-glimmer-nvfp4-w4a4, S-forum-qwen38-27b-mixedint4, S-forum-glm52-sparkrun-4x, S-forum-kexaone-236b, S-forum-qwen38-nvfp4-vs-fp8, S-forum-qwen38-27b-vllm-mtp, S-forum-qwen38-nemotron-bench, S-forum-dsv4-nvfp4-416-kv, S-forum-prismaaqua, S-forum-nemotron35-lightning-arena, S-sm121-nvfp4
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy, S-forum-muse-glimmer, S-forum-muse-glimmer-nvfp4-w4a4, S-forum-qwen38-27b-mixedint4, S-forum-glm52-sparkrun-4x, S-forum-kexaone-236b, S-forum-qwen38-nvfp4-vs-fp8, S-forum-qwen38-27b-vllm-mtp, S-forum-qwen38-nemotron-bench, S-forum-dsv4-nvfp4-416-kv, S-forum-prismaaqua, S-forum-nemotron35-lightning-arena, S-forum-nemotron35-vs-rtx6000, S-sm121-nvfp4
 > **updated:** 2026-08-22
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
@@ -1276,3 +1276,31 @@ S-forum-qwen38-nemotron-bench (reborn.li.rl).
 > 116.84 tok/s** (S-forum-nemotron35-lightning-arena): automated benchmark link
 > post, no recipe or methodology. Falls within the 78-120+ tok/s range already
 > reported by community. Single source → [conjecture].
+
+### Nemotron-3.5-Lightning-30B-A3B-NVFP4: DGX Spark vs RTX PRO 6000 (2026-08-22)
+
+**[conjecture]** — single-source forum thread. S-forum-nemotron35-vs-rtx6000.
+`vllm bench serve`, 16 concurrent prompts, three workload shapes.
+
+| Model | Platform | Workload | Output tok/s (agg) | TTFT (mean) | Spec decode accept | Source |
+|---|---|---|---|---|---|---|
+| Nemotron-3.5-Lightning-30B-A3B-NVFP4 | DGX Spark (GB10) | Prompt-heavy (8K→1K) | 193 | 12.15s | 28.89% / 1.87 len | S-forum-nemotron35-vs-rtx6000 |
+| Nemotron-3.5-Lightning-30B-A3B-NVFP4 | DGX Spark (GB10) | Decode-heavy (1K→8K) | 420 | 1.67s | 64.03% / 2.92 len | S-forum-nemotron35-vs-rtx6000 |
+| Nemotron-3.5-Lightning-30B-A3B-NVFP4 | DGX Spark (GB10) | Balanced (1K→1K) | 236 | 1.60s | 20.61% / 1.62 len | S-forum-nemotron35-vs-rtx6000 |
+| Nemotron-3.5-Lightning-30B-A3B-NVFP4 | RTX PRO 6000 Blackwell | Prompt-heavy (8K→1K) | 935 | 2.60s | 27.08% / 1.81 len | S-forum-nemotron35-vs-rtx6000 |
+| Nemotron-3.5-Lightning-30B-A3B-NVFP4 | RTX PRO 6000 Blackwell | Decode-heavy (1K→8K) | 1,730 | 0.42s | 49.87% / 2.50 len | S-forum-nemotron35-vs-rtx6000 |
+| Nemotron-3.5-Lightning-30B-A3B-NVFP4 | RTX PRO 6000 Blackwell | Balanced (1K→1K) | 1,176 | 0.42s | 16.41% / 1.49 len | S-forum-nemotron35-vs-rtx6000 |
+
+> **[conjecture]** **Nemotron-3.5-Lightning-30B-A3B-NVFP4 is ~4–5× faster on
+> RTX PRO 6000 Blackwell vs DGX Spark** (S-forum-nemotron35-vs-rtx6000,
+> shahizat): same model, same `vllm bench serve` methodology, 16 concurrent.
+> The gap is consistent with the proven bandwidth-bound decode ceiling
+> (~270 GB/s Spark vs ~716.8 GB/s RTX PRO 6000 = ~2.7×) plus the prefill
+> gap (compute-bound at 16-concurrent batch, where the RTX PRO 6000's
+> higher FP4 tensor-core throughput dominates). Spark TTFT is 4.7× worse
+> on prompt-heavy (12.1s vs 2.6s). Speculative decoding acceptance is
+> comparable on both platforms (28-64% Spark vs 16-50% RTX PRO 6000),
+> suggesting the draft model quality is platform-independent. No recipe
+> flags or engine version provided for the Spark run. Single source →
+> [conjecture]. See `[[wiki/models/nemotron-3.md]]` → DGX Spark vs RTX PRO
+> 6000 section.
