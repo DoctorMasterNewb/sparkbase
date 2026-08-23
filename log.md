@@ -2,6 +2,29 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-23 — Scheduled forum ingest: Batch 87 — 4 new topics, 3 processed
+
+- **Sources:** 3 new forum sources (S-forum-cudnn-batch-fix, S-forum-dsv4-cudagraph-corruption,
+  S-forum-qwen38-dflash2). 1 topic skipped (380882 — network switch buying advice, no technical
+  findings). 4 topic IDs added to processed_topics.txt (total now 662).
+- **Pages touched:** platform-gb10 (CUDNN/cuBLAS batch crash + silent CPU fallback [conjecture]),
+  cudagraphs-and-compile (CUDA graph metadata desync → intermittent token corruption [reported] —
+  new section, 3 independent confirmations), engines (DSV4 CUDA graph corruption cross-ref
+  [reported]), models/qwen (DFlash2 section [reported]), benchmarks (1 new DFlash2 row
+  [conjecture]/[reported]), sources/README (Batch 87), index, log.
+- **Summary:** (1) CUDNN_FE failure 11 + CUBLAS_STATUS_INTERNAL_ERROR under concurrent ONNX OCR
+  batch load on older drivers (580.126.09/580.95.05) — fixed by DGX OS 7.5.0 (driver 580.173.02).
+  Post-crash CUDA context poisoning causes silent CPU fallback. (2) DSV4-Flash on 2× Spark:
+  intermittent token corruption with MTP + FULL_AND_PIECEWISE CUDA graphs — capture-time state
+  disagrees with runtime sparse-attention metadata. 46% degeneration rate in "armed windows."
+  Fixed upstream by vLLM #51318/#52836/#52492. 3 independent confirmations → [reported]. First
+  documented case of CUDA graphs producing *silent output corruption* (not a crash) on GB10.
+  (3) DFlash2 (inco.ai) outperforms MTP/DSpark on Qwen3.8-27B: 45.25 tok/s vs 25.85 (jbourny),
+  ~38 vs ~25 (rkr1410). 3+ independent users → [reported] for improvement claim.
+- Evidence promotions: DSV4 CUDA graph corruption → [reported] (3 independent forum users).
+  DFlash2 > MTP/DSpark → [reported] (3+ independent users). All other findings [conjecture].
+  No promotions past [reported].
+
 ## 2026-08-23 — [proven] DeepSeek-V4-Flash CRACK optimisation: +43.6% throughput, +23% KV (S-dsv4-opt)
 
 - **[proven] Profiled before tuning** (67k kernel events): **38.1% B12X MoE `W4A16`** (4-bit weights,

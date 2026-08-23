@@ -3,7 +3,7 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** mixed
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma, S-forum-fan-headless-boot, S-forum-suspend-fail, S-forum-hdmi-hotplug-ab, S-forum-usbc-dp-hpd, S-forum-gx10-fw-recovery, S-forum-uefi-capsule-password, S-forum-75w-crash, S-forum-fieldiag-signedby, S-forum-triton-sm121a, S-sm121-nvfp4, S-forum-513mhz-wedge, S-gb10-profile
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma, S-forum-fan-headless-boot, S-forum-suspend-fail, S-forum-hdmi-hotplug-ab, S-forum-usbc-dp-hpd, S-forum-gx10-fw-recovery, S-forum-uefi-capsule-password, S-forum-75w-crash, S-forum-fieldiag-signedby, S-forum-triton-sm121a, S-sm121-nvfp4, S-forum-513mhz-wedge, S-gb10-profile, S-forum-cudnn-batch-fix
 > **updated:** 2026-08-23
 
 The hardware facts every model bring-up assumes. Read this first.
@@ -376,6 +376,29 @@ only after unexplained slow tok/s).
   "/sys/class/drm/card0/device/vendor"` — GB10's sysfs layout differs from discrete GPUs. This is
   due to the newness of GB10 and is **safely ignorable** — ONNX functions normally despite the
   warning. PyTorch 2.9.1+cu129 confirmed working with Wan2GP on GB10.
+
+### Batch 87 forum ingest (2026-08-23)
+
+- **[conjecture]** **CUDNN_FE failure 11 + CUBLAS_STATUS_INTERNAL_ERROR under concurrent
+  batch inference on older driver/kernel stacks — fixed by DGX OS 7.5.0 (driver 580.173.02)**
+  (S-forum-cudnn-batch-fix, YolandaHuang): batch OCR inference via ONNX Runtime CUDA EP
+  (self-compiled wheel for sm_121/aarch64/CUDA 13, 2 worker processes sharing the UMA pool)
+  crashed **deterministically** on older driver/kernel stacks (580.126.09/kernel 6.17.0-1008
+  and 580.95.05/kernel 6.14.0-1015), while the identical workload ran 100% clean on a unit
+  with driver 580.142/kernel 6.17.0-1018. Two distinct user-space error signatures:
+  (1) `CUDNN_FE failure 11: CUDNN_BACKEND_API_FAILED` (Conv node), (2) `CUBLAS failure 14:
+  CUBLAS_STATUS_INTERNAL_ERROR` (FusedMatMul node). No Xid errors in dmesg — failure is
+  entirely in user-space CUDA libraries. Not OOM (tens of GB free at crash time), not
+  hardware (3 different OEMs, failures tracked software version). **Post-crash CUDA context
+  poisoning:** the respawned worker gets `CUDA failure 100: no CUDA-capable device is
+  detected` → silently falls back to `CPUExecutionProvider` → multi-x slower inference with
+  no crash or error. Only a full container restart restores GPU access. This silent
+  degradation is arguably worse than the crash itself. **Fix:** upgrade to DGX OS 7.5.0
+  (driver 580.173.02, kernel 6.17.0-1031) via standard OTA — same batch passes with zero
+  errors. Relevant to any concurrent ONNX Runtime workload on GB10 sharing the unified memory
+  pool. This is the first documented case of a driver-version-specific cuDNN/cuBLAS internal
+  error on GB10 under batch load — extends the existing driver-version sensitivity findings
+  (S-forum-driver580-173, S-forum-device-hang). Single source → [conjecture].
 
 ### Batch 6 forum ingest (2026-07-11)
 

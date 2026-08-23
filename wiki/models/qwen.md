@@ -3,8 +3,8 @@
 > **area:** model
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x, S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train, S-forum-moe-lora-vllm, S-forum-qlora-coding, S-forum-macaron-v1-tall, S-forum-qwen36-tp2-stall, S-forum-kat-coder-autoround, S-forum-qwen38-27b-mixedint4, S-forum-qwen38-nvfp4-vs-fp8, S-forum-ds4f-qwen38-orchestration, S-forum-qwen38-27b-vllm-mtp, S-forum-prismaaqua
-> **updated:** 2026-08-22
+> **sources:** S-sess-jun4, S-swapper, S-mimo-doc, S-forum-unsloth-qwen36, S-forum-qwen397-arch, S-forum-bonsai27b, S-forum-qwen36-fp8-2x, S-forum-vllm-stock-hang, S-forum-qwen122-king, S-forum-qwen122-v26-dflash, S-forum-unsloth-b12x, S-forum-vllm-2607-xgrammar, S-forum-qwen36-draft-train, S-forum-moe-lora-vllm, S-forum-qlora-coding, S-forum-macaron-v1-tall, S-forum-qwen36-tp2-stall, S-forum-kat-coder-autoround, S-forum-qwen38-27b-mixedint4, S-forum-qwen38-nvfp4-vs-fp8, S-forum-ds4f-qwen38-orchestration, S-forum-qwen38-27b-vllm-mtp, S-forum-prismaaqua, S-forum-qwen38-dflash2
+> **updated:** 2026-08-23
 
 The best-supported family on GB10 — both Atlas (AOT kernels for the MoE variants) and vLLM serve it.
 The recurring lesson: **MoE-A3B NVFP4 + MTP is the fastest regime on Spark; the dense variant of the
@@ -969,3 +969,34 @@ alternative recipes, and cross-platform comparisons.
   AQUA extends PrismaQuant's sensitivity analysis to activation quantization, not just
   weights (see `[[wiki/quantization-on-gb10.md]]` → AQUA section). Single source →
   [conjecture].
+
+## Forum ingest: Qwen3.8-27B + DFlash2 (2026-08-23)
+
+> **evidence:** reported (3+ independent forum users confirm DFlash2 outperforms MTP/DSpark on Qwen3.8-27B on Spark)
+> **sources:** S-forum-qwen38-dflash2
+
+- **[reported]** **DFlash2 (inco.ai) outperforms MTP and DSpark on Qwen3.8-27B on DGX
+  Spark** (S-forum-qwen38-dflash2, multiple users): DFlash2 is the successor to DFlash
+  ("Keep Drafting Parallel"), claiming ~3× the speed of autoregressive decoding with
+  the same output. Drafters for Qwen3.8-27B and Muse Glimmer are available. On Spark,
+  multiple independent users report it is a material improvement over prior spec-decode
+  methods:
+  - **jbourny (vLLM):** DFlash2 **45.25 tok/s** tg32 (vs 25.85 tok/s best MTP/DSpark
+    config), **27.33 tok/s** tg128 (vs 22.54), prefill ~2980 tok/s pp2048 (vs ~3005).
+    At d4096: 31.15 tok/s tg32, 28.75 tok/s tg128 — flat across depth. Workload matrix
+    (greedy, fresh single-turn, decode net of prefill): math 47.2, code-EN 40.0,
+    code-DE 39.1, reasoning-FR 46.6, free-prose-EN 21.8 tok/s. Before DFlash2 (best
+    MTP/DSpark): math 38.8, code-EN 31.0, code-DE 27.0, reasoning-FR 31.4,
+    free-prose-EN 16.1. DFlash2 is a consistent ~1.2-1.8× improvement across all
+    workload types.
+  - **danilo.luvizotto:** 40-42 tok/s.
+  - **rkr1410 (SGLang):** jump from DSpark ~25 tok/s to DFlash2 ~38 tok/s (average
+    weighted by spans). "Finally usable." MTP was slightly worse than DSpark.
+  - **xkm121:** using Mia-Lab's SGLang MTP branch, waiting for mainline SGLang DFlash2
+    support. Default `xhigh` thinking effort is "truly insane" — must be changed.
+  - **nbsparkz:** hit `hf_overrides must be a dict` error with eugr vLLM path —
+    rebuilding container.
+
+  Community repos: `Weschera/Qwen3.8-27B-NVFP4-DFlash2-DGX-Spark` (vLLM recipe),
+  `MiaAI-Lab/Qwen3.8-27B-SGLang-DGX-Spark` (SGLang). DFlash2 support pending in
+  mainline SGLang. Single thread with multiple independent confirmations → [reported].

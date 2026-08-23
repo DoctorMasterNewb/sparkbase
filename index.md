@@ -42,6 +42,38 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-23 (Batch 87)
+- 4 new NVIDIA DGX Spark forum topics found, 3 technically relevant (1 skipped:
+  380882 network switch buying advice — enterprise capex purchasing recommendations,
+  no durable GB10 technical findings).
+- 3 new sources registered (Batch 87). 4 topic IDs added to processed_topics.txt
+  (total now 662).
+- **Headline finding 1:** CUDNN_FE failure 11 + CUBLAS_STATUS_INTERNAL_ERROR under
+  concurrent ONNX OCR batch load on older drivers (580.126.09/580.95.05) — fixed by
+  DGX OS 7.5.0 (driver 580.173.02, kernel 6.17.0-1031). Post-crash CUDA context
+  poisoning causes silent CPU fallback (no error, just multi-x slower). 3 OEMs,
+  failures tracked software version not hardware. [conjecture].
+- **Headline finding 2:** DSV4-Flash on 2× Spark: intermittent token corruption
+  with MTP + FULL_AND_PIECEWISE CUDA graphs — capture-time state disagrees with
+  runtime sparse-attention metadata. 46% degeneration rate in "armed windows" vs
+  zero corruption outside. Fixed upstream by vLLM #51318/#52836/#52492; vLLM ≤0.27.1
+  affected. 3 independent confirmations (provos, mashie, fuzboxz). [reported].
+  First documented case of CUDA graphs producing *silent output corruption*
+  (not a crash) on GB10.
+- **Headline finding 3:** DFlash2 (inco.ai "Keep Drafting Parallel") outperforms
+  MTP/DSpark on Qwen3.8-27B on Spark. jbourny: 45.25 tok/s tg32 vs 25.85 best
+  MTP/DSpark (1.75×). rkr1410: DSpark ~25 → DFlash2 ~38 tok/s. 3+ independent
+  users confirm. DFlash2 support pending in mainline SGLang. [reported] for the
+  improvement claim, individual tok/s numbers [conjecture].
+- Pages touched: platform-gb10 (CUDNN/cuBLAS batch crash + silent CPU fallback
+  [conjecture]), cudagraphs-and-compile (CUDA graph metadata desync corruption
+  [reported] — new section), engines (DSV4 CUDA graph corruption cross-ref
+  [reported]), models/qwen (DFlash2 section [reported]), benchmarks (1 new
+  [conjecture]/[reported] row), sources/README, index, log.
+- Evidence promotions: DSV4 CUDA graph corruption → [reported] (3 independent
+  forum users). DFlash2 > MTP/DSpark → [reported] (3+ independent users). All
+  other findings [conjecture]. No promotions past [reported].
+
 ## Forum ingest 2026-08-23 (Batch 86)
 - 3 new NVIDIA DGX Spark forum topics found, 2 technically relevant (1 skipped:
   380474 "family daily model" — buying advice/recommendations, no durable technical

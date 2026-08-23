@@ -3,7 +3,7 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet, S-forum-dragonscale, S-forum-openpangu, S-forum-glm52-200k-4x, S-forum-dsv4-qwen-vision, S-forum-pilco-mmbridge, S-forum-dsv4-0731-b12x-hang, S-forum-mediallmproxy, S-forum-dsv4-agent-serving, S-forum-dsv4-humaneval, S-forum-ds4f-qwen38-orchestration, S-forum-vllm-longlived, S-forum-dsv4-nvfp4-416-kv, S-forum-dsv4-0731-tp4-prod
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet, S-forum-dragonscale, S-forum-openpangu, S-forum-glm52-200k-4x, S-forum-dsv4-qwen-vision, S-forum-pilco-mmbridge, S-forum-dsv4-0731-b12x-hang, S-forum-mediallmproxy, S-forum-dsv4-agent-serving, S-forum-dsv4-humaneval, S-forum-ds4f-qwen38-orchestration, S-forum-vllm-longlived, S-forum-dsv4-nvfp4-416-kv, S-forum-dsv4-0731-tp4-prod, S-forum-dsv4-cudagraph-corruption
 > **updated:** 2026-08-23
 
 Three engines run on the Spark pair; pick by arch support and quant.
@@ -95,6 +95,19 @@ Three engines run on the Spark pair; pick by arch support and quant.
   spark-field-notes, ss121): three models the OP had written off as unusable for agents "work fine
   under vLLM with matching `--tool-call-parser` / `--reasoning-parser`." This is a general vLLM
   operational finding, not GB10-specific — but durable for Spark owners building agent stacks.
+
+## Forum ingest: DSV4-Flash CUDA graph output corruption (2026-08-23)
+
+- **[reported]** **vLLM CUDA graph + MTP produces intermittent silent output corruption on
+  DSV4-Flash** (S-forum-dsv4-cudagraph-corruption, provos, mashie, fuzboxz): under sustained
+  agentic load on 2× Spark (TP=2, vLLM 0.26.1rc0, MTP=5, `FULL_AND_PIECEWISE` CUDA graphs),
+  the server enters intermittent "armed windows" with 46% degeneration rate — foreign-character
+  insertions, word salad, bad tool calls. Root cause: capture-time state in CUDA graphs disagrees
+  with runtime sparse-attention metadata. Fixed upstream by vLLM #51318/#52836/#52492; vLLM
+  ≤0.27.1 is affected. **3 independent confirmations** → [reported]. Reproducer:
+  `provos/dsv4-sm121-armed-window`. See `[[wiki/cudagraphs-and-compile.md]]` for full details.
+  **Practical guidance for Spark owners:** if running DSV4-Flash + MTP + CUDA graphs on vLLM
+  ≤0.27.1 under agentic workloads, either apply the three upstream fixes or use `--enforce-eager`.
 
 ## Forum ingest: Atlas, ds4, DFlash engines (2026-07-08)
 

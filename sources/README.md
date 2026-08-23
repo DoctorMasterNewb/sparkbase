@@ -418,6 +418,14 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 || S-forum-513mhz-wedge | forum | GPU clock pinned at 513 MHz / ~13 W under load, no throttle flag — 6th independent corroboration of the power-controller wedge; AC power-cycle fix; key clarification: dmesg "Detected insufficient power on the PCIe slot (27W)" is from Mellanox mlx5_core NIC driver, NOT the GPU (GB10 GPU connects via NVLink C2C, not PCIe); spark-gpu-throttle-check diagnostic tool (christian.pappert, elsaco, a149952, rad777, parallelArchitect) | https://forums.developer.nvidia.com/t/361296 | 2026-02-22 |
 || S-forum-dsv4-0731-tp4-prod | forum | DeepSeek-V4-Flash-0731 TP4/DSpark K5/C8 production qualification on 4× GB10 — ~66 tok/s single-stream, ~185 tok/s aggregate C8, 0.445s C8 p95 TTFT, 4.797M KV-token pool at 1M context; vLLM PR #48993 compact KV layout rejected (+13.59% capacity but −7.62% C8 throughput, −16.16% code, −12.82% prose, −27.05% p95 TTFT); r27/B12X path needs FP8 indexer, can't activate compact MXFP4 indexer; based on spark-vllm-docker recipe (alberthanlee) | https://forums.developer.nvidia.com/t/380041 | 2026-08-13 |
 
+## Batch 87 forum sources (2026-08-23 ingest)
+
+|| ID | type | What it is | Reference | Date |
+||---|---|---|---|---|
+|| S-forum-cudnn-batch-fix | forum | CUDNN_FE failure 11 + CUBLAS_STATUS_INTERNAL_ERROR under concurrent ONNX OCR batch load on older drivers (580.126.09/580.95.05) — fixed by DGX OS 7.5.0 (driver 580.173.02, kernel 6.17.0-1031); post-crash CUDA context poisoning → silent CPU fallback (YolandaHuang) | https://forums.developer.nvidia.com/t/380948 | 2026-08-22 |
+|| S-forum-dsv4-cudagraph-corruption | forum | DSV4-Flash on 2× Spark TP=2: intermittent token corruption with MTP + FULL_AND_PIECEWISE CUDA graphs — capture-time state disagrees with runtime sparse-attention metadata; 3 upstream vLLM fixes (#51318/#52836/#52492); reproducer at provos/dsv4-sm121-armed-window; 3 independent confirmations (provos, mashie, fuzboxz) | https://forums.developer.nvidia.com/t/380889 | 2026-08-21 |
+|| S-forum-qwen38-dflash2 | forum | Qwen3.8-27B + DFlash2 on DGX Spark — DFlash2 (inco.ai successor to DFlash, ~3× AR decode) outperforms MTP/DSpark: 45.25 tok/s tg32 (vs 25.85 MTP), 38 tps avg (vs 25 dspark); 3+ independent users confirm; SGLang mainline pending (Simon_MD, emX0r, xkm121, danilo.luvizotto, jbourny, rkr1410) | https://forums.developer.nvidia.com/t/380617 | 2026-08-19 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md)

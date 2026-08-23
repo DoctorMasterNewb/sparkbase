@@ -3,7 +3,7 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy, S-forum-muse-glimmer, S-forum-muse-glimmer-nvfp4-w4a4, S-forum-qwen38-27b-mixedint4, S-forum-glm52-sparkrun-4x, S-forum-kexaone-236b, S-forum-qwen38-nvfp4-vs-fp8, S-forum-qwen38-27b-vllm-mtp, S-forum-qwen38-nemotron-bench, S-forum-dsv4-nvfp4-416-kv, S-forum-prismaaqua, S-forum-nemotron35-lightning-arena, S-forum-nemotron35-vs-rtx6000, S-sm121-nvfp4, S-b12x-ab, S-forum-dsv4-0731-tp4-prod, S-dsv4-opt
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy, S-forum-muse-glimmer, S-forum-muse-glimmer-nvfp4-w4a4, S-forum-qwen38-27b-mixedint4, S-forum-glm52-sparkrun-4x, S-forum-kexaone-236b, S-forum-qwen38-nvfp4-vs-fp8, S-forum-qwen38-27b-vllm-mtp, S-forum-qwen38-nemotron-bench, S-forum-dsv4-nvfp4-416-kv, S-forum-prismaaqua, S-forum-nemotron35-lightning-arena, S-forum-nemotron35-vs-rtx6000, S-sm121-nvfp4, S-b12x-ab, S-forum-dsv4-0731-tp4-prod, S-dsv4-opt, S-forum-qwen38-dflash2
 > **updated:** 2026-08-23
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
@@ -1375,3 +1375,18 @@ of `--gpu-memory-utilization 0.80`.
 directions (unusable)**. Choose measurement cells by stability — `[[wiki/benchmark-methodology.md]]`.
 
 **[proven] A cold measurement halved the result**: the unwarmed pass read +20%, the warm pass +43.6%.
+
+## Batch 87 forum ingest (2026-08-23)
+
+**[conjecture]** — single-source forum thread unless noted. S-forum-qwen38-dflash2.
+
+|| Model | Quant | Engine | Nodes | Decode tok/s | Ctx | Notes | Source ||
+||---|---|---|---|---|---|---|---||
+|| Qwen3.8-27B | NVFP4 + DFlash2 | vLLM | 1 | **45.25** tg32 / 27.33 tg128 | 256K | DFlash2 (inco.ai "Keep Drafting Parallel"); vs best MTP/DSpark 25.85/22.54; d4096: 31.15/28.75; workload matrix: math 47.2, code-EN 40.0, reasoning-FR 46.6, prose-EN 21.8; 3+ independent users confirm improvement over MTP/DSpark → [reported] for DFlash2 > MTP | S-forum-qwen38-dflash2 ||
+
+> **[reported]** **DFlash2 outperforms MTP/DSpark on Qwen3.8-27B on Spark** (S-forum-qwen38-dflash2,
+> multiple users): DFlash2 ("Keep Drafting Parallel," inco.ai successor to DFlash) gives ~3× AR decode
+> with same output. jbourny: 45.25 tok/s tg32 vs 25.85 best MTP/DSpark (1.75×). rkr1410 (SGLang):
+> DSpark ~25 → DFlash2 ~38 tok/s. danilo.luvizotto: 40-42 tok/s. Consistent across workload types
+> (math, code, reasoning, prose). DFlash2 support pending in mainline SGLang. 3+ independent users →
+> [reported] for the improvement claim. Individual tok/s numbers are [conjecture] (single-source each).

@@ -3,7 +3,7 @@
 > **area:** cudagraphs
 > **status:** open-problem
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-20tps, S-m3-vision, S-mimo-results, S-sess-jun5, S-pr46372, S-gb10-profile
+> **sources:** S-xnode-cudagraph, S-m3-20tps, S-m3-vision, S-mimo-results, S-sess-jun5, S-pr46372, S-gb10-profile, S-forum-dsv4-cudagraph-corruption
 > **updated:** 2026-08-23
 
 CUDA graphs remove per-token kernel-launch overhead — decisive on GB10 where decode fires thousands
@@ -186,3 +186,43 @@ arithmetic when `VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0` — subtract them f
 **[proven] But cudagraphs were not the main cost.** After the gain the GPU was **96.3% busy**
 (1642 ms of kernels in a 1705 ms window) — the step was never launch-gap-bound. The remaining gap
 was precision, not scheduling: `[[wiki/quantization-on-gb10.md]]`. (S-gb10-profile)
+
+## [reported] CUDA graph + sparse-attention metadata desync — intermittent token corruption (2026-08-23, S-forum-dsv4-cudagraph-corruption)
+
+**Symptom → Root cause → Fix → Status**
+
+- **[reported]** **Symptom:** DeepSeek-V4-Flash on 2× DGX Spark (TP=2, vLLM 0.26.1rc0,
+  MTP=5, prefix caching, `FULL_AND_PIECEWISE` CUDA graphs) intermittently produces
+  **corrupted output** under sustained agentic load: foreign-character insertions,
+  word salad, bad tool calls. The server behaves normally for long periods then enters
+  short "armed windows" with a **46% degeneration rate** (vs zero corruption for 668
+  generations outside the window). Speculative-token acceptance drops ~24% relative to
+  baseline, beginning ~30 seconds before visible text corruption. Affects fresh decodes
+  AND prefix-cache hits. (S-forum-dsv4-cudagraph-corruption, provos)
+
+- **[reported]** **Root cause:** capture-time state baked into CUDA graphs disagrees with
+  runtime sparse-attention metadata. The CUDA graph captures assumptions about metadata
+  layout that become invalid for the current batch geometry; sparse-attention kernels
+  then consume stale or incorrectly positioned metadata and attend to the wrong context
+  slices. The model weights and KV-cache blocks are fine — the model receives the wrong
+  attention context. Restarting the server appeared to fix it because it reset the
+  batch/graph state. (S-forum-dsv4-cudagraph-corruption, provos)
+
+- **[reported]** **Fix:** three upstream vLLM PRs landed around the same time and touch
+  independent parts of the capture/replay path: **#51318, #52836, #52492**. vLLM 0.27.1
+  predates all three and is affected. A reproducer with a completely synthetic workload
+  (no real vulnerability-discovery tokens) is at `provos/dsv4-sm121-armed-window`.
+  (S-forum-dsv4-cudagraph-corruption, provos)
+
+- **Status:** `fixed upstream` (vLLM #51318/#52836/#52492) — but users on vLLM ≤0.27.1
+  with MTP + `FULL_AND_PIECEWISE` CUDA graphs on DSV4-Flash are affected. **3 independent
+  confirmations** (provos, mashie, fuzboxz) → [reported].
+
+**GB10 significance:** this is the first documented case of CUDA graph capture producing
+*intermittent silent output corruption* (not a crash) on GB10 — distinct from Wall 1
+(capture crash) and Wall 2 (cross-node capture fault). The corruption is intermittent and
+load-dependent, making it easy to miss in benchmarks but devastating in long-running
+agentic workflows. The `FULL_AND_PIECEWISE` mode that the 2026-08-23 [proven] finding
+endorsed for Qwen3.6-35B-A3B is the same mode implicated here — but on a different model
+(DSV4-Flash, sparse-MLA attention) and with MTP. The safe path is: apply the three fixes
+or run `--enforce-eager` for DSV4-Flash + MTP + agentic workloads on vLLM ≤0.27.1.
