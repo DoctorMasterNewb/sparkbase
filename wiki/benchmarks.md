@@ -3,7 +3,7 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy, S-forum-muse-glimmer, S-forum-muse-glimmer-nvfp4-w4a4, S-forum-qwen38-27b-mixedint4, S-forum-glm52-sparkrun-4x, S-forum-kexaone-236b, S-forum-qwen38-nvfp4-vs-fp8, S-forum-qwen38-27b-vllm-mtp, S-forum-qwen38-nemotron-bench, S-forum-dsv4-nvfp4-416-kv, S-forum-prismaaqua, S-forum-nemotron35-lightning-arena, S-forum-nemotron35-vs-rtx6000, S-sm121-nvfp4, S-b12x-ab, S-forum-dsv4-0731-tp4-prod
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy, S-forum-muse-glimmer, S-forum-muse-glimmer-nvfp4-w4a4, S-forum-qwen38-27b-mixedint4, S-forum-glm52-sparkrun-4x, S-forum-kexaone-236b, S-forum-qwen38-nvfp4-vs-fp8, S-forum-qwen38-27b-vllm-mtp, S-forum-qwen38-nemotron-bench, S-forum-dsv4-nvfp4-416-kv, S-forum-prismaaqua, S-forum-nemotron35-lightning-arena, S-forum-nemotron35-vs-rtx6000, S-sm121-nvfp4, S-b12x-ab, S-forum-dsv4-0731-tp4-prod, S-dsv4-opt
 > **updated:** 2026-08-23
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
@@ -1354,3 +1354,24 @@ Conclusion + the two null results: `[[wiki/quantization-on-gb10.md]]`.
 > cost for production. The r27/B12X path requires an FP8 indexer cache and cannot activate
 > the compact MXFP4 indexer, indicating an unresolved backend limitation. Single source →
 > [conjecture].
+
+
+## [proven] DeepSeek-V4-Flash CRACK — config optimisation, cross-node TP=2 (2026-08-23, S-dsv4-opt)
+
+DSpark spec-decode K=5, KV pinned 15 GiB in all arms, post-warm, median of 3, **2k prompt / 400 gen**
+(decode-dominated — quote the shape, it moves absolute numbers ~75%).
+
+| arm | c16 median tok/s | vs deployed |
+|---|---|---|
+| `MAX_NUM_SEQS=6` (was deployed) | 89.3 | — |
+| **`MAX_NUM_SEQS=16`** | **128.2** | **+43.6%** |
+| + `B12X_WO_PROJECTION=1` | 120.5 | rejected (−6%) |
+| + `B12X_W4A16_TC_DECODE=1` | 123.8 | rejected (in-noise; engagement proven by trace diff) |
+
+**[proven] KV pool on the same stack: 1,846,770 → 2,272,730 tokens (+23%)** by pinning 15 GiB instead
+of `--gpu-memory-utilization 0.80`.
+
+**[proven] Cell stability:** c16 ±6.6% non-monotonic (usable); **c1 drifted 18–21% in both
+directions (unusable)**. Choose measurement cells by stability — `[[wiki/benchmark-methodology.md]]`.
+
+**[proven] A cold measurement halved the result**: the unwarmed pass read +20%, the warm pass +43.6%.

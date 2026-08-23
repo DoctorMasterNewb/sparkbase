@@ -3,7 +3,7 @@
 > **area:** quantization
 > **status:** stable
 > **evidence:** mixed
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-dsv4-reap25, S-forum-sm121-4bugs, S-forum-kat-coder-autoround, S-forum-prismaaqua, S-sm121-nvfp4, S-b12x-ab, S-gb10-profile
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-dsv4-reap25, S-forum-sm121-4bugs, S-forum-kat-coder-autoround, S-forum-prismaaqua, S-sm121-nvfp4, S-b12x-ab, S-gb10-profile, S-dsv4-opt
 > **updated:** 2026-08-23
 
 ⚠ **This page opened with "GB10 has no native FP4 compute and no native FP8 block-scale" until
@@ -679,3 +679,31 @@ the real cost.
   bytes, step time falls roughly 2x — checkpoint work, not CUDA work.
 - **[proven] Model selection:** two checkpoints with identical `quant_method` and `format` can differ
   ~2x purely by `ignore` coverage. Diff the lists before downloading. (S-gb10-profile)
+
+
+## [proven] Adoption datapoint 2 — coverage and execution mode are different questions (2026-08-23, S-dsv4-opt)
+
+A DeepSeek-V4-Flash NVFP4-named community checkpoint on the GB10 pair (cross-node TP=2, DSpark
+spec-decode), profiled the same way as the Qwen case above.
+
+**[proven] The name is not the format.** `config.json` says `quant_method: fp8` with
+`weight_block_size`, there is no `hf_quant_config.json` and no `weight_scale`/`weight_packed`
+tensors — it is DeepSeek's native layout. Reading the **safetensors headers** is the only reliable
+check: 78.6% of bytes are 4-bit packed experts in I8 containers with **UE8M0** scales (⇒ **MX**
+format, i.e. MXFP4, *not* NVFP4), attention is FP8-E4M3, embedding bf16. The engine agrees:
+`Using 'B12X' Mxfp4 MoE backend`.
+
+**[proven] Coverage is healthy — ~66% of GPU time in 4-bit/FP8 paths.** No barely-quantised problem.
+
+**[proven] But the largest kernel (38.1% of GPU time) is `W4A16`** — 4-bit weights with **BF16
+activations**, a weight-only dequant path that never feeds the FP4 tensor cores. **Coverage and
+execution mode are separate questions; report both.** The vendor knob that switches this path to the
+tensor-core MMA inner loop is off by default and gated at **M <= 8**, so with 5-token speculative
+decode it engages **single-stream only** — testing it at concurrency measures an inert flag.
+
+**[proven] 13.7% of GPU time runs `cutlass_80_wmma_…s161616gemm_bf16`** — SM80 (Ampere) WMMA with
+16x16 tiles, on Blackwell. Same species as the cuBLAS-GEMV finding above: a **dispatch gap**, not
+kernel quality.
+
+**[proven] Cross-node NCCL all-reduce was only 7.3%** of GPU time on this stack — the spec-decode
+amortisation works, and cross-node is not the bottleneck people usually assume. (S-dsv4-opt)

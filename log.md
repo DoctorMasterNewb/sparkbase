@@ -2,6 +2,26 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-23 — [proven] DeepSeek-V4-Flash CRACK optimisation: +43.6% throughput, +23% KV (S-dsv4-opt)
+
+- **[proven] Profiled before tuning** (67k kernel events): **38.1% B12X MoE `W4A16`** (4-bit weights,
+  **bf16 activations**, so the FP4 tensor cores are not fed), 27.6% native FP8-FP4, **13.7%
+  `cutlass_80` SM80 WMMA on Blackwell**, 7.3% NCCL. **Coverage and execution mode are different
+  questions** — ~66% of time is in 4-bit/FP8 paths, yet the biggest kernel runs bf16 activations.
+- **[proven] The name is not the format**: MXFP4 experts + MXFP8 attention (UE8M0 scales) despite an
+  "NVFP4" checkpoint name. Read the safetensors headers.
+- **[proven] KV pin +23%** (1,846,770 → 2,272,730 tokens), reproducible, headroom verified.
+- **[proven] `MAX_NUM_SEQS=16` = +43.6% aggregate at C16**; `WO_PROJECTION=1` −6% rejected. The
+  upstream README bundles both as one profile — **only one pays**.
+- **[proven] `TC_DECODE=1` engaged but is a wash**: trace diff shows `_pack_topk_routes_small_prefix`
+  gone and top-k/sum launches 5508 → 3120 (~2400 removed), yet throughput moved −3.4% (in-noise).
+  Consistent with machine balance at its M≤8 gate. **A negative result with proof of engagement.**
+- **[proven] Methodology**: benching before warm gave a **+24% monotonic ramp** inside one arm and
+  **halved** the headline result; c1 drifts 18–21% while c16 holds ±6.6%; `printenv` cannot see
+  compose-substituted command-line knobs though it sees `environment:` ones. Traps 11–13.
+- Pages: `wiki/benchmark-methodology.md`, `wiki/quantization-on-gb10.md`, `wiki/benchmarks.md`,
+  `sources/README.md`.
+
 ## 2026-08-23 — [proven] the FP4 cores were bypassed, not idle: 19% quantization adoption (S-gb10-profile)
 
 - **[proven] At batch 1, tensor-core idleness is arithmetic, not waste.** GB10 ridge point

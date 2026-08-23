@@ -3,7 +3,7 @@
 > **area:** benchmarks
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-b12x-ab, S-gb10-profile
+> **sources:** S-b12x-ab, S-gb10-profile, S-dsv4-opt
 > **updated:** 2026-08-23
 
 Not GB10 knowledge — **harness** knowledge, kept here because a benchmark number is only as good as
@@ -111,6 +111,39 @@ Atrex kernel-agent paper (arXiv 2607.14541), whose DSL-adoption metric exposed 8
 43.8% adoption. On GB10 it catches two failures that correctness and latency both pass: an engine
 that **fell back** to another backend, and a **checkpoint that is barely quantised** — a "NVFP4
 model" measured **19% NVFP4 adoption** (`[[wiki/quantization-on-gb10.md]]`). (S-gb10-profile)
+
+## [proven] Trap 11 — measuring before the server is warm (a +24% ramp that looks like a result)
+
+Repeated identical benchmarks climbed **25.8 -> 29.7 -> 32.0 tok/s** on one server with nothing
+changed. The first requests pay **FlashInfer autotune**, **TileLang/Triton JIT** and **cudagraph
+capture**. (Not prefix caching — the harness nonces every prompt.) A cold arm A against a warm arm B
+invents a difference that is entirely warmup, and the ramp is smooth enough to read as "converging".
+
+**Fix:** explicit warm requests **at every shape you will measure** (warming c1 does not warm c16),
+discard-first, median of >=3, and **print all reps beside the median** — a monotonic sequence is the
+tell and a median alone hides it. (S-dsv4-opt)
+
+## [proven] Trap 12 — choose the measurement cell by stability, not by what you want to test
+
+Same protocol, same rerun, two cells:
+
+| cell | reps | pattern |
+|---|---|---|
+| c1 (400 tok in ~9 s) | 50.5, 44.3, 41.3 | **monotonic -18% drift** |
+| c16 (6400 tok in ~70 s) | 89.3, 84.3, 89.9 | +-6.6% non-monotonic = real noise |
+
+Short cells are dominated by transients (thermal, KV/scheduler state); long cells average them out.
+**Establish which cells are stable before trusting a delta.** If the knob under test only engages in
+an unstable cell, say the harness cannot resolve it rather than publishing the number.
+(S-dsv4-opt)
+
+## [proven] Trap 13 — verify a knob where it actually lands
+
+`printenv` inside the container showed `MAX_NUM_SEQS=` (empty) while the setting worked fine: compose
+**substitutes it into the serve command** and never exports it. Sibling knobs declared in the compose
+`environment:` block *do* appear in `printenv`. **One file, two mechanisms.** Use
+`docker inspect <cid> --format '{{join .Config.Cmd " "}}'` for command-line knobs and `printenv` for
+environment ones. (S-dsv4-opt)
 
 ## The discipline
 
