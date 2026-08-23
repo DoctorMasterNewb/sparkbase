@@ -3,7 +3,7 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** mixed
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma, S-forum-fan-headless-boot, S-forum-suspend-fail, S-forum-hdmi-hotplug-ab, S-forum-usbc-dp-hpd, S-forum-gx10-fw-recovery, S-forum-uefi-capsule-password, S-forum-75w-crash, S-forum-fieldiag-signedby, S-forum-triton-sm121a, S-sm121-nvfp4, S-forum-513mhz-wedge
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma, S-forum-fan-headless-boot, S-forum-suspend-fail, S-forum-hdmi-hotplug-ab, S-forum-usbc-dp-hpd, S-forum-gx10-fw-recovery, S-forum-uefi-capsule-password, S-forum-75w-crash, S-forum-fieldiag-signedby, S-forum-triton-sm121a, S-sm121-nvfp4, S-forum-513mhz-wedge, S-gb10-profile
 > **updated:** 2026-08-23
 
 The hardware facts every model bring-up assumes. Read this first.
@@ -2169,3 +2169,26 @@ specific box. See `[[wiki/multinode-tp-and-networking.md]]` for the fabric setup
   lacking (S-forum-sm121-support: 43-post thread on SM121 support gaps).
   Single source → [conjecture]. See also
   `[[wiki/quantization-on-gb10.md]]` → kernel coverage gaps.
+
+
+## [proven] Machine balance — what is worth optimising on GB10 (2026-08-23, S-gb10-profile)
+
+**GB10's ridge point is ~916 FLOP per byte loaded** (~250 TFLOP/s dense FP4 over 273 GB/s). A weight
+loaded once does 2 FLOPs per token in the batch, so **arithmetic intensity = 4 x (tokens per expert)**
+for a 4-bit MoE:
+
+| regime (256e / 8 active) | tokens/expert | arithmetic intensity | ceiling on FP4 utilisation |
+|---|---|---|---|
+| decode c1 | 0.03 | 0.1 | **~0%** |
+| decode c64 | 2 | 8 | **0.9%** |
+| prefill pp2048 | 64 | 256 | 28% |
+| prefill chunk 16384 | 512 | 2048 | 100% |
+
+**Saturating FP4 needs ~229 tokens per expert = ~7,300 concurrent tokens.** "The tensor cores are
+95% idle during decode" is therefore **arithmetic, not waste** — at batch 1 you re-read every weight
+to do two FLOPs with it, on any hardware. Kernel effort aimed at that is wasted.
+
+**[proven] The only decode levers on this box** are (a) move fewer bytes/token — quantise, **and
+verify it happened** (`[[wiki/quantization-on-gb10.md]]`, adoption); (b) raise tokens-per-forward
+(concurrency, speculative decode); (c) remove per-step overhead (cudagraphs). Making the GEMM faster
+is not among them. Prefill differs — a large chunked prefill can reach the ridge. (S-gb10-profile)

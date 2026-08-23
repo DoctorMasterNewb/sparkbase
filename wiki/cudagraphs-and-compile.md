@@ -3,8 +3,8 @@
 > **area:** cudagraphs
 > **status:** open-problem
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-20tps, S-m3-vision, S-mimo-results, S-sess-jun5, S-pr46372
-> **updated:** 2026-07-08
+> **sources:** S-xnode-cudagraph, S-m3-20tps, S-m3-vision, S-mimo-results, S-sess-jun5, S-pr46372, S-gb10-profile
+> **updated:** 2026-08-23
 
 CUDA graphs remove per-token kernel-launch overhead — decisive on GB10 where decode fires thousands
 of tiny kernels. But two walls block them for the exact models that need them most (big MoE,
@@ -161,3 +161,28 @@ all-reduces/token. The big multipliers are gone:
 
 ## See also
 `[[wiki/platform-gb10.md]]` · `[[wiki/multinode-tp-and-networking.md]]` · `[[wiki/models/minimax.md]]`
+
+
+## [proven] Wall 1 refined again — a 256-expert NVFP4 MoE captures, worth +37% (2026-08-23, S-gb10-profile)
+
+Second independent confirmation on a model unrelated to Inkling: **Qwen3.6-35B-A3B-NVFP4 (256e/8
+active) captured cleanly under `cudagraph_mode=FULL_AND_PIECEWISE` on sm_121**, TP=1, no capture
+crash. Measured vs `--enforce-eager`, same box/profile, 2 interleaved reps each, non-overlapping
+ranges in every cell:
+
+| | eager | FULL_AND_PIECEWISE | gain |
+|---|---|---|---|
+| decode c1 | 30.4 | **41.5** | **+36.7%** |
+| decode c64 | 235.7 | **283.6** | **+20.3%** |
+| prefill c1 / c64 | 5005 / 5529 | **6580 / 7625** | +31% / +38% |
+
+**Working rule: try `FULL_AND_PIECEWISE` first; fall back to `--enforce-eager` only when capture
+actually fails.** Two models have now captured where the older rule said they could not.
+
+**[proven] Sizing caveat:** captured graphs cost ~2 GiB/rank and are **not** in vLLM's memory
+arithmetic when `VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0` — subtract them from any pinned
+`--kv-cache-memory-bytes` by hand. OOM on this box is a reboot.
+
+**[proven] But cudagraphs were not the main cost.** After the gain the GPU was **96.3% busy**
+(1642 ms of kernels in a 1705 ms window) — the step was never launch-gap-bound. The remaining gap
+was precision, not scheduling: `[[wiki/quantization-on-gb10.md]]`. (S-gb10-profile)

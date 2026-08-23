@@ -3,8 +3,8 @@
 > **area:** quantization
 > **status:** stable
 > **evidence:** mixed
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-dsv4-reap25, S-forum-sm121-4bugs, S-forum-kat-coder-autoround, S-forum-prismaaqua, S-sm121-nvfp4, S-b12x-ab
-> **updated:** 2026-08-22
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-dsv4-reap25, S-forum-sm121-4bugs, S-forum-kat-coder-autoround, S-forum-prismaaqua, S-sm121-nvfp4, S-b12x-ab, S-gb10-profile
+> **updated:** 2026-08-23
 
 ⚠ **This page opened with "GB10 has no native FP4 compute and no native FP8 block-scale" until
 2026-08-22, tagged `[proven]`. It is `[superseded]`** — sm_121 *does* have native block-scaled FP4/FP8
@@ -40,6 +40,9 @@ can never be better than that."*
 - **[proven]** **Probe before you download.** Fetch `config.json` over HTTP and read
   `quantization_config.quant_method` / `.format`: `modelopt` (good) vs `compressed-tensors`
   block-scale (Marlin fallback) vs `nvfp4-pack` (broken). Saves a 20–35 GB mistake.
+  ⚠ **[proven] 2026-08-23: also read `quantization_config.ignore`.** That list sets your ceiling
+  before a kernel runs — a "conservative" NVFP4 quant leaving attention in bf16 measured **two thirds
+  of decode time in bf16 GEMV** (adoption section below). (S-gb10-profile)
 - **[proven]** **MoE + NVFP4 is the GB10 sweet spot.** Few active params/token × few bytes/param.
   Qwen3.6-35B-A3B NVFP4 hit ~142 tok/s single-stream; Holo-35B-A3B NVFP4 ~77 tok/s. A *dense* model of
   similar size is far slower (activates all params) — Qwen3.6-27B dense FP8 ~30 tok/s.
@@ -637,3 +640,42 @@ macros are defined under `SM120_ENABLED|SM120A_ENABLED` and again under `SM121_E
 but the `SM120F_ENABLED||SM121F_ENABLED` branch defines only LDSM/STSM — **family targets lose the FP4
 MMA**. Builds using `TORCH_CUDA_ARCH_LIST=12.1a` keep it; anything guarded on `SM120A` specifically is
 compiled out. (S-sm121-nvfp4)
+
+
+## [proven] Quantization adoption — a "NVFP4 model" is not NVFP4 compute (2026-08-23, S-gb10-profile)
+
+**Rule: measure the fraction of device time spent in quantised kernels before optimising anything.**
+Call it **quantization adoption**. It is the GB10 analogue of the DSL-adoption metric in the Atrex
+kernel-agent paper (arXiv 2607.14541), which caught models scoring 84.8% correctness while running
+43.8% of device time in PyTorch fallbacks. Same failure, one layer down the stack.
+
+**Measured**, `lyf/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-NVFP4`, TP=1, cudagraphs on,
+torch-profiler over prefill + 64 decode tokens (89,077 kernel events, 1642 ms GPU busy):
+
+| kernel | ms | % GPU | calls |
+|---|---|---|---|
+| **cuBLAS `gemvx` — bf16 GEMV** (`aten::mm`, 25% occupancy, 285 µs avg) | **1094.6** | **66.7%** | 3844 |
+| CUTLASS `Sm120…BlockScaled` grouped (NVFP4 MoE) | 214.7 | 13.1% | 5080 |
+| CUTLASS `Sm120…BlockScaled` dense (NVFP4 linear) | 89.0 | 5.5% | 6400 |
+| `fused_recurrent_gated_delta_rule` | 24.9 | 1.5% | 1890 |
+
+**NVFP4 adoption ≈ 19%.** Cause is the checkpoint's own `ignore` list (341 entries): **30 of 40
+layers keep the entire linear-attention block in bf16** (`in_proj_qkv/z/a/b`, `out_proj`), plus
+`lm_head`. The FP4 tensor cores were **bypassed for most of the model**, not underutilised by a weak
+kernel.
+
+**[proven] This invalidates roofline estimates taken from the model card.** "0.73 GB/token at 4 bits
+⇒ 372 tok/s" was wrong here because the dominant kernels read **bf16 at 4x the bytes**. Compute
+bytes/token from what actually runs.
+
+**[proven] The GPU was 96.3% busy** — never an idle/launch problem; cudagraphs (+37%) did not touch
+the real cost.
+
+**Consequences for optimisation on GB10:**
+- **[conjecture] The target is the batch-1 bf16 GEMV**, not the NVFP4 GEMM. Every model with any
+  unquantised layer lands there; it is bandwidth-bound and cuBLAS delivers 25% occupancy. (The native
+  NVFP4 MoE kernel was tested and lost — `flashinfer_b12x`, −16.6% at c64, above.)
+- **[conjecture] Larger payoff: re-quantise the ignored layers.** If bf16 GEMV time falls ~4x on
+  bytes, step time falls roughly 2x — checkpoint work, not CUDA work.
+- **[proven] Model selection:** two checkpoints with identical `quant_method` and `format` can differ
+  ~2x purely by `ignore` coverage. Diff the lists before downloading. (S-gb10-profile)

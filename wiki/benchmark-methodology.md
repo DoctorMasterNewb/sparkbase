@@ -3,8 +3,8 @@
 > **area:** benchmarks
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-b12x-ab
-> **updated:** 2026-08-22
+> **sources:** S-b12x-ab, S-gb10-profile
+> **updated:** 2026-08-23
 
 Not GB10 knowledge — **harness** knowledge, kept here because a benchmark number is only as good as
 the harness that produced it, and sparkbase's whole premise is that claims wear their evidence.
@@ -77,6 +77,40 @@ Sample clocks/power for the whole run and publish the range. A healthy GB10 unde
 samples). The power-controller wedge is a clock **pinned to one exact value at ~12–14 W with no
 throttle flag** (`[[wiki/platform-gb10.md]]`). **[reported]** On a node pending RMA, discard results
 on any failure — especially a sudden reboot, which is that fault's usual presentation. (S-b12x-ab)
+
+## [proven] Trap 8 — knobs that are advertised, accepted, and silently inert
+
+| knob | looks like | actually |
+|---|---|---|
+| `VLLM_NVFP4_GEMM_BACKEND` | documented env var | **does not exist** on some builds; silent no-op |
+| `--linear-backend flashinfer_b12x` | in `--help`, accepted into `KernelConfig` | **no kernel exists** for NVFP4; engine dies at startup |
+| `VLLM_TORCH_PROFILER_DIR` | upstream profiler switch | **inert** where routes are gated on `--profiler-config`; `/start_profile` returns **404** |
+
+**Verify the knob took effect, not that you passed it** — read the engine's config echo
+(`non-default args:` / `KernelConfig(...)`) or the HTTP status. A run whose central variable was
+inert yields a clean table that means nothing. (S-gb10-profile)
+
+## [proven] Trap 9 — the GB10 profiling recipe (the standard one does not work)
+
+- **`ncu` needs `--cap-add=SYS_ADMIN`** on the container.
+- **No memory-controller counters exist on sm_121**: `dram__*` = **0 metrics**, `fbpa__*` = **0**.
+  Every roofline recipe using `gpu__dram_throughput` / `dram__bytes.sum` returns **`n/a`**.
+  **Substitute `lts__t_sectors_lookup_miss x 32 B` / duration** for achieved bandwidth
+  (`lts__` 2031, `l1tex__` 461, `sm__` 367 metrics are present).
+- **torch profiler**: `--profiler-config '{"profiler":"torch","torch_profiler_dir":"…","torch_profiler_with_stack":false}'`,
+  then POST `/start_profile` … `/stop_profile`. Traces land **inside the container** — `docker cp`
+  them out before teardown (`--rm`) or they are lost.
+- **Demangle before bucketing.** Our largest entry was `std::enable_if<!(false)...` at 69% — a
+  truncated cuBLAS **GEMV** template. Prefix-bucketing would have hidden the whole finding.
+  (S-gb10-profile)
+
+## [proven] Trap 10 — measure adoption, not just correctness or latency
+
+**Report the fraction of device time spent in the kernel you believe you are testing.** From the
+Atrex kernel-agent paper (arXiv 2607.14541), whose DSL-adoption metric exposed 84.8% correctness at
+43.8% adoption. On GB10 it catches two failures that correctness and latency both pass: an engine
+that **fell back** to another backend, and a **checkpoint that is barely quantised** — a "NVFP4
+model" measured **19% NVFP4 adoption** (`[[wiki/quantization-on-gb10.md]]`). (S-gb10-profile)
 
 ## The discipline
 

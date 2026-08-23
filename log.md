@@ -2,6 +2,33 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-23 — [proven] the FP4 cores were bypassed, not idle: 19% quantization adoption (S-gb10-profile)
+
+- **[proven] At batch 1, tensor-core idleness is arithmetic, not waste.** GB10 ridge point
+  **~916 FLOP/byte**; a 256e/8-active MoE needs **~7,300 concurrent tokens** to saturate FP4.
+  Per-regime ceiling table added to `platform-gb10`.
+- **[proven] But that was not the situation.** Torch-profiler trace (89,077 kernel events, 1642 ms
+  GPU busy): **66.7% of GPU time is cuBLAS bf16 GEMV** (`aten::mm`, 25% occupancy), only **~19% is
+  NVFP4 CUTLASS**. The checkpoint's `ignore` list keeps **30 of 40 layers' linear attention** and
+  `lm_head` in bf16. The cores were bypassed, not underutilised.
+- **[proven] New rule — quantization adoption:** measure the share of device time in quantised
+  kernels before optimising. GB10 analogue of the DSL-adoption metric in arXiv 2607.14541 (84.8%
+  correctness at 43.8% adoption). Also invalidates roofline estimates taken from the model card.
+- **[proven] "Probe before you download" extended** to `quantization_config.ignore`; two checkpoints
+  with identical format can differ ~2x on coverage alone.
+- **[proven] Cudagraphs: +36.7% c1 / +20.3% c64** with `FULL_AND_PIECEWISE` on a 256-expert NVFP4
+  MoE — third refinement of Wall 1, second model capturing where the old rule said it could not. GPU
+  was already 96.3% busy, so this was never the dominant cost.
+- **[conjecture] Revised kernel target: the batch-1 bf16 GEMV**, not the NVFP4 GEMM (tested, lost:
+  b12x −16.6% at c64). Larger payoff is re-quantising the ignored layers (~2x step time).
+- **Three new methodology traps**: inert-but-advertised knobs (`VLLM_NVFP4_GEMM_BACKEND`,
+  `--linear-backend flashinfer_b12x`, `VLLM_TORCH_PROFILER_DIR` → 404); the GB10 profiling recipe
+  (**`dram__`/`fbpa__` have zero metrics on sm_121** → use `lts__t_sectors_lookup_miss x 32 B`;
+  `ncu` needs `--cap-add=SYS_ADMIN`; `docker cp` traces before teardown; demangle before bucketing);
+  and the adoption metric.
+- **Pages:** `platform-gb10`, `cudagraphs-and-compile`, `quantization-on-gb10`,
+  `benchmark-methodology`, `index.md`, `sources/README.md`.
+
 ## 2026-08-23 — Scheduled forum ingest: Batch 86 — 3 new topics, 2 processed
 
 - **Sources:** 2 new forum sources (S-forum-513mhz-wedge, S-forum-dsv4-0731-tp4-prod).
