@@ -707,3 +707,21 @@ kernel quality.
 
 **[proven] Cross-node NCCL all-reduce was only 7.3%** of GPU time on this stack — the spec-decode
 amortisation works, and cross-node is not the bottleneck people usually assume. (S-dsv4-opt)
+
+
+### [proven] Follow-up: the SM80 WMMA share was 2.6%, not 13.7% — and why it happens (2026-08-23)
+
+Broken out by launch geometry rather than kernel name, the `cutlass_80_wmma` family on the DSV4 stack
+is six distinct shapes; five are well-parallelised. Only one is pathological: **grid=(4,1,1) — 4
+thread blocks on GB10's 48 SMs, ~100 µs a call, 2.6% of decode with 44 SMs idle.**
+
+**Cause:** 16x16 tiles x 4 blocks ⇒ N=64 ⇒ a **tall-skinny bf16 GEMM** (tiny M at decode, N=64,
+K=4096) for which **cuBLASLt selected a serial-K kernel**, so the long reduction cannot spread.
+MLA-style architectures (compressors, indexer projections, MoE routers) are built from this shape
+family, so it is not specific to one checkpoint. **`cutlass_80_*` is cuBLASLt's own kernel family —
+this is kernel selection, not "old Ampere kernels leaking onto Blackwell".**
+
+**[proven] `CUBLASLT_WORKSPACE_SIZE=32768` does not fix it**: every grid identical, durations within
+2%. The workspace theory is refuted; the next probe would be `CUBLASLT_LOG_LEVEL=5` to see why the
+heuristic rejects split-K — but at a 2.6% ceiling, a custom kernel is not worth writing.
+(S-dsv4-opt)

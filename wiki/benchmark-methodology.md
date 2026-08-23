@@ -145,6 +145,30 @@ an unstable cell, say the harness cannot resolve it rather than publishing the n
 `docker inspect <cid> --format '{{join .Config.Cmd " "}}'` for command-line knobs and `printenv` for
 environment ones. (S-dsv4-opt)
 
+## [proven] Trap 14 — bucketing kernels by name prefix hides the finding (and inflates it)
+
+Aggregating `cutlass_80_wmma_*` as one family gave "13.7% of decode runs Ampere-era kernels" — wrong
+in both directions. Split by **launch geometry** it is six shapes, five well-parallelised, and one
+pathological: **grid=(4,1,1) = 4 blocks on 48 SMs = 2.6% of decode**. Truncated grouping also merged
+variants so the reported grid was wrong.
+
+**Bucket by what determines cost — grid / blocks / occupancy — not by name, and always print blocks
+against the SM count** (`torch.cuda.get_device_properties(0).multi_processor_count`; **48 on GB10**).
+A grid of 4 is 8.3% occupancy and invisible otherwise. The 13.6% → 2.6% correction is what turned
+"worth writing a split-K kernel" into "not worth it". (S-dsv4-opt)
+
+## [proven] Trap 15 — prefer a geometric verdict to a throughput A/B when the hypothesis allows it
+
+Testing whether a bigger cuBLASLt workspace would unlock split-K needed **no benchmark, no repeats,
+no warmup, no noise floor**: re-profile and ask whether the grid changed. It did not, so the
+hypothesis died in one restart.
+
+**When a hypothesis predicts a structural change — a different kernel, a different grid, a launch
+that disappears — verify the structure, not the tok/s.** Throughput on this hardware needs warmup, a
+stable cell and 3+ reps to resolve 10%; a grid either changed or it did not. The same logic settled
+a vendor decode flag whose throughput delta was unresolvable but whose engagement was provable by a
+kernel vanishing from the trace. (S-dsv4-opt)
+
 ## The discipline
 
 1. Assert the measurement happened (distinct results).

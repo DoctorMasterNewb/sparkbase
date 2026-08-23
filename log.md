@@ -2,6 +2,20 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-23 — [proven] SM80 WMMA dispatch diagnosed; workspace fix refuted (S-dsv4-opt)
+
+- **[proven] Corrected an earlier figure: 13.6% → 2.6%.** Bucketing `cutlass_80_wmma_*` by name
+  lumped six shapes together; by launch geometry only one is pathological — **grid=(4,1,1), 4 blocks
+  on GB10's 48 SMs, ~100 µs/call, 44 SMs idle**.
+- **[proven] Cause**: N=64 tall-skinny bf16 GEMM (`attn.indexer.weights_proj` [64,4096], K=4096) for
+  which **cuBLASLt picked a serial-K kernel**. MLA-architecture models are built from this shape
+  family. `cutlass_80_*` is cuBLASLt's own kernel family — **selection, not arch leakage**.
+- **[proven] `CUBLASLT_WORKSPACE_SIZE=32768` refuted**: all grids identical, durations within 2%.
+- **New traps 14–15**: bucket kernels by geometry/occupancy not name (print blocks vs SM count);
+  and prefer a **geometric verdict** over a throughput A/B when the hypothesis predicts a structural
+  change — no warmup, repeats or noise floor required.
+- Pages: `wiki/benchmark-methodology.md`, `wiki/quantization-on-gb10.md`.
+
 ## 2026-08-23 — Scheduled forum ingest: Batch 87 — 4 new topics, 3 processed
 
 - **Sources:** 3 new forum sources (S-forum-cudnn-batch-fix, S-forum-dsv4-cudagraph-corruption,
