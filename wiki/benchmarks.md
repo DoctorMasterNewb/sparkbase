@@ -3,7 +3,7 @@
 > **area:** benchmarks
 > **status:** evolving
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy, S-forum-muse-glimmer, S-forum-muse-glimmer-nvfp4-w4a4, S-forum-qwen38-27b-mixedint4, S-forum-glm52-sparkrun-4x, S-forum-kexaone-236b, S-forum-qwen38-nvfp4-vs-fp8, S-forum-qwen38-27b-vllm-mtp, S-forum-qwen38-nemotron-bench, S-forum-dsv4-nvfp4-416-kv, S-forum-prismaaqua, S-forum-nemotron35-lightning-arena, S-forum-nemotron35-vs-rtx6000, S-sm121-nvfp4
+> **sources:** S-sess-jun4, S-sess-jun5, S-m3-20tps, S-nemotron-rpc, S-mimo-doc, S-minimax-sweeps, S-swapper-sweep, S-dgxspark-report, S-diffusiongemma, S-forum-dsv4-flash, S-forum-dsv4-dspark, S-forum-glm52-4x, S-forum-mimo-2x, S-forum-mimo-3x, S-forum-m3-llamacpp-2x, S-forum-m3-awq-4x, S-forum-mxfp4-patches, S-forum-qwen122, S-forum-mimo-dflash-22-67, S-forum-glm47-full-2x, S-forum-ds4f-4x-vllm, S-forum-nemotron-super-mtp, S-forum-nemotron-ultra-4x, S-forum-m25-sglang-4x, S-forum-glm47-rdma, S-forum-nemotron-2node, S-forum-dsv4-dspark-eugr, S-forum-4node-qrs812, S-forum-glm52-3x-aqlm, S-forum-comfyui-triplany, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-macaron-v1-tall, S-forum-minimax-h3-comfyui, S-forum-dsv4-0731-ds4-cuda, S-forum-laguna-modelopt, S-forum-sparkring, S-forum-dsv4-llamacpp-fan, S-forum-kimi-k3-coder-reap, S-forum-dsv4-vision-plugin, S-forum-dsv4-0731-sparkrun, S-forum-dsv4-0731-dspark-llamacpp, S-forum-spark-field-notes, S-forum-glm52-8x-nvfp4, S-forum-m3-nvfp4-4x-1m, S-forum-opengauntlet, S-forum-glm52-200k-4x, S-forum-nemotron35-lightning, S-forum-dsv4-0731-llamacpp-bugzy, S-forum-muse-glimmer, S-forum-muse-glimmer-nvfp4-w4a4, S-forum-qwen38-27b-mixedint4, S-forum-glm52-sparkrun-4x, S-forum-kexaone-236b, S-forum-qwen38-nvfp4-vs-fp8, S-forum-qwen38-27b-vllm-mtp, S-forum-qwen38-nemotron-bench, S-forum-dsv4-nvfp4-416-kv, S-forum-prismaaqua, S-forum-nemotron35-lightning-arena, S-forum-nemotron35-vs-rtx6000, S-sm121-nvfp4, S-b12x-ab
 > **updated:** 2026-08-22
 
 Single-stream decode unless noted. All on the 2× GB10 pair unless noted (single-node). Numbers
@@ -1304,3 +1304,31 @@ S-forum-qwen38-nemotron-bench (reborn.li.rl).
 > flags or engine version provided for the Spark run. Single source →
 > [conjecture]. See `[[wiki/models/nemotron-3.md]]` → DGX Spark vs RTX PRO
 > 6000 section.
+
+
+## NVFP4 MoE backend A/B — Qwen3.6-35B-A3B-NVFP4, head GB10 TP=1 (2026-08-22, S-b12x-ab)
+
+**[proven]** First-party, 3 verified-distinct runs per cell, GPU health audited throughout
+(2346–2515 MHz, 17.5–96.3 W). `lyf/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-NVFP4`
+(compressed-tensors `nvfp4-pack-quantized`, 256e/8 active), `vllm-node-v0260`, TP=1,
+`--enforce-eager`, fp8 KV pinned, max_model_len 32768.
+**Profile changes these numbers ~50%, so it is quoted — see `[[wiki/benchmark-methodology.md]]`.**
+
+Profile `pp2048 / tg128 / depth0`:
+
+| MoE backend | c1 tok/s (range) | c64 tok/s (range) |
+|---|---|---|
+| `auto` ⇒ **FLASHINFER_CUTLASS** | 29.3 (28.0–30.1) | **235.2 (234.1–235.9)** |
+| **FLASHINFER_B12X** | 28.2 (27.6–29.3) | **196.3 (176.7–206.2)** |
+| Δ | −3.7%, overlapping ⇒ **no effect** | **−16.6%, non-overlapping ⇒ real** |
+
+Profile `pp[2048,8192] / tg128`, single run per arm — **not comparable to the table above**:
+
+| MoE backend | c1 | c4 | c16 | c64 |
+|---|---|---|---|---|
+| FLASHINFER_CUTLASS | 27.0 | 78.4 | 137.5 | 155.9 |
+| FLASHINFER_B12X | 30.2 | 79.4 | 120.9 | 137.2 |
+
+**[proven] Measured noise floor for this box/model — reuse it before believing any delta:
+c1 ±5.5%, c64 ±0.8%.** The c1 column is inside that floor; the c64 column is not.
+Conclusion + the two null results: `[[wiki/quantization-on-gb10.md]]`.

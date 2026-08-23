@@ -2,6 +2,36 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-22 — b12x NVFP4 MoE A/B: the native SM12x kernel dispatches and LOSES (S-b12x-ab)
+
+- **Source:** 1 new first-party source (`S-b12x-ab`) — 3 verified-distinct runs per arm on the head
+  GB10, engine kernel-selection lines captured per arm, GPU clock/power audited throughout.
+- **[proven] `FLASHINFER_B12X` dispatches and serves on sm_121** — the native SM12x fused NVFP4 MoE
+  kernel is NOT blocked by the CUTLASS SM121 guard for this checkpoint. Settles kernel availability.
+- **[proven] It loses: −16.6% at c64** (196.3 vs 235.2 tok/s, non-overlapping ranges) **with no c1
+  benefit** (−3.7%, overlapping). Best b12x c64 run sits below the baseline's worst. Also 17% spread
+  across boots vs the cutlass path's 0.8%. The prior **[conjecture]** that it would beat the default
+  at concurrency is **[superseded]**. vLLM's exclusion of it from auto-selection is correct on
+  performance, independent of the guard it cites.
+- **[proven] `auto` picked FLASHINFER_CUTLASS with MARLIN in the candidate list and passed over** —
+  the "NVFP4 MoE ⇒ Marlin" row is not general; annotated.
+- **[proven] `--linear-backend flashinfer_b12x` has no kernel** — advertised in `--help`, accepted
+  into `KernelConfig`, then `ValueError: … no 'flashinfer_b12x' kernel exists for NVFP4 layers`.
+- **[proven] Two null results recorded deliberately.** (a) No c1 win: one run showed +11.9% with a
+  plausible mechanism attached; six runs put it at −3.7% inside a ±5.5% spread. (b) The
+  "saturates by c16" reading was partly a profile artifact (155.9 vs 235.5 at c64 depending on
+  whether 8192-prefills are mixed in).
+- **New page `wiki/benchmark-methodology.md`** — seven harness traps, all hit this session, all
+  returning exit 0 with a plausible table. Chief: **sparkrun's benchmark ID is model+profile+host and
+  ignores `-o`, so every A/B arm replays the first arm's numbers**; `--fresh`, per-arm recipe files
+  and `mv`-archiving all fail; only `rm -rf` + a result-distinctness assertion works. Replayed 4
+  times across 3 mitigations, each time as a clean "the flag changes nothing" table.
+- **Measured noise floor** added to `benchmarks.md`: c1 ±5.5%, c64 ±0.8%. Rule recorded: a delta
+  under ~2x the measured spread is not a finding.
+- No node3 data was recorded — it is pending RMA and its fault presents as a sudden reboot.
+- **Pages touched:** `benchmark-methodology` (new), `quantization-on-gb10`, `benchmarks`, `index.md`,
+  `sources/README.md`.
+
 ## 2026-08-22 — `[superseded]`: the `[proven]` "no native FP4" claim was false (S-sm121-nvfp4)
 
 - **Source:** 1 new first-party source registered (`S-sm121-nvfp4`): NVIDIA PTX ISA 8.8 / CUDA

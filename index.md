@@ -36,6 +36,7 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [k-exaone-236b](wiki/models/k-exaone-236b.md) — LG AI Research 237B/23B-active MoE; largest unpruned model on single Spark; mixed-quant GGUF 85.56 GiB, LLLG sliding-window 48 KiB/token KV, full 262K context via ds4 engine.
 
 ## Reference
+- [benchmark-methodology](wiki/benchmark-methodology.md) — **harness traps that produce confident wrong numbers**: sparkrun replaying cached results across A/B arms (and the three fixes that DON'T work), profile shape moving throughput 50%, alias-only served-model-name 404s, editing a running bash script, where vLLM's real log lives, proving the GPU was healthy.
 - [benchmarks](wiki/benchmarks.md) — collated decode tok/s + concurrency table; append rows.
 - [roadmap](wiki/roadmap.md) — open problems & areas of further development.
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).

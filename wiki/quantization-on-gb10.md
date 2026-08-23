@@ -3,7 +3,7 @@
 > **area:** quantization
 > **status:** stable
 > **evidence:** mixed
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-dsv4-reap25, S-forum-sm121-4bugs, S-forum-kat-coder-autoround, S-forum-prismaaqua, S-sm121-nvfp4
+> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-dsv4-reap25, S-forum-sm121-4bugs, S-forum-kat-coder-autoround, S-forum-prismaaqua, S-sm121-nvfp4, S-b12x-ab
 > **updated:** 2026-08-22
 
 ⚠ **This page opened with "GB10 has no native FP4 compute and no native FP8 block-scale" until
@@ -24,7 +24,7 @@ can never be better than that."*
 |---|---|---|---|
 | **FP8 online dynamic** (`--quantization fp8` on bf16 weights) | native **CUTLASS** (`CutlassFP8ScaledMMLinearKernel`) | **fast** | quantizes at load, no pre-quant checkpoint. The genuine FP8 fast path. ~2.08× bf16 decode. |
 | **FP8 block-scale checkpoint** (compressed-tensors `float-quantized`, DeepSeek-style) | **Marlin** weight-only (vLLM logs "no native support for FP8" — a *dispatch* message) | slow-ish | NOT the fast path *in these builds*. The hardware has `mma…kind::mxf8f6f4.block_scale` (S-sm121-nvfp4); nothing dispatches to it. Open retest. |
-| **NVFP4 — ModelOpt** (`quant_method: modelopt`, `hf_quant_config.json`) | **Marlin FP4 MoE** + FlashInfer FP8 linear (or FLASHINFER_CUTLASS); on current builds *dense* NVFP4 auto-selects **native CUTLASS** | fastest for MoE | Fewest bytes ⇒ wins even where the MoE is a Marlin decompress. The MoE half of that is a missing SM120 grouped-FP4 kernel, not a hardware limit (S-sm121-nvfp4). |
+| **NVFP4 — ModelOpt** (`quant_method: modelopt`, `hf_quant_config.json`) | **Marlin FP4 MoE** + FlashInfer FP8 linear (or FLASHINFER_CUTLASS); on current builds *dense* NVFP4 auto-selects **native CUTLASS** | fastest for MoE | Fewest bytes ⇒ wins even where the MoE is a Marlin decompress. ⚠ **[proven] 2026-08-22: "⇒ Marlin" is not general** — on `vllm-node-v0260` with a compressed-tensors NVFP4 MoE, `auto` logged `Using 'FLASHINFER_CUTLASS' NvFp4 MoE backend` with **MARLIN in the candidate list and passed over**. Read the engine log; don't assume the fallback. (S-b12x-ab) |
 | **NVFP4 — compressed-tensors** (`nvfp4-pack-quantized`, `.weight_packed`) | ⚠ **works on current builds — this row said "broken"** | fast | Corrected 2026-08-22 (S-sm121-nvfp4): `lyf/Qwen3.6-35B-A3B-…-NVFP4` is `format: nvfp4-pack-quantized` and is a **validated first-party recipe** (67 tok/s c1, TP=2, 2026-07-14). The earlier garbage was checkpoint-/build-specific (see the SM121 4-bug section below, all on vLLM 0.17.1), not format-wide. Judge the checkpoint and the build, not the `format` string. |
 | **MXFP8** (mixed-precision, UE8M0 scales) | FlashInfer-CUTLASS MXFP8 | works | needs explicit dispatch in some vLLM builds (see MiMo mods). Don't reciprocal-invert `weight_scale_inv`. |
 | **AWQ 4-bit** | Marlin | works, **fast decode** | MiniMax-M2.x default. For MiniMax-M2.7, AWQ **decodes ~1.4× faster than NVFP4** single-stream (~24 vs ~16.5 tok/s) — same ~4-bit, so it's kernel efficiency not bytes. Measure; don't assume NVFP4 wins. |
@@ -590,14 +590,47 @@ the page, but the disagreement must be visible or nobody re-opens it.
   bandwidth-bound regardless. **Native FP4 is a prefill/concurrency lever, never a c1 one.** A flat c1
   result is the expected shape of a win. (S-sm121-nvfp4)
 
-### Open first-party retest
+### First-party retest — RUN 2026-08-22: the native kernel dispatches, and loses
 
-A 3-arm A/B is staged on the reference cluster (`~/services/b12x-moe-bench/`): `--moe-backend auto` vs
-**`flashinfer_b12x`** — the native SM12x fused NVFP4 MoE (FlashInfer PR #3080), which ships in
-`vllm-node-v0260` and is **deliberately excluded from auto-selection**: *"until the upstream CUTLASS
-SM121 MMA op guard is resolved"* — plus an arm adding `--linear-backend flashinfer_b12x`. TP=1, one
-node, pinned KV, eager, on a 128-aligned NVFP4 MoE; grid targets pp8192 and c16/c64. **[conjecture]**
-that it beats Marlin at concurrency; unrun, so no number is claimed here.
+3 verified-distinct runs per arm on the head GB10. TP=1, `--enforce-eager`, fp8 KV pinned,
+`lyf/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-NVFP4` (compressed-tensors `nvfp4-pack-quantized`,
+256e/8 active, hidden 2048, moe_intermediate 512 — 128-aligned), image `vllm-node-v0260`. GPU verified
+healthy for every run (2346–2515 MHz, 17.5–96.3 W). The earlier **[conjecture]** that it would beat
+the default at concurrency is **[superseded]** — it was wrong.
+
+- **[proven] `FLASHINFER_B12X` dispatches and serves on sm_121.** Engine log:
+  `Using 'FLASHINFER_B12X' NvFp4 MoE backend`. The native SM12x fused NVFP4 MoE kernel is **not
+  blocked by the CUTLASS SM121 guard** for this checkpoint — it loads, serves and returns coherent
+  output. Kernel availability on GB10: settled. (S-b12x-ab)
+- **[proven] It is 16.6% slower at concurrency with no single-stream compensation**
+  (profile `pp2048/tg128/depth0`, 3 runs/cell — quote the profile,
+  `[[wiki/benchmark-methodology.md]]` trap 2):
+
+  | | `auto` ⇒ FLASHINFER_CUTLASS | FLASHINFER_B12X | Δ | ranges overlap? |
+  |---|---|---|---|---|
+  | c1 tok/s | 29.3 (28.0–30.1) | 28.2 (27.6–29.3) | −3.7% | **yes ⇒ no effect** |
+  | c64 tok/s | 235.2 (234.1–235.9) | 196.3 (176.7–206.2) | **−16.6%** | **no ⇒ real** |
+
+  b12x's best c64 run (206.2) is below the baseline's worst (234.1), against a baseline reproducing
+  within **0.8%**. Prefill is a wash (~5.0–5.7 K t/s both). (S-b12x-ab)
+- **[proven] b12x is unstable across boots**: c64 spread **17%** vs the cutlass path's 0.8%.
+  Undiagnosed. (S-b12x-ab)
+- **[proven] `--linear-backend flashinfer_b12x` has no kernel.** Advertised in `--help` ("FlashInfer
+  b12x CuteDSL NVFP4 GEMM (SM120+)"), accepted into `KernelConfig`, then the engine dies at startup:
+  `ValueError: --linear-backend=flashinfer_b12x was requested but no 'flashinfer_b12x' kernel exists
+  for NVFP4 layers.` The dense NVFP4 path is `FlashInferCutlassNvFp4LinearKernel`; there is no b12x
+  alternative. (S-b12x-ab)
+- **[proven] NULL RESULT — there is no c1 win, recorded so nobody re-chases it.** A first single run
+  showed **+11.9%** at c1 and a mechanism was proposed (fusion beating launch overhead at M=1). Six
+  runs put it at **−3.7% with fully overlapping ranges**; `auto` alone spans 27.0–30.1 (±5.5%). **A
+  delta smaller than ~2× the measured spread is not a finding, and a plausible mechanism makes a
+  noise sample more convincing rather than more true.** (S-b12x-ab)
+
+**Consequence.** vLLM's exclusion of `flashinfer_b12x` from auto-selection is **correct on measured
+performance**, independently of the CUTLASS guard it cites. The native-FP4 upside on GB10, if any,
+is not in this kernel. **Still open [conjecture]:** whether a properly tiled SM120 grouped-FP4 GEMM
+(CUTLASS `79d_blackwell_geforce_nvfp4_grouped_gemm`) beats FLASHINFER_CUTLASS — b12x is a fused
+CuteDSL kernel, not that path.
 
 **Build-guard lead if it fails to dispatch:** in CUTLASS `cute/arch/config.hpp`, the MXF4NVF4 MMA
 macros are defined under `SM120_ENABLED|SM120A_ENABLED` and again under `SM121_ENABLED|SM121A_ENABLED`,
