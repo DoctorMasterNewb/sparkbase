@@ -3,8 +3,8 @@
 > **area:** containers
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet, S-forum-dragonscale, S-forum-openpangu, S-forum-glm52-200k-4x, S-forum-dsv4-qwen-vision, S-forum-pilco-mmbridge, S-forum-dsv4-0731-b12x-hang, S-forum-mediallmproxy, S-forum-dsv4-agent-serving, S-forum-dsv4-humaneval, S-forum-ds4f-qwen38-orchestration, S-forum-vllm-longlived, S-forum-dsv4-nvfp4-416-kv
-> **updated:** 2026-08-21
+> **sources:** S-sess-jun4, S-sess-jun5, S-nemotron-rpc, S-mimo-results, S-forum-atlas, S-forum-ds4-cuda, S-forum-dflash-qwen122, S-forum-ddtree-dflash, S-forum-stream-loading, S-forum-turboquant, S-forum-vllm-019-vs-023, S-forum-sm121-kernel-guide, S-forum-easy-vllm, S-forum-tokenspeed, S-forum-dsv4-vision, S-forum-llm-comfyui, S-forum-colibri-glm52, S-forum-dsv4-abliterated, S-forum-mtp-lossless, S-forum-woolyai, S-forum-gridbook, S-forum-glm52-vision, S-forum-glm52-hybrid, S-forum-speedycolibri, S-forum-dsv4-reap25, S-forum-velogb10, S-forum-dsv4-dspark-eugr, S-forum-dsv4-0731-caching, S-forum-dsv4-0731-bench, S-forum-dsv4-0731-dspark-loader, S-forum-dsv4-0731-ds4-cuda, S-forum-dsv4-vision-plugin, S-forum-vllm-snapshot, S-forum-dsv4-0731-gguf, S-forum-dsv4-0731-sparkrun, S-forum-lmcache-ipc-deadlock, S-forum-embed-rag, S-forum-spark-field-notes, S-forum-opengauntlet, S-forum-dragonscale, S-forum-openpangu, S-forum-glm52-200k-4x, S-forum-dsv4-qwen-vision, S-forum-pilco-mmbridge, S-forum-dsv4-0731-b12x-hang, S-forum-mediallmproxy, S-forum-dsv4-agent-serving, S-forum-dsv4-humaneval, S-forum-ds4f-qwen38-orchestration, S-forum-vllm-longlived, S-forum-dsv4-nvfp4-416-kv, S-forum-dsv4-0731-tp4-prod
+> **updated:** 2026-08-23
 
 Three engines run on the Spark pair; pick by arch support and quant.
 
@@ -1267,3 +1267,28 @@ Three engines run on the Spark pair; pick by arch support and quant.
   lengths, (3) ragged rejection trimming. Repo:
   `coolbho3k/DeepSeek-v4-Flash-DSpark-2x-DGX-Spark` branch
   `feature/nvfp4-416-kv-cache`. Single source → [conjecture].
+
+## Forum ingest: DSV4-Flash-0731 TP4 production on 4× Spark (2026-08-23)
+
+> **evidence:** conjecture (single forum thread)
+> **sources:** S-forum-dsv4-0731-tp4-prod
+
+- **[conjecture]** **vLLM PR #48993 compact KV layout rejected for production** (S-forum-dsv4
+  0731-tp4-prod, alberthanlee): the compact KV layout increases KV-token pool capacity by
+  13.59% (4.797M→5.449M tokens) but regresses throughput across all workload types — C8
+  throughput −7.62%, code throughput −16.16%, prose throughput −12.82%, p95 TTFT −27.05%.
+  The capacity gain is not worth the latency cost for production serving. Reverted to
+  baseline. Single source → [conjecture].
+
+- **[conjecture]** **r27/B12X path cannot activate compact MXFP4 indexer** (S-forum-dsv4-0731
+  tp4-prod, alberthanlee): the newer B12X path currently requires an FP8 indexer cache and
+  cannot activate the compact MXFP4 indexer, indicating an unresolved backend limitation
+  on sm_121 for this model architecture. Single source → [conjecture].
+
+- **[conjecture]** **Production-qualified DSV4-Flash-0731 TP4/DSpark K5/C8 on 4× GB10**
+  (S-forum-dsv4-0731-tp4-prod, alberthanlee): ~66 tok/s single-stream, ~185 tok/s aggregate
+  at C8, 0.445s C8 p95 TTFT, 4.797M KV pool at 1M context. Based on spark-vllm-docker
+  recipe. Qualified: strict JSON, tool use/continuation, fresh 134K-token retrieval,
+  concurrent requests, CUDA graphs, RDMA traffic, restart stability, no-OOM. The 66 tok/s
+  single-stream is the highest reported for DSV4-Flash-0731 on 4× Spark. GitHub repo:
+  bertholomus/deepseek-v4-flash-0731-dspark-graph8-4xgb10. Single source → [conjecture].

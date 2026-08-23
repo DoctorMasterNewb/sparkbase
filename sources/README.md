@@ -411,6 +411,13 @@ Several early findings were distilled from first-party Claude Code bring-up sess
 | S-forum-triton-sm121a | forum | Triton compilation crash on sm_121a building vLLM from source — ptxas "sm_121a not implemented", Triton CompilationError in qwen_gdn_linear_attn.py (make_ir/ast_to_ttir); from-source build gets 150-600 tok/s prefill vs 5000-6000 from sparkrun validated recipes; user has organizational Docker prohibition; Podman suggested as alternative; requests CUDA 13.2 + native sm_121a toolchain support; model Qwen3.6-35B-A3B-NVFP4 (saskia.hold, jomark, davedgd, wga472) | https://forums.developer.nvidia.com/t/380704 | 2026-08-20 |
 | S-forum-nemotron35-vs-rtx6000 | forum | NVIDIA Nemotron-3.5-Lightning-30B-A3B-NVFP4: DGX Spark vs RTX PRO 6000 Blackwell — vllm bench serve, 16 concurrent prompts; DGX Spark 193 tok/s (prompt-heavy) / 420 tok/s (decode-heavy) / 236 tok/s (balanced) aggregate output; RTX PRO 6000 935 / 1730 / 1176; speculative decoding acceptance 29-64%; TTFT 1.6-12.1s on Spark; ~4-5× performance gap (shahizat) | https://forums.developer.nvidia.com/t/379921 | 2026-08-12 |
 
+## Batch 86 forum sources (2026-08-23 ingest)
+
+|| ID | type | What it is | Reference | Date |
+||---|---|---|---|---|
+|| S-forum-513mhz-wedge | forum | GPU clock pinned at 513 MHz / ~13 W under load, no throttle flag — 6th independent corroboration of the power-controller wedge; AC power-cycle fix; key clarification: dmesg "Detected insufficient power on the PCIe slot (27W)" is from Mellanox mlx5_core NIC driver, NOT the GPU (GB10 GPU connects via NVLink C2C, not PCIe); spark-gpu-throttle-check diagnostic tool (christian.pappert, elsaco, a149952, rad777, parallelArchitect) | https://forums.developer.nvidia.com/t/361296 | 2026-02-22 |
+|| S-forum-dsv4-0731-tp4-prod | forum | DeepSeek-V4-Flash-0731 TP4/DSpark K5/C8 production qualification on 4× GB10 — ~66 tok/s single-stream, ~185 tok/s aggregate C8, 0.445s C8 p95 TTFT, 4.797M KV-token pool at 1M context; vLLM PR #48993 compact KV layout rejected (+13.59% capacity but −7.62% C8 throughput, −16.16% code, −12.82% prose, −27.05% p95 TTFT); r27/B12X path needs FP8 indexer, can't activate compact MXFP4 indexer; based on spark-vllm-docker recipe (alberthanlee) | https://forums.developer.nvidia.com/t/380041 | 2026-08-13 |
+
 ## Adding a source
 
 Append a row with a new `S-` id and its `type`, then ingest per [`../SCHEMA.md`](../SCHEMA.md)

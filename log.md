@@ -2,6 +2,25 @@
 
 Append-only. One entry per ingest/lint: date, source(s), pages touched, one line of what changed.
 
+## 2026-08-23 — Scheduled forum ingest: Batch 86 — 3 new topics, 2 processed
+
+- **Sources:** 2 new forum sources (S-forum-513mhz-wedge, S-forum-dsv4-0731-tp4-prod).
+  1 topic skipped (380474 — buying advice, no technical findings).
+- **Pages touched:** platform-gb10 (513 MHz wedge corroboration [reported] + mlx5_core
+  PCIe power message clarification [reported] + enhanced throttle-check tool [conjecture]),
+  benchmarks (1 new DSV4-Flash-0731 TP4 production row [conjecture]), engines (vLLM PR
+  #48993 compact KV layout rejection + r27/B12X indexer limitation + production recipe
+  [conjecture]), sources/README (Batch 86), index, log.
+- **Summary:** (1) 6th independent forum corroboration of the GPU power-controller wedge
+  (513 MHz pin, no throttle flag, AC power-cycle fix) — now [reported] with 6 sources.
+  Key diagnostic clarification: the `dmesg` "insufficient power on the PCIe slot (27W)"
+  message is from the Mellanox mlx5_core NIC driver, NOT the GPU — GB10 GPU uses NVLink
+  C2C. (2) First production-qualified DSV4-Flash-0731 deployment on 4× Spark: 66 tok/s
+  single-stream, 185 tok/s C8 aggregate, 4.797M KV pool at 1M context. vLLM PR #48993
+  compact KV layout rejected (capacity gain not worth latency regression).
+- All [conjecture] except the power-controller wedge which is [reported]. No promotions
+  past [reported].
+
 ## 2026-08-22 — b12x NVFP4 MoE A/B: the native SM12x kernel dispatches and LOSES (S-b12x-ab)
 
 - **Source:** 1 new first-party source (`S-b12x-ab`) — 3 verified-distinct runs per arm on the head

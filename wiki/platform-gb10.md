@@ -3,8 +3,8 @@
 > **area:** platform
 > **status:** stable
 > **evidence:** mixed
-> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma, S-forum-fan-headless-boot, S-forum-suspend-fail, S-forum-hdmi-hotplug-ab, S-forum-usbc-dp-hpd, S-forum-gx10-fw-recovery, S-forum-uefi-capsule-password, S-forum-75w-crash, S-forum-fieldiag-signedby, S-forum-triton-sm121a, S-sm121-nvfp4
-> **updated:** 2026-08-22
+> **sources:** S-forum-update-loop, S-forum-temps-normal, S-forum-uvm-livelock, S-forum-sway-scanout, S-forum-realsense-d435, S-forum-6x-ring-rdma, S-forum-uefi-fw-fail, S-forum-serial-console, S-forum-sleep-disabled, S-forum-cx7-dac-power, S-forum-qwen3tts-ggml, S-forum-locateanything, S-forum-typec-thermal, S-forum-asus-fw-jul25, S-forum-comfyui-crash, S-forum-power-90w, S-forum-gpu-throttle-cmd, S-forum-driver580-173, S-forum-model-storage, S-forum-acer-thermal, S-forum-sm121-support, S-forum-170hx-spark, S-forum-xid31-yolo, S-forum-um-kernel-init, S-forum-cx7-pcie-power, S-forum-cooler-temps, S-forum-powerstress, S-forum-dashboard-fw-stale, S-forum-fan-firmware, S-forum-earlyoom-config, S-forum-cx7-idle-temp, S-forum-nondgx-os, S-forum-vllm-qemu, S-forum-cuda-single-ctx, S-forum-cx7-27w-benign, S-forum-thermal-freeze, S-forum-clock-energy-sweep, S-forum-xconfig-recovery, S-forum-fan-dpms, S-forum-driver595, S-forum-trtllm-readout, S-forum-power-mgmt, S-forum-wifi-mesh, S-forum-idle-lockup, S-forum-sparkup, S-forum-gsp-reboot-jul2026, S-forum-energy-telemetry, S-forum-asm2464pd-replug, S-forum-fe-thermal-rma, S-forum-fan-headless-boot, S-forum-suspend-fail, S-forum-hdmi-hotplug-ab, S-forum-usbc-dp-hpd, S-forum-gx10-fw-recovery, S-forum-uefi-capsule-password, S-forum-75w-crash, S-forum-fieldiag-signedby, S-forum-triton-sm121a, S-sm121-nvfp4, S-forum-513mhz-wedge
+> **updated:** 2026-08-23
 
 The hardware facts every model bring-up assumes. Read this first.
 
@@ -191,6 +191,21 @@ symptoms match the first-party finding above):
 **[conjecture]** A `spark-doctor` / `spark-gpu-throttle-check` script should be run on every new
 bring-up to rule out the wedge before benchmarking (multiple forum users discovered the wedge
 only after unexplained slow tok/s).
+
+### Batch 86 forum ingest (2026-08-23)
+
+- **[reported]** GPU clock pinned at **513 MHz** / ~13 W under load / no throttle flag — AC
+  power-cycle fixes (S-forum-513mhz-wedge, christian.pappert). Same fingerprint as all prior
+  reports (pinned-exact clock, zero throttle reason, ~3× performance loss). 6th independent
+  forum source corroborating the power-controller wedge. Also on ASUS GX10 after update
+  (rad777, 507–598 MHz on one of two units).
+- **[reported]** **`dmesg` "Detected insufficient power on the PCIe slot (27W)" is from the
+  Mellanox CX-7 NIC driver (`mlx5_core`), NOT the GPU.** The GB10 GPU connects via NVLink C2C,
+  not PCIe. This message is **safe to ignore** for GPU clock issues (elsaco, S-forum-513mhz-wedge).
+  Diagnostic clarification: don't confuse the CX-7 PCIe power warning with the GPU wedge.
+- **[conjecture]** Enhanced `spark-gpu-throttle-check` fork adds NVML direct telemetry, throttle
+  reason decoding, clock ramp-up timing, stability scoring, baseline comparison
+  (`parallelArchitect/spark-gpu-throttle-check`, S-forum-513mhz-wedge).
 
 ### Batch 8 forum ingest (2026-07-12)
 

@@ -42,6 +42,36 @@ Every claim on these pages carries an **evidence tag** — `[conjecture]` `[repo
 - [sources](sources/README.md) — where findings came from (`S-` ids, source-typed).
 - [log](log.md) — append-only ingest/change log.
 
+## Forum ingest 2026-08-23 (Batch 86)
+- 3 new NVIDIA DGX Spark forum topics found, 2 technically relevant (1 skipped:
+  380474 "family daily model" — buying advice/recommendations, no durable technical
+  findings).
+- 2 new sources registered (Batch 86). 3 topic IDs added to processed_topics.txt
+  (total now 658).
+- **Headline finding 1:** 6th independent corroboration of the GPU power-controller
+  wedge — clock pinned at 513 MHz / ~13 W under load, zero throttle flag, ~3× perf
+  loss. AC power-cycle fixes. Key diagnostic clarification: `dmesg` "Detected
+  insufficient power on the PCIe slot (27W)" is from the Mellanox CX-7 NIC driver
+  (mlx5_core), NOT the GPU — GB10 GPU connects via NVLink C2C, not PCIe. Safe to
+  ignore for GPU clock issues. Enhanced spark-gpu-throttle-check fork with NVML
+  telemetry, stability scoring, baseline comparison. [reported] for the wedge
+  pattern (6 independent sources now), [conjecture] for the enhanced diagnostic tool.
+- **Headline finding 2:** DSV4-Flash-0731 TP4/DSpark K5/C8 production qualification
+  on 4× GB10 — ~66 tok/s single-stream, ~185 tok/s aggregate C8, 0.445s C8 p95 TTFT,
+  4.797M KV pool at 1M context. Production-qualified (strict JSON, tool use, fresh
+  134K retrieval, CUDA graphs, RDMA, restart stability, no-OOM). Key finding: vLLM
+  PR #48993 compact KV layout rejected (+13.59% capacity but −7.62% C8 throughput,
+  −16.16% code, −12.82% prose, −27.05% p95 TTFT). r27/B12X path needs FP8 indexer,
+  can't compact MXFP4. Highest reported DSV4-Flash-0731 single-stream on 4× Spark.
+  [conjecture].
+- Pages touched: platform-gb10 (513 MHz wedge corroboration + mlx5_core PCIe power
+  message clarification + enhanced throttle-check tool [conjecture]/[reported]),
+  benchmarks (1 new [conjecture] DSV4 production row), engines (vLLM PR #48993 compact
+  KV rejection + r27/B12X indexer limitation + production recipe [conjecture]),
+  sources/README, index, log.
+- All [conjecture] except the power-controller wedge corroboration which is [reported]
+  (6 independent forum sources now agree). No evidence promotions past [reported].
+
 ## Forum ingest 2026-08-22 (Batch 85)
 - 3 new NVIDIA DGX Spark forum topics found, 2 technically relevant (1 skipped:
   380607 Voicecan Echo — product announcement, no GB10 inference findings).
