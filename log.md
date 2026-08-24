@@ -3550,3 +3550,19 @@ Append-only. One entry per ingest/lint: date, source(s), pages touched, one line
   log.
 - Evidence: fan DPMS symptom [conjecture]→[reported] (3 independent confirmers on 2
   OEM SKUs). All other findings [conjecture]. No evidence promotions past [reported].
+
+## 2026-08-24 — S-dsv4-vision (first-party): MoonViT vision adapter grafted onto DeepSeek-V4-Flash
+- Source: S-dsv4-vision registered (first-party, GB10 pair).
+- Pages: **new** wiki/vision-adapters.md; quantization-on-gb10 (NVFP4 MoE with no serving backend +
+  the Marlin FP4 repack PTX wall); attention-and-kv-cache (ViT encoder needs
+  `--mm-encoder-attn-backend TORCH_SDPA`); cudagraphs-and-compile (Wall 3 — grafted multimodal
+  wrapper faults on replay, not capture); index; sources/README.
+- Headline: a vision adapter can be **wired correctly end to end and still be blind**. The published
+  projector emits embeddings 26x the norm of the token embeddings it was trained against, >98% of
+  each image embedding being a constant offset — so fluent image-shaped answers carried no image
+  information. New durable method: verify a graft with the embedding-norm ratio, stage-isolated
+  relative L2, and a solid-colour discrimination test with a no-image control — never with output
+  that merely looks right.
+- Evidence: measurements and the six GB10 traps are [proven] (first-party, instrumented). The
+  attribution to a projector/text-half pairing mismatch stays [conjecture] — the deciding A/B on the
+  author's own text half is blocked by two NVFP4-MoE kernel-coverage gaps on sm_121.

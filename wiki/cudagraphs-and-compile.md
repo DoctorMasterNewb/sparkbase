@@ -3,8 +3,8 @@
 > **area:** cudagraphs
 > **status:** open-problem
 > **evidence:** proven
-> **sources:** S-xnode-cudagraph, S-m3-20tps, S-m3-vision, S-mimo-results, S-sess-jun5, S-pr46372, S-gb10-profile, S-forum-dsv4-cudagraph-corruption
-> **updated:** 2026-08-23
+> **sources:** S-dsv4-vision, S-xnode-cudagraph, S-m3-20tps, S-m3-vision, S-mimo-results, S-sess-jun5, S-pr46372, S-gb10-profile, S-forum-dsv4-cudagraph-corruption
+> **updated:** 2026-08-24
 
 CUDA graphs remove per-token kernel-launch overhead — decisive on GB10 where decode fires thousands
 of tiny kernels. But two walls block them for the exact models that need them most (big MoE,
@@ -226,3 +226,36 @@ agentic workflows. The `FULL_AND_PIECEWISE` mode that the 2026-08-23 [proven] fi
 endorsed for Qwen3.6-35B-A3B is the same mode implicated here — but on a different model
 (DSV4-Flash, sparse-MLA attention) and with MTP. The safe path is: apply the three fixes
 or run `--enforce-eager` for DSV4-Flash + MTP + agentic workloads on vLLM ≤0.27.1.
+
+
+## [proven] Wall 3 — a grafted multimodal wrapper faults on replay, not capture (2026-08-24, S-dsv4-vision)
+
+**Symptom.** With a vision adapter grafted onto DeepSeek V4 (tower + projector wrapping the
+text model), `Graph capturing finished in 23 secs, took 2.03 GiB` — capture is clean — and then
+the **first real request** dies:
+
+```
+torch.AcceleratorError: CUDA error: an illegal memory access was encountered
+  ... DeepGEMM/jit_kernels/impls/runtime_utils.hpp:143 (CUDA_ERROR_ILLEGAL_ADDRESS)
+```
+
+reported inside a DeepSeek attention FP8 GEMM — on an **11-token text request** with no image.
+
+**Root cause.** Unresolved. Two contributing faults were found and fixed without curing it:
+(1) host reads inside the wrapper's forward (`.any()`, indexing a GPU value) are illegal during
+capture — `operation not permitted when stream is capturing` — so any per-batch logic must be
+branch-free; (2) OOV placeholder ids left in the runner's static-id padding rows by profiling
+cause an out-of-bounds embedding gather (`[[wiki/vision-adapters.md]]`). Both fixed; the replay
+IMA persists.
+
+**Workaround.** `--enforce-eager`. Text and vision both run clean eager. Upstream's own SGLang
+serve config for the same adapter sets `disable-cuda-graph: true`, so this is the model's
+documented state rather than a local quirk.
+
+**Status:** open. Cost is decode throughput on an otherwise-working stack.
+
+**The generalisable bit:** capture succeeding proves nothing about replay. When a wrapper class
+sits between the runner and a compiled model, test one real request before believing the
+cudagraph line — and remember CUDA faults are reported at the next sync, so the traceback names
+where execution stalled, not the faulting kernel. `CUDA_LAUNCH_BLOCKING=1` plus `--enforce-eager`
+turns a misleading trace into a truthful one in a single run.

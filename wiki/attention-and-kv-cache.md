@@ -3,8 +3,8 @@
 > **area:** attention
 > **status:** stable
 > **evidence:** proven
-> **sources:** S-m3-vision, S-mimo-results, S-mimo-doc, S-sess-jun5, S-sess-jun4, S-dflash-nvfp4, S-forum-mimo-2x-opt, S-forum-dsv4-kvcache, S-forum-inkling-nvfp4, S-forum-flashinfer-livelock, S-forum-solar-open2-nvfp4, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-glm52-3x-aqlm, S-forum-dsv4-nvfp4-416-kv
-> **updated:** 2026-08-21
+> **sources:** S-dsv4-vision, S-m3-vision, S-mimo-results, S-mimo-doc, S-sess-jun5, S-sess-jun4, S-dflash-nvfp4, S-forum-mimo-2x-opt, S-forum-dsv4-kvcache, S-forum-inkling-nvfp4, S-forum-flashinfer-livelock, S-forum-solar-open2-nvfp4, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-glm52-3x-aqlm, S-forum-dsv4-nvfp4-416-kv
+> **updated:** 2026-08-24
 
 Which `--attention-backend` to pass is decided by the model's attention type, not preference. Get it
 wrong and KV-cache init fails or numerics are subtly off.
@@ -38,6 +38,14 @@ wrong and KV-cache init fails or numerics are subtly off.
 - **[proven]** **First image request = ~20 s ViT JIT autotune** (`AttentionBackendEnum.FLASH_ATTN for vit
   attention`). Short client timeouts make the first call look like it "returned nothing." Use a long
   timeout (>150 s) or send a warmup image; every request after is fast. (M3 vision, Holo vision.)
+- **[proven]** **The ViT encoder's default flash-attention is unusable on GB10.** vLLM's
+  multimodal encoder picks a prebuilt `flash_attn_varlen_func`, which fails the instant the
+  encoder runs: `CUDA error: the provided PTX was compiled with an unsupported toolchain`.
+  Pass **`--mm-encoder-attn-backend TORCH_SDPA`** and confirm the engine logs
+  `Using AttentionBackendEnum.TORCH_SDPA for MMEncoderAttention` — if it still says
+  `FLASH_ATTN` the flag did not land. Distinct from the ~20 s ViT JIT autotune above: that one
+  is a delay, this one is a hard failure. (grafted MoonViT tower on DeepSeek V4;
+  `[[wiki/vision-adapters.md]]`)
 - **[proven]** **flashinfer gemma-rmsnorm CUTLASS-DSL ICE.** Archs with `use_gemma_norm=true` call
   `flashinfer.norm.gemma_rmsnorm`, whose CUTLASS-DSL kernel can fail MLIR verification on cu130
   (`'llvm.mlir.global_dtors' requires attribute 'data'`). Fix: swap in pure-torch norms (verified

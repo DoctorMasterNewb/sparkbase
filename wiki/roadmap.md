@@ -432,3 +432,20 @@ onto the relevant page and deleting it here.
   highest-priority platform stability issue for always-on deployments — a Spark that
   dies when idle between inference bursts is operationally worse than one that dies
   under load. See `[[wiki/platform-gb10.md]]` → idle LPI-3 lockup finding.
+
+
+## First-party open problems (2026-08-24, S-dsv4-vision)
+
+- **[proven]** **NVFP4 MoE has no serving path on this image.** Neither native selection nor the
+  `VLLM_TEST_FORCE_FP8_MARLIN` fallback can serve an NVFP4-MoE checkpoint on sm_121 — the fallback
+  dies in Marlin's FP4 **repack** with a PTX-toolchain rejection, before any inference. Worth
+  retesting on each new image: it currently gates every NVFP4-MoE checkpoint, and it blocked the
+  deciding experiment for grafted vision adapters. (`[[wiki/quantization-on-gb10.md]]`)
+- **[conjecture]** **Does a grafted vision adapter work with the text half it was trained on?**
+  webbrain-one's MoonViT adapter is blind on dealignai's MXFP4 CRACK weights, and its projector
+  emits embeddings 26x the norm of even its *own* text half's embeddings. Upstream reports a
+  passing image smoke test with an earlier text package, so the pairing is the leading suspect —
+  untestable here until NVFP4 MoE serves. Weights staged. (`[[wiki/vision-adapters.md]]`)
+- **[proven]** **Cudagraph replay IMA behind a multimodal wrapper class.** Capture succeeds, the
+  first request faults in an unrelated text attention GEMM, and `--enforce-eager` is the only known
+  workaround. Unexplained. (`[[wiki/cudagraphs-and-compile.md]]`)

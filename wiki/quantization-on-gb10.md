@@ -3,8 +3,8 @@
 > **area:** quantization
 > **status:** stable
 > **evidence:** mixed
-> **sources:** S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-dsv4-reap25, S-forum-sm121-4bugs, S-forum-kat-coder-autoround, S-forum-prismaaqua, S-sm121-nvfp4, S-b12x-ab, S-gb10-profile, S-dsv4-opt
-> **updated:** 2026-08-23
+> **sources:** S-dsv4-vision, S-sess-jun5, S-sess-jun4, S-mimo-results, S-mimo-doc, S-m3-vision, S-nemotron-rpc, S-diffusiongemma, S-forum-fp4psa, S-forum-mxfp4-patches, S-forum-nvfp4-ray, S-forum-nvfp4-100b, S-forum-kvarn, S-forum-spark-auto-round, S-forum-kv-bench-llamacpp, S-forum-turboquant, S-forum-stream-loading, S-forum-nvfp4-quant-gp10, S-forum-vllm-019-vs-023, S-forum-qwen36-27b-fp8, S-forum-qwen122-nvfp4-quant, S-forum-nvfp4-mistral-3node, S-forum-flux2-nvfp4-compute, S-forum-nvfp4-worth, S-forum-unsloth-qwen36, S-forum-nvfp4-broken, S-forum-glm52-8x, S-forum-gridbook, S-forum-glm52-hybrid, S-forum-nvfp4-kv, S-forum-dsv4-reap25, S-forum-sm121-4bugs, S-forum-kat-coder-autoround, S-forum-prismaaqua, S-sm121-nvfp4, S-b12x-ab, S-gb10-profile, S-dsv4-opt
+> **updated:** 2026-08-24
 
 ⚠ **This page opened with "GB10 has no native FP4 compute and no native FP8 block-scale" until
 2026-08-22, tagged `[proven]`. It is `[superseded]`** — sm_121 *does* have native block-scaled FP4/FP8
@@ -725,3 +725,28 @@ this is kernel selection, not "old Ampere kernels leaking onto Blackwell".**
 2%. The workspace theory is refuted; the next probe would be `CUBLASLT_LOG_LEVEL=5` to see why the
 heuristic rejects split-K — but at a 2.6% ceiling, a custom kernel is not worth writing.
 (S-dsv4-opt)
+
+
+## [proven] NVFP4 MoE that no backend will serve — and Marlin's repack PTX wall (2026-08-24, S-dsv4-vision)
+
+Trying to serve MJPansa's `DeepSeek-V4-Flash-0731-NVFP4` conversion (TP=2, `dspark-nvfp4-stage-c`,
+vLLM 0.21.1rc1) on the GB10 pair fails twice, in two different ways:
+
+- **[proven]** Native selection walks every kernel class and rejects all of them:
+  `NotImplementedError: No NvFp4 MoE backend supports the deployment configuration`
+  (`fused_moe/oracle/nvfp4.py:select_nvfp4_moe_backend`).
+- **[proven]** The documented escape hatch `VLLM_TEST_FORCE_FP8_MARLIN=1` forces
+  `NvFp4MoeBackend.MARLIN` and then dies *before serving*, inside weight preparation:
+  `marlin_utils_fp4.prepare_nvfp4_moe_layer_for_marlin` -> `repack_weight` ->
+  `CUDA error: the provided PTX was compiled with an unsupported toolchain`.
+
+So on this image the Marlin fallback is not merely slow, it is **unavailable for NVFP4 MoE**:
+its prebuilt repack kernel carries PTX this GB10 driver refuses. That is the same toolchain
+rejection the ViT flash-attention path hits (`[[wiki/vision-adapters.md]]`), which makes it a
+property of the shipped kernels rather than of one code path.
+
+Practical consequence: **an NVFP4-MoE checkpoint is not automatically serveable here even
+though sm_121 has native block-scaled FP4 MMA** (`S-sm121-nvfp4`) — kernel coverage, not
+silicon, again. Check the MoE quant format before committing to a 165 GB download. The same
+family's MXFP4 conversion (dealignai CRACK) serves fine on the identical image, which is the
+cleanest available demonstration that this is a dispatch gap.
